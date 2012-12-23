@@ -1,4 +1,4 @@
-from z3.z3 import *
+from z3 import *
 
 class Z3MapSolver:
     def __init__(self, n):

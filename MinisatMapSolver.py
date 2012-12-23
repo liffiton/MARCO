@@ -2,8 +2,8 @@ from pyminisolvers import minisat
 
 class MinisatMapSolver:
     def __init__(self, n):
-        self.solver = minisat.Solver()
         self.n = n
+        self.solver = minisat.Solver()
         while self.solver.nvars() < self.n:
             self.solver.new_var(True)  # bias to True
 

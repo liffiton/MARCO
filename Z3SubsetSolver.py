@@ -1,4 +1,4 @@
-from z3.z3 import *
+from z3 import *
 
 def dimacs_var(i):
     if i not in dimacs_var.cache:

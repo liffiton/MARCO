@@ -1,22 +1,21 @@
 from pyminisolvers import minisat
 
 class MinisatSubsetSolver:
-    n = 0
-    nvars = 0
-    s = None
-
     def __init__(self, filename):
+        self.filename = filename
         self.s = minisat.SubsetSolver()
-        self.read_dimacs(filename)
+        self.read_dimacs()
 
-    def read_dimacs(self, filename):
+    def read_dimacs(self):
         import re
-        with open(filename) as f:
+        with open(self.filename) as f:
             i = 0
             for line in f:
                 if line.startswith('p'):
                     pattern = re.compile('p\s+cnf\s+(\d+)\s+(\d+)')
-                    self.nvars,self.n = map(int, re.match(pattern, line).groups())
+                    matches = re.match(pattern, line).groups()
+                    self.nvars = int(matches[0])
+                    self.n = int(matches[1])
                     self.s.set_orig(self.nvars, self.n)
                     while self.s.nvars() < self.nvars + self.n:
                         self.s.new_var()

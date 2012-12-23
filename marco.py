@@ -3,31 +3,34 @@
 import os
 import sys
 from MarcoPolo import MarcoPolo
-from MinisatSubsetSolver import MinisatSubsetSolver
-from Z3SubsetSolver import Z3SubsetSolver
 from MinisatMapSolver import MinisatMapSolver
-from Z3MapSolver import Z3MapSolver
+#from Z3MapSolver import Z3MapSolver
 
 def main():
     if len(sys.argv) < 2:
         print "Usage: %s FILE.[smt2,cnf]" % sys.argv[0]
         sys.exit(1)
+
     filename = sys.argv[1]
     if not os.path.exists(filename):
         print "File does not exist: %s" % filename
         sys.exit(1)
 
-    if filename.endswith('.cnf'):
-        csolver = MinisatSubsetSolver(filename)
-    else:
-        csolver = Z3SubsetSolver(filename)
-    msolver = MinisatMapSolver(csolver.n)
-    mp = MarcoPolo(csolver, msolver)
-
-    if len(sys.argv) == 3:
+    if len(sys.argv) > 2:
         limit = int(sys.argv[2])
     else:
         limit = None
+
+    if filename.endswith('.cnf'):
+        from MinisatSubsetSolver import MinisatSubsetSolver
+        csolver = MinisatSubsetSolver(filename)
+    else:
+        from Z3SubsetSolver import Z3SubsetSolver
+        csolver = Z3SubsetSolver(filename)
+
+    msolver = MinisatMapSolver(csolver.n)
+
+    mp = MarcoPolo(csolver, msolver)
 
     if limit == 0:
         # useful for timing just the parsing / setup
