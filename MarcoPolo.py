@@ -1,8 +1,12 @@
+from MinisatMapSolver import MinisatMapSolver
 
 class MarcoPolo:
-    def __init__(self, csolver, msolver):
+    def __init__(self, csolver, msolver=None):
         self.subs = csolver
-        self.map = msolver
+        if msolver is None:
+            self.map = MinisatMapSolver(csolver.n)
+        else:
+            self.map = msolver
 
     def enumerate(self):
         while self.map.has_seed():

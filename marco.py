@@ -3,7 +3,7 @@
 import os
 import sys
 from MarcoPolo import MarcoPolo
-from MinisatMapSolver import MinisatMapSolver
+#from MinisatMapSolver import MinisatMapSolver
 #from Z3MapSolver import Z3MapSolver
 
 def main():
@@ -28,9 +28,7 @@ def main():
         from Z3SubsetSolver import Z3SubsetSolver
         csolver = Z3SubsetSolver(filename)
 
-    msolver = MinisatMapSolver(csolver.n)
-
-    mp = MarcoPolo(csolver, msolver)
+    mp = MarcoPolo(csolver)
 
     if limit == 0:
         # useful for timing just the parsing / setup
