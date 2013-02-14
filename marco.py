@@ -22,8 +22,8 @@ def main():
         limit = None
 
     if filename.endswith('.cnf'):
-        from MinisatSubsetSolver import MinisatSubsetSolver
-        csolver = MinisatSubsetSolver(filename)
+        from MUSerSubsetSolver import MUSerSubsetSolver
+        csolver = MUSerSubsetSolver(filename)
     else:
         from Z3SubsetSolver import Z3SubsetSolver
         csolver = Z3SubsetSolver(filename)

@@ -1,9 +1,12 @@
 from pyminisolvers import minisat
 
 class MinisatSubsetSolver:
-    def __init__(self, filename):
+    def __init__(self, filename, store_dimacs=False):
         self.filename = filename
         self.s = minisat.SubsetSolver()
+        self.store_dimacs = store_dimacs
+        if self.store_dimacs:
+            self.dimacs = []
         self.read_dimacs()
 
     def read_dimacs(self):
@@ -25,6 +28,8 @@ class MinisatSubsetSolver:
                 assert self.n > 0
                 self.s.add_clause([int(x) for x in line.split()[:-1]])
                 i += 1
+                if self.store_dimacs:
+                    self.dimacs.append(line)
         assert i == self.n
 
     def check_subset(self, seed):
