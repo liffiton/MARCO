@@ -3,8 +3,6 @@
 import os
 import sys
 from MarcoPolo import MarcoPolo
-#from MinisatMapSolver import MinisatMapSolver
-#from Z3MapSolver import Z3MapSolver
 
 def main():
     if len(sys.argv) < 2:

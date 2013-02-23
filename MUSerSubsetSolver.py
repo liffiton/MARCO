@@ -1,4 +1,5 @@
 import os
+import tempfile
 import subprocess
 from MinisatSubsetSolver import MinisatSubsetSolver
 
@@ -8,23 +9,18 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
 
     # override shrink method to use MUSer2
     def shrink(self, seed):
-        tmpfile_path = '/tmp/musertmpfile'
-        muser_path = '/home/liffiton/research/solvers/muser2-src/src/tools/muser-2/muser-2'
-        # Create tmpfile
-        #os.mktmpfile(tmpfile_path)
+        muser_path = './muser2-static'
         # Open tmpfile
-        with open(tmpfile_path,'w') as cnf:
+        with tempfile.NamedTemporaryFile(delete=False) as cnf:
             # Write CNF
             print >>cnf, "p cnf %d %d" % (self.nvars, len(seed))
             for i in seed:
-                print >>cnf, self.dimacs[i-1],  # dimacs[i] has newline
-        # Run MUSer
-        p = subprocess.Popen([muser_path, '-v', '-1', tmpfile_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        out,err = p.communicate()
-        result = out
-
-        # Unlink tmpfile
-        os.unlink(tmpfile_path)
+                print >>cnf, self.dimacs[i],  # dimacs[i] has newline
+            cnf.flush()
+            # Run MUSer
+            p = subprocess.Popen([muser_path, '-comp', '-v', '-1', cnf.name], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            out,err = p.communicate()
+            result = out
 
         # Parse result
         import re
