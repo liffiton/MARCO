@@ -11,7 +11,7 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
     def shrink(self, seed):
         muser_path = './muser2-static'
         # Open tmpfile
-        with tempfile.NamedTemporaryFile(delete=False) as cnf:
+        with tempfile.NamedTemporaryFile() as cnf:
             # Write CNF
             print >>cnf, "p cnf %d %d" % (self.nvars, len(seed))
             for i in seed:
