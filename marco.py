@@ -33,7 +33,7 @@ def main():
         return
 
     for result in mp.enumerate():
-        print result[0], len(result[1])
+        print result[0]  #, len(result[1])
 
         if limit:
             limit -= 1

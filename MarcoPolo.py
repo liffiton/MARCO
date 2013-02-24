@@ -16,12 +16,12 @@ class MarcoPolo:
                 #print "Growing..."
                 MSS = self.subs.grow_current()
                 #MSS = self.subs.grow(seed)
-                yield ("MSS", MSS)
+                yield ("S", MSS)
                 self.map.block_down(MSS)
             else:
                 #print "Shrinking..."
                 MUS = self.subs.shrink_current()
-                yield ("MUS", MUS)
+                yield ("U", MUS)
                 self.map.block_up(MUS)
 
 #    def enumerate_multi(self):
