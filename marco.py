@@ -19,7 +19,7 @@ def main():
     else:
         limit = None
 
-    if filename.endswith('.cnf'):
+    if filename.endswith('.cnf') or filename.endswith('.cnf.gz'):
         from MUSerSubsetSolver import MUSerSubsetSolver
         csolver = MUSerSubsetSolver(filename)
     else:

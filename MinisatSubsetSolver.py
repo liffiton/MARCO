@@ -1,3 +1,5 @@
+import gzip
+import re
 from pyminisolvers import minisat
 
 class MinisatSubsetSolver:
@@ -9,28 +11,38 @@ class MinisatSubsetSolver:
             self.dimacs = []
         self.read_dimacs()
 
-    def read_dimacs(self):
-        import re
-        with open(self.filename) as f:
-            i = 0
-            for line in f:
-                if line.startswith('p'):
-                    pattern = re.compile('p\s+cnf\s+(\d+)\s+(\d+)')
-                    matches = re.match(pattern, line).groups()
-                    self.nvars = int(matches[0])
-                    self.n = int(matches[1])
-                    self.s.set_orig(self.nvars, self.n)
-                    while self.s.nvars() < self.nvars + self.n:
-                        self.s.new_var()
-                    continue
-                if line.startswith('c'):
-                    continue
-                assert self.n > 0
-                self.s.add_clause([int(x) for x in line.split()[:-1]])
-                i += 1
-                if self.store_dimacs:
-                    self.dimacs.append(line)
+    def parse_dimacs(self, f):
+        i = 0
+        for line in f:
+            if line.startswith('p'):
+                pattern = re.compile('p\s+cnf\s+(\d+)\s+(\d+)')
+                matches = re.match(pattern, line).groups()
+                self.nvars = int(matches[0])
+                self.n = int(matches[1])
+                self.s.set_orig(self.nvars, self.n)
+                while self.s.nvars() < self.nvars + self.n:
+                    self.s.new_var()
+                continue
+            if line.startswith('c'):
+                continue
+            assert self.n > 0
+            self.s.add_clause([int(x) for x in line.split()[:-1]])
+            i += 1
+            if self.store_dimacs:
+                self.dimacs.append(line)
         assert i == self.n
+
+    def read_dimacs(self):
+        if self.filename.endswith('.gz'):
+            # use gzip to decompress and pass a file object
+            # (Python 2.6 gzip doesn't support "with gzip.open...")
+            f = gzip.open(self.filename)
+            self.parse_dimacs(f)
+            f.close()
+        else:
+            # assume plain .cnf and pass a file object
+            with open(self.filename) as f:
+                self.parse_dimacs(f)
 
     def check_subset(self, seed):
         return self.s.solve_subset(seed)
