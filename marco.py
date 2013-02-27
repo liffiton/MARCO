@@ -1,37 +1,49 @@
 #!/usr/bin/env python
 
+import argparse
 import os
 import sys
 from MarcoPolo import MarcoPolo
 
 def main():
-    if len(sys.argv) < 2:
-        print "Usage: %s FILE.[smt2,cnf]" % sys.argv[0]
-        sys.exit(1)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-l', '--limit', type=int, default=None,
+                        help="limit number of subsets output (MCSes and MUSes)")
+    parser.add_argument('infile', nargs='?', type=argparse.FileType('r'),
+                        default=sys.stdin,
+                        help="name of file to process (STDIN if omitted)")
+    type_group = parser.add_mutually_exclusive_group()
+    type_group.add_argument('--cnf', action='store_true')
+    type_group.add_argument('--smt', action='store_true')
+    args = parser.parse_args()
 
-    filename = sys.argv[1]
-    if not os.path.exists(filename):
-        print "File does not exist: %s" % filename
-        sys.exit(1)
+    infile = args.infile
+    limit = args.limit
 
-    if len(sys.argv) > 2:
-        limit = int(sys.argv[2])
-    else:
-        limit = None
-
-    if filename.endswith('.cnf') or filename.endswith('.cnf.gz'):
+    # create appropriate constraint solver
+    if args.cnf or infile.name.endswith('.cnf') or infile.name.endswith('.cnf.gz'):
         from MUSerSubsetSolver import MUSerSubsetSolver
-        csolver = MUSerSubsetSolver(filename)
-    else:
+        csolver = MUSerSubsetSolver(infile)
+        infile.close()
+    elif args.smt or infile.name.endswith('.smt2') or infile.name.endswith('.smt2.gz'):
+        # z3 has to be given a filename, not a file object, so close infile first
+        infile.close()
         from Z3SubsetSolver import Z3SubsetSolver
-        csolver = Z3SubsetSolver(filename)
+        csolver = Z3SubsetSolver(infile.name)
+    else:
+        print >>sys.stderr, \
+            "Cannot determine filetype (cnf or smt) of input: %s\n" \
+            "Please provide --cnf or --smt option." % infile.name
+        sys.exit(1)
 
+    # create a MarcoPolo instance with the constraint solver
     mp = MarcoPolo(csolver)
 
+    # useful for timing just the parsing / setup
     if limit == 0:
-        # useful for timing just the parsing / setup
         return
 
+    # enumerate results
     for result in mp.enumerate():
         print result[0]  #, len(result[1])
 

@@ -3,13 +3,12 @@ import re
 from pyminisolvers import minisat
 
 class MinisatSubsetSolver:
-    def __init__(self, filename, store_dimacs=False):
-        self.filename = filename
+    def __init__(self, infile, store_dimacs=False):
         self.s = minisat.SubsetSolver()
         self.store_dimacs = store_dimacs
         if self.store_dimacs:
             self.dimacs = []
-        self.read_dimacs()
+        self.read_dimacs(infile)
 
     def parse_dimacs(self, f):
         i = 0
@@ -32,17 +31,16 @@ class MinisatSubsetSolver:
                 self.dimacs.append(line)
         assert i == self.n
 
-    def read_dimacs(self):
-        if self.filename.endswith('.gz'):
+    def read_dimacs(self, infile):
+        if infile.name.endswith('.gz'):
             # use gzip to decompress and pass a file object
             # (Python 2.6 gzip doesn't support "with gzip.open...")
-            f = gzip.open(self.filename)
-            self.parse_dimacs(f)
-            f.close()
+            gz_f = gzip.GzipFile(fileobj = infile)
+            self.parse_dimacs(gz_f)
+            gz_f.close()
         else:
-            # assume plain .cnf and pass a file object
-            with open(self.filename) as f:
-                self.parse_dimacs(f)
+            # assume plain .cnf and pass through the file object
+            self.parse_dimacs(infile)
 
     def check_subset(self, seed):
         return self.s.solve_subset(seed)
