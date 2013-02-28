@@ -18,7 +18,10 @@ def main():
     args = parser.parse_args()
 
     infile = args.infile
-    limit = args.limit
+
+    if args.smt and infile == sys.stdin:
+        print >>sys.stderr, "SMT cannot be read from STDIN.  Please specify a filename."
+        system.exit(1)
 
     # create appropriate constraint solver
     if args.cnf or infile.name.endswith('.cnf') or infile.name.endswith('.cnf.gz'):
@@ -26,7 +29,7 @@ def main():
         csolver = MUSerSubsetSolver(infile)
         infile.close()
     elif args.smt or infile.name.endswith('.smt2') or infile.name.endswith('.smt2.gz'):
-        # z3 has to be given a filename, not a file object, so close infile first
+        # z3 has to be given a filename, not a file object, so close infile and just pass its name
         infile.close()
         from Z3SubsetSolver import Z3SubsetSolver
         csolver = Z3SubsetSolver(infile.name)
@@ -40,16 +43,17 @@ def main():
     mp = MarcoPolo(csolver)
 
     # useful for timing just the parsing / setup
-    if limit == 0:
+    if args.limit == 0:
         return
 
     # enumerate results
+    lim = args.limit
     for result in mp.enumerate():
         print result[0]  #, len(result[1])
 
-        if limit:
-            limit -= 1
-            if limit == 0: break
+        if lim:
+            lim -= 1
+            if lim == 0: break
 
 if __name__ == '__main__':
     main()
