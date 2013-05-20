@@ -1,0 +1,41 @@
+c Testing covers to see if it is okay with repeated clauses
+c But now two sets of MUSes
+p cnf 2 38
+1 0
+1 0
+1 0
+1 0
+1 0
+1 0
+1 0
+1 0
+1 0
+1 0
+-1 0
+-1 0
+-1 0
+-1 0
+-1 0
+-1 0
+-1 0
+-1 0
+-1 0
+-1 0
+2 0
+2 0
+2 0
+2 0
+2 0
+2 0
+2 0
+2 0
+2 0
+-2 0
+-2 0
+-2 0
+-2 0
+-2 0
+-2 0
+-2 0
+-2 0
+-2 0

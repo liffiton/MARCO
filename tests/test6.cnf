@@ -1,0 +1,22 @@
+c Testing covers to see if it is okay with repeated clauses
+p cnf 1 20
+1 0
+1 0
+1 0
+1 0
+1 0
+1 0
+1 0
+1 0
+1 0
+1 0
+-1 0
+-1 0
+-1 0
+-1 0
+-1 0
+-1 0
+-1 0
+-1 0
+-1 0
+-1 0

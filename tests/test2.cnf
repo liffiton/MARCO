@@ -1,0 +1,9 @@
+c  From the AMUSE presentation
+c  4 MUSes: 3 of size 3, 1 of size 4 
+p cnf 2 6
+-1 0
+-2 0
+1 2 0
+1 -2 0
+-1 2 0
+-1 -2 0
