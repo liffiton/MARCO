@@ -13,11 +13,17 @@ def main():
                         default=sys.stdin,
                         help="name of file to process (STDIN if omitted)")
     type_group = parser.add_mutually_exclusive_group()
-    type_group.add_argument('--cnf', action='store_true')
-    type_group.add_argument('--smt', action='store_true')
+    type_group.add_argument('--cnf', action='store_true',
+                        help="Treat input as DIMACS CNF format.")
+    type_group.add_argument('--smt', action='store_true',
+                        help="Treat input as SMT2 format.")
     parser.add_argument('--force-minisat', action='store_true',
                         help="use Minisat in place of MUSer2 (NOTE: much slower and usually not worth doing!)")
     args = parser.parse_args()
+
+    if len(sys.argv)==1:
+        parser.print_help()
+        sys.exit(1)
 
     infile = args.infile
 
