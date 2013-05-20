@@ -7,6 +7,8 @@ from MarcoPolo import MarcoPolo
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument('-v', '--verbose', action='store_true',
+                        help="print more verbose output (constraint indexes)")
     parser.add_argument('-l', '--limit', type=int, default=None,
                         help="limit number of subsets output (MCSes and MUSes)")
     parser.add_argument('infile', nargs='?', type=argparse.FileType('r'),
@@ -70,7 +72,10 @@ def main():
     # enumerate results
     lim = args.limit
     for result in mp.enumerate():
-        print result[0]  #, len(result[1])
+        if args.verbose:
+            print result[0], " ".join([str(x+1) for x in result[1]])
+        else:
+            print result[0]
 
         if lim:
             lim -= 1
