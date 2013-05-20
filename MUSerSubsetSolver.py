@@ -10,7 +10,9 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
         if not os.path.isfile(self.muser_path):
             raise Exception("MUSer2 binary not found at %s" % self.muser_path)
         try:
-            p = subprocess.Popen([self.muser_path])
+            # a bit of a hack to check whether we can really run it
+            DEVNULL = open(os.devnull, 'wb')
+            p = subprocess.Popen([self.muser_path], stdout=DEVNULL, stderr=DEVNULL)
         except:
             raise Exception("MUSer2 binary %s is not executable.\nIt may be compiled for a different platform." % self.muser_path)
 
