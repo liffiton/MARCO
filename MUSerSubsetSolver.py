@@ -9,6 +9,10 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
         self.muser_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'muser2-static')
         if not os.path.isfile(self.muser_path):
             raise Exception("MUSer2 binary not found at %s" % self.muser_path)
+        try:
+            p = subprocess.Popen([self.muser_path])
+        except:
+            raise Exception("MUSer2 binary %s is not executable.\nIt may be compiled for a different platform." % self.muser_path)
 
     # override shrink method to use MUSer2
     def shrink(self, seed):

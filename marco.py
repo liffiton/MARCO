@@ -15,18 +15,29 @@ def main():
     type_group = parser.add_mutually_exclusive_group()
     type_group.add_argument('--cnf', action='store_true')
     type_group.add_argument('--smt', action='store_true')
+    parser.add_argument('--force-minisat', action='store_true',
+                        help="use Minisat in place of MUSer2 (NOTE: much slower and usually not worth doing!)")
     args = parser.parse_args()
 
     infile = args.infile
 
     if args.smt and infile == sys.stdin:
         print >>sys.stderr, "SMT cannot be read from STDIN.  Please specify a filename."
-        system.exit(1)
+        sys.exit(1)
 
     # create appropriate constraint solver
-    if args.cnf or infile.name.endswith('.cnf') or infile.name.endswith('.cnf.gz'):
-        from MUSerSubsetSolver import MUSerSubsetSolver
-        csolver = MUSerSubsetSolver(infile)
+    if args.force_minisat:
+        from MinisatSubsetSolver import MinisatSubsetSolver
+        csolver = MinisatSubsetSolver(infile)
+        infile.close()
+    elif args.cnf or infile.name.endswith('.cnf') or infile.name.endswith('.cnf.gz'):
+        try:
+            from MUSerSubsetSolver import MUSerSubsetSolver
+            csolver = MUSerSubsetSolver(infile)
+        except Exception as e:
+            print >>sys.stderr, "ERROR: Unable to use MUSer2 for MUS extraction.\n\n%s\n\nUse --force-minisat to use Minisat instead (NOTE: it will be much slower.)" % str(e)
+            sys.exit(1)
+            
         infile.close()
     elif args.smt or infile.name.endswith('.smt2') or infile.name.endswith('.smt2.gz'):
         # z3 has to be given a filename, not a file object, so close infile and just pass its name
