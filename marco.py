@@ -46,9 +46,13 @@ def main():
             
         infile.close()
     elif args.smt or infile.name.endswith('.smt2') or infile.name.endswith('.smt2.gz'):
+        try:
+            from Z3SubsetSolver import Z3SubsetSolver
+        except ImportError as e:
+            print >>sys.stderr, "ERROR: Unable to import z3 module:  %s\n\nPlease install Z3 from https://z3.codeplex.com/" % str(e)
+            sys.exit(1)
         # z3 has to be given a filename, not a file object, so close infile and just pass its name
         infile.close()
-        from Z3SubsetSolver import Z3SubsetSolver
         csolver = Z3SubsetSolver(infile.name)
     else:
         print >>sys.stderr, \
