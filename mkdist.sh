@@ -4,7 +4,7 @@
 cd pyminisolvers ; git checkout minisat_only ; cd ..
 
 # gather "whitelist" of files to include
-marco_files="*.py muser2-static README"
+marco_files="*.py muser2-static README VERSION"
 test_files="tests/*.cnf tests/*.smt2 tests/*.gz tests/*.py tests/out/*"
 minisolvers_files=`find pyminisolvers/ -name "*.cc" -or -name "*.cpp" -or -name "*.h" -or -name "Makefile" -or -name "makefile" -or -name "*.py"`
 
