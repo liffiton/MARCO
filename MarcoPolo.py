@@ -14,8 +14,11 @@ class MarcoPolo:
             #print "Seed:", seed
             if self.subs.check_subset(seed):
                 #print "Growing..."
-                MSS = self.subs.grow_current()
-                #MSS = self.subs.grow(seed)
+                try:
+                    MSS = self.subs.grow_current()
+                except NotImplementedError:
+                    # not yet implemented for Z3 solver
+                    MSS = self.subs.grow(seed)
                 yield ("S", MSS)
                 self.map.block_down(MSS)
             else:

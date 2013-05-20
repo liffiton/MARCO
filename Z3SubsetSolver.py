@@ -95,8 +95,9 @@ class Z3SubsetSolver:
     def grow_current(self):
         # TODO: not yet implemented...
         #       difficult to do efficiently...
-        seed = seed_from_model(solver.model(), n)
-        return self.grow(seed)
+        raise NotImplementedError
+        #seed = seed_from_model(solver.model(), n)
+        #return self.grow(seed)
 
     def grow(self, seed):
         current = set(seed)
