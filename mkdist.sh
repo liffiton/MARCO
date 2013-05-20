@@ -1,16 +1,15 @@
 #!/bin/bash
 
 # gather whitelist of files to include
-shopt -s extglob
-marco_files=@(*.py|README)
-test_files=tests/*.@(cnf|smt2|gz)
+marco_files="*.py README"
+test_files="tests/*.cnf tests/*.smt2 tests/*.gz tests/*.py tests/out/*"
 minisolvers_files=`find pyminisolvers/ -name "*.cc" -or -name "*.cpp" -or -name "*.h" -or -name "Makefile" -or -name "makefile" -or -name "*.py"`
 
 # setup temp named dir
 version=`cat VERSION`
 dir=marco_py-$version
 if [ -e $dir ] ; then
-    echo "WHOA WHOA WHOA...  $dir exists?!"
+    echo "WHOA WHOA WHOA...  $dir exists?!  Not going to touch that..."
     exit
 fi
 mkdir $dir
