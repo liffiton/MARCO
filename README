@@ -1,0 +1,73 @@
+********************************************************************************
+MARCO: an efficient MUS and MCS enumeration tool
+
+This is a Python implementation of the MARCO algorithm [1] for enumerating
+MUSes and MCSes of infeasible constraint systems (currently: SAT and SMT).
+This implementation makes use of MUSer2 [2] for MUS extraction and MiniSAT 2.2
+[3] for satisfiability testing and the generation of SAT models.
+
+  Web: http://www.iwu.edu/~mliffito/marco/
+
+Please contact Mark Liffiton (mliffito@iwu.edu) in case of any errors or
+questions.
+
+[1] MARCO
+   M. Liffiton and A. Malik (2013) Enumerating Infeasibility: Finding multiple
+   MUSes quickly. In: Proc. CPAIOR 2013.
+
+[2] MUSer2
+   A. Belov and J. Marques-Silva (2012) MUSer2: An efficient MUS extractor. In:
+   Journal on Satisfiability, Boolean Modeling and Computation 8, 123–128.
+
+[3] Minisat 2.2
+   N. Een and N. Sörensson (2003) An Extensible SAT-solver. In: Proc. SAT 2003.
+   N. Een and A. Biere (2005) Effective Preprocessing in SAT through Variable 
+   and Clause Elimination. In: Proc. SAT 2005. 
+
+********************************************************************************
+Setup:
+
+This implementation makes use of Python bindings for MiniSAT that must be
+built before running MARCO.
+
+Requirements:
+ - Python 2.6+
+ - A standard build environment (make, gcc, etc.)
+
+To build the Python bindings:
+
+  $ cd pyminisolvers
+  $ make
+
+Additionally, the following are recommended, depending on your needs:
+
+ - Z3Py for analyzing SMT instances.
+     Available as part of the Z3 distribution: https://z3.codeplex.com/
+ - A MUSer2 binary.  Included is a binary distributed from the MUSer2 page
+   compiled for 64-bit Linux.  For other platforms, download the appropriate
+   binary or compile from the source.
+     Available from: http://logos.ucd.ie/wiki/doku.php?id=muser
+
+Without a working MUSer2 binary, you can still run MARCO in a fall-back mode
+that uses a basic, **much less efficient** deletion-based MUS extractor using
+Minisat directly (see the --force-minisat option).
+
+********************************************************************************
+Usage:
+
+Example: ./marco.py tests/test1.cnf
+
+Run ./marco.py --help for a list of available options.
+
+Input files may be gzipped.
+
+The output lists MUSes ("U") and MCSes ("S"), one per line.  In 'verbose' mode
+(-v), each line also lists the indexes of the constraints included in each set
+(with 1-based counting).
+
+********************************************************************************
+Authors:
+  MARCO: Mark Liffiton
+  MUSer2: Anton Belov and Joao Marques-Silva
+  MiniSAT: Niklas Een and Niklas Sörensson
+
