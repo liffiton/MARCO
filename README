@@ -43,7 +43,7 @@ Additionally, the following are recommended, depending on your needs:
 
  - Z3Py for analyzing SMT instances.
      Available as part of the Z3 distribution: https://z3.codeplex.com/
- - A MUSer2 binary.  Included is a binary distributed from the MUSer2 page
+ - A MUSer2 binary.  Included is a binary (distributed from the MUSer2 site)
    compiled for 64-bit Linux.  For other platforms, download the appropriate
    binary or compile from the source.
      Available from: http://logos.ucd.ie/wiki/doku.php?id=muser
