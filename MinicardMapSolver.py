@@ -33,6 +33,11 @@ class MinicardMapSolver:
         '''
         while self.k >= 0 and not self.solve_with_bound(self.k):
             self.k -= 1
+            if not self.solve_with_bound(0):
+                # no more models
+                self.k = -1
+                break
+
         if self.k < 0:
             return False
         else:
