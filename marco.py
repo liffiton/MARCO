@@ -9,11 +9,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-v', '--verbose', action='store_true',
                         help="print more verbose output (constraint indexes)")
+    parser.add_argument('-m', '--max-seed', action='store_true',
+                        help="always find a maximal seed")
     parser.add_argument('-l', '--limit', type=int, default=None,
                         help="limit number of subsets output (MCSes and MUSes)")
-    parser.add_argument('infile', nargs='?', type=argparse.FileType('r'),
-                        default=sys.stdin,
-                        help="name of file to process (STDIN if omitted)")
     type_group = parser.add_mutually_exclusive_group()
     type_group.add_argument('--cnf', action='store_true',
                         help="Treat input as DIMACS CNF format.")
@@ -21,6 +20,9 @@ def main():
                         help="Treat input as SMT2 format.")
     parser.add_argument('--force-minisat', action='store_true',
                         help="use Minisat in place of MUSer2 (NOTE: much slower and usually not worth doing!)")
+    parser.add_argument('infile', nargs='?', type=argparse.FileType('r'),
+                        default=sys.stdin,
+                        help="name of file to process (STDIN if omitted)")
     args = parser.parse_args()
 
     if len(sys.argv)==1:
@@ -62,8 +64,15 @@ def main():
             "Please provide --cnf or --smt option." % infile.name
         sys.exit(1)
 
+    # create appropriate map solver
+    if args.max_seed:
+        from MinicardMapSolver import MinicardMapSolver
+        msolver = MinicardMapSolver(csolver.n)
+    else:
+        from MinisatMapSolver import MinisatMapSolver
+        msolver = MinisatMapSolver(csolver.n)
     # create a MarcoPolo instance with the constraint solver
-    mp = MarcoPolo(csolver)
+    mp = MarcoPolo(csolver, msolver)
 
     # useful for timing just the parsing / setup
     if args.limit == 0:
