@@ -163,6 +163,11 @@ def printProgress(msgq, numTests, numProcs):
     # move forward for blank lines to hold progress bars
     for i in range(printrows + 1):
         print
+    # print '.' for every test to be run
+    for i in range(numTests):
+        x = i % (cols-2) + 2
+        y = i / (cols-2)
+        printAt(x, printrows-y, '.')
 
     numDone = 0
     while numDone < numProcs:
@@ -176,7 +181,7 @@ def printProgress(msgq, numTests, numProcs):
 
             # print correct mark, update stats
             if result == 'start':
-                c = '.'
+                c = ':'
                 stats['total'] += 1
             elif result == 'pass':
                 c = chrPass

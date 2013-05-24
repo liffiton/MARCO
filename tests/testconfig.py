@@ -15,13 +15,13 @@ exes = [
     {
       'name':    'marco_py', 
       'cmd':     '../marco.py',
-      'flags':   ['-v'],
+      'flags':   ['-v', '-v -m'],
     },
 # e.g.:
 #    {
 #      'name':    'marco_py', 
 #      'cmd':     '../marco.py',
 #      'exclude': ['test6.cnf'],
-#      'flags':   ['-v','--force-minisat'],
+#      'flags':   ['-v --force-minisat', '-v -m --force-minisat'],
 #    },
 ]
