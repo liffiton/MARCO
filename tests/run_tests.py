@@ -58,40 +58,46 @@ def makeTests():
                 outfile = infile + ".out"
 
             outfile = "out/" + outfile
+            errfile = "out/" + infile + ".err"
 
-            q.put([ testid , cmd + [infile] , outfile ])
+            q.put([ testid , cmd + [infile] , outfile , errfile ])
             testid += 1
 
     return q
 
 def runTests(jobq, msgq, pid):
     while not jobq.empty():
-        testid, cmd, outfile = jobq.get()
+        testid, cmd, outfile, errfile = jobq.get()
         msgq.put((testid,'start'))
-        result = runTest(cmd, outfile, pid)
+        result = runTest(cmd, outfile, errfile, pid)
         msgq.put((testid,result))
         jobq.task_done()
     msgq.put('done')
 
 # pid is so different processes don't overwrite each other's tmp files
-def runTest(cmd, outfile, pid):
+def runTest(cmd, outfile, errfile, pid):
     global mode, verbose
 
     if mode == "nocheck":
         tmpout = os.devnull
+        tmperr = os.devnull
     elif mode == "regenerate":
         tmpout = outfile
+        tmperr = os.devnull
     else:
         tmpout = outfile + ".NEW" + str(pid)
+        tmperr = errfile + str(pid)
 
     if verbose:
-        print "\nRunning test: %s > %s" % (" ".join(cmd), tmpout)
+        print "\n[34;1mRunning test:[0m %s > %s 2> %s" % (" ".join(cmd), tmpout, tmperr)
 
     # TODO: handle stderr
-    with open(tmpout, 'w') as tmpf:
+    with open(tmpout, 'w') as f_out, open(tmperr, 'w') as f_err:
         try:
-            ret = subprocess.call(cmd, stdout = tmpf)
+            ret = subprocess.call(cmd, stdout = f_out, stderr = f_err)
         except KeyboardInterrupt:
+            os.unlink(tmpout)
+            os.unlink(tmperr)
             return 'interrupted'   # not perfect, but seems to deal with CTL-C most of the time
 
     if ret > 128:
@@ -101,28 +107,43 @@ def runTest(cmd, outfile, pid):
         return None
 
     result = checkFiles(outfile, tmpout)
-    os.unlink(tmpout)
-    if result == 'pass':
-        if verbose:
-            print "  [32mTest passed.[0m"
-    elif result == 'sortsame':
-        if verbose:
-            print "  [33mOutputs not equivalent, but sort to same contents.[0m"
-    else:
-        print "\n  [37;41mTest failed:[0m %s" % " ".join(cmd)
-        # TODO: viewdiff
-        # TODO: updateout
 
+    if verbose:
+        if result == 'pass':
+            errsize = os.path.getsize(tmperr)
+            if errsize:
+                print "  [32mTest passed (with output to stderr).[0m"
+                result = 'stderr'
+            else:
+                print "  [32mTest passed.[0m"
+        elif result == 'sortsame':
+            print "  [33mOutputs not equivalent, but sort to same contents.[0m"
+        else:
+            print "\n  [37;41mTest failed:[0m %s" % " ".join(cmd)
+            errsize = os.path.getsize(tmperr)
+            if errsize:
+                print "  [31mStderr output:[0m"
+                with open(tmperr, 'r') as f:
+                    for line in f:
+                        print "    " + line,
+            # TODO: viewdiff
+            # TODO: updateout
+
+    os.unlink(tmpout)
+    os.unlink(tmperr)
     return result
 
 def checkFiles(file1, file2):
+    global verbose
+
     with open(file1) as f1:
         data1 = f1.read()
     with open(file2) as f2:
         data2 = f2.read()
 
     if len(data1) != len(data2):
-        print "\n  [31mOutputs differ (size).[0m"
+        if verbose:
+            print "\n  [31mOutputs differ (size).[0m"
         return 'diffsize'
 
     if data1 != data2:
@@ -130,7 +151,8 @@ def checkFiles(file1, file2):
         sort1 = data1.split('\n').sort()
         sort2 = data2.split('\n').sort()
         if sort1 != sort2:
-            print "\n  [31mOutputs differ (contents).[0m"
+            if verbose:
+                print "\n  [31mOutputs differ (contents).[0m"
             return 'diffcontent'
         else:
             # outputs not equivalent, but sort to same contents
@@ -144,6 +166,7 @@ def printProgress(msgq, numTests, numProcs):
     chrPass="[32m*[0m"
     chrSort="[33m^[0m"
     chrStdErr="[34mo[0m"
+    chrFail="[37;41mx[0m"
 
     # maintain test stats
     stats = {
@@ -151,6 +174,7 @@ def printProgress(msgq, numTests, numProcs):
         'passed': 0,
         'sortsame': 0,
         'stderr': 0,
+        'fail': 0,
     }
 
     # get size of terminal (thanks: stackoverflow.com/questions/566746/)
@@ -193,6 +217,9 @@ def printProgress(msgq, numTests, numProcs):
             elif result == 'stderr':
                 c = chrStdErr
                 stats['stderr'] += 1
+            else:
+                c = chrFail
+                stats['fail'] += 1
 
             x = testid % (cols-2) + 2
             y = testid / (cols-2)
@@ -209,6 +236,11 @@ def printProgress(msgq, numTests, numProcs):
         if stats['stderr'] > 0:
             print " %s : %2d       Produced output to STDERR" % \
                     (chrStdErr, stats['stderr'])
+        if stats['fail'] > 0:
+            print " %s : %2d       Failed" % \
+                    (chrFail, stats['fail'])
+            if not verbose:
+                print "     Re-run in 'runverbose' mode to see failure details."
 
 # x is 1-based
 # y is 0-based, with 0 = lowest row, 1 above that, etc.
