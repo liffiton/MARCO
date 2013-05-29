@@ -12,14 +12,14 @@ def main():
     parser.add_argument('-m', '--max-seed', action='store_true',
                         help="always find a maximal seed")
     parser.add_argument('-l', '--limit', type=int, default=None,
-                        help="limit number of subsets output (MCSes and MUSes)")
+                        help="limit number of subsets output (counting both MCSes and MUSes)")
     type_group = parser.add_mutually_exclusive_group()
     type_group.add_argument('--cnf', action='store_true',
                         help="Treat input as DIMACS CNF format.")
     type_group.add_argument('--smt', action='store_true',
                         help="Treat input as SMT2 format.")
     parser.add_argument('--force-minisat', action='store_true',
-                        help="use Minisat in place of MUSer2 (NOTE: much slower and usually not worth doing!)")
+                        help="use Minisat in place of MUSer2 for CNF (NOTE: much slower and usually not worth doing!)")
     parser.add_argument('infile', nargs='?', type=argparse.FileType('r'),
                         default=sys.stdin,
                         help="name of file to process (STDIN if omitted)")
@@ -36,17 +36,18 @@ def main():
         sys.exit(1)
 
     # create appropriate constraint solver
-    if args.force_minisat:
-        from MinisatSubsetSolver import MinisatSubsetSolver
-        csolver = MinisatSubsetSolver(infile)
-        infile.close()
     elif args.cnf or infile.name.endswith('.cnf') or infile.name.endswith('.cnf.gz'):
-        try:
-            from MUSerSubsetSolver import MUSerSubsetSolver
-            csolver = MUSerSubsetSolver(infile)
-        except Exception as e:
-            print >>sys.stderr, "ERROR: Unable to use MUSer2 for MUS extraction.\n\n%s\n\nUse --force-minisat to use Minisat instead (NOTE: it will be much slower.)" % str(e)
-            sys.exit(1)
+        if args.force_minisat:
+            from MinisatSubsetSolver import MinisatSubsetSolver
+            csolver = MinisatSubsetSolver(infile)
+            infile.close()
+        else:
+            try:
+                from MUSerSubsetSolver import MUSerSubsetSolver
+                csolver = MUSerSubsetSolver(infile)
+            except Exception as e:
+                print >>sys.stderr, "ERROR: Unable to use MUSer2 for MUS extraction.\n\n%s\n\nUse --force-minisat to use Minisat instead (NOTE: it will be much slower.)" % str(e)
+                sys.exit(1)
             
         infile.close()
     elif args.smt or infile.name.endswith('.smt2') or infile.name.endswith('.smt2.gz'):
