@@ -24,8 +24,7 @@ class MinicardMapSolver:
         self.solver.add_atmost([-(x+1) for x in range(self.n * 2)], self.n)
 
     def solve_with_bound(self, k):
-        #return self.solver.solve([-(x+1+self.n) for x in range(k)])
-        return self.solver.solve([-(x+1+self.n) for x in range(k)])
+        return self.solver.solve([-(x+1+self.n) for x in range(k)] + [(x+1)+self.n+k for x in range(self.n-k)])
 
     def has_seed(self):
         '''
@@ -76,3 +75,7 @@ class MinicardMapSolver:
             # *could* be empty (if instance is SAT)
             self.solver.add_clause( [] )
 
+    def block_size(self, size):
+        self.solver.add_atmost([(x+1) for x in range(self.n)], size-1)
+        self.k = size-1
+        print "Set: %d" % self.k

@@ -7,6 +7,7 @@ class MarcoPolo:
         while self.map.has_seed():
             seed = self.map.get_seed()
             #print "Seed:", seed
+            #print "Seed length:", len(seed)
             if self.subs.check_subset(seed):
                 #print "Growing..."
                 try:
@@ -20,7 +21,9 @@ class MarcoPolo:
                 #print "Shrinking..."
                 MUS = self.subs.shrink_current()
                 yield ("U", MUS)
-                self.map.block_up(MUS)
+                self.map.block_up(set(MUS))
+                self.map.block_down(set(MUS))
+                self.map.block_size(len(MUS))
 
 #    def enumerate_multi(self):
 #        from Queue import Queue
