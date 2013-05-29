@@ -78,4 +78,3 @@ class MinicardMapSolver:
     def block_size(self, size):
         self.solver.add_atmost([(x+1) for x in range(self.n)], size-1)
         self.k = size-1
-        print "Set: %d" % self.k

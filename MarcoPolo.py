@@ -21,6 +21,7 @@ class MarcoPolo:
                 #print "Shrinking..."
                 MUS = self.subs.shrink_current()
                 yield ("U", MUS)
+                print "Size: %d" % len(MUS)
                 self.map.block_up(set(MUS))
                 self.map.block_down(set(MUS))
                 self.map.block_size(len(MUS))
