@@ -10,9 +10,11 @@ def main():
     parser.add_argument('-v', '--verbose', action='store_true',
                         help="print more verbose output (constraint indexes)")
     parser.add_argument('-m', '--max-seed', action='store_true',
-                        help="always find a maximal seed")
+                        help="always find a maximal seed (uses MiniCard as Map solver)")
     parser.add_argument('-l', '--limit', type=int, default=None,
                         help="limit number of subsets output (counting both MCSes and MUSes)")
+    parser.add_argument('--smus', action='store_true',
+                        help="calculate an SMUS (smallest MUS) ; implies -m")
     type_group = parser.add_mutually_exclusive_group()
     type_group.add_argument('--cnf', action='store_true',
                         help="Treat input as DIMACS CNF format.")
@@ -65,15 +67,20 @@ def main():
             "Please provide --cnf or --smt option." % infile.name
         sys.exit(1)
 
+    # setup config
+    config = {}
+    config['smus'] = args.smus
+
     # create appropriate map solver
-    if args.max_seed:
+    if args.max_seed or args.smus:
         from MinicardMapSolver import MinicardMapSolver
         msolver = MinicardMapSolver(csolver.n)
     else:
         from MinisatMapSolver import MinisatMapSolver
         msolver = MinisatMapSolver(csolver.n)
+
     # create a MarcoPolo instance with the constraint solver
-    mp = MarcoPolo(csolver, msolver)
+    mp = MarcoPolo(csolver, msolver, config)
 
     # useful for timing just the parsing / setup
     if args.limit == 0:

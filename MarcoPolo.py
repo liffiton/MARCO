@@ -1,7 +1,8 @@
 class MarcoPolo:
-    def __init__(self, csolver, msolver):
+    def __init__(self, csolver, msolver, config):
         self.subs = csolver
         self.map = msolver
+        self.config = config
 
     def enumerate(self):
         while self.map.has_seed():
@@ -21,10 +22,10 @@ class MarcoPolo:
                 #print "Shrinking..."
                 MUS = self.subs.shrink_current()
                 yield ("U", MUS)
-                print "Size: %d" % len(MUS)
                 self.map.block_up(set(MUS))
-                self.map.block_down(set(MUS))
-                self.map.block_size(len(MUS))
+                if (self.config['smus']):
+                    self.map.block_down(set(MUS))
+                    self.map.block_above_size(len(MUS)-1)
 
 #    def enumerate_multi(self):
 #        from Queue import Queue
