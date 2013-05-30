@@ -75,3 +75,6 @@ class MinicardMapSolver:
             # *could* be empty (if instance is SAT)
             self.solver.add_clause( [] )
 
+    def block_size(self, size):
+        self.solver.add_atmost([(x+1) for x in range(self.n)], size-1)
+        self.k = size-1
