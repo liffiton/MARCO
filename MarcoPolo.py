@@ -22,7 +22,7 @@ class MarcoPolo:
                 #print "Shrinking..."
                 MUS = self.subs.shrink_current()
                 yield ("U", MUS)
-                self.map.block_up(set(MUS))
+                self.map.block_up(MUS)
                 if (self.config['smus']):
                     self.map.block_down(set(MUS))
                     self.map.block_above_size(len(MUS)-1)

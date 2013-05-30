@@ -9,10 +9,12 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-v', '--verbose', action='store_true',
                         help="print more verbose output (constraint indexes)")
-    parser.add_argument('-m', '--max-seed', action='store_true',
-                        help="always find a maximal seed (uses MiniCard as Map solver)")
     parser.add_argument('-l', '--limit', type=int, default=None,
                         help="limit number of subsets output (counting both MCSes and MUSes)")
+    parser.add_argument('-m', '--max-seed', action='store_true',
+                        help="always find a maximal/minimal seed, controlled by bias setting (high=maximal, low=minimal) (uses MiniCard as Map solver)")
+    parser.add_argument('-b', '--bias', type=str, choices=['high','low'], default='high',
+                        help="bias the Map solver toward unsatisfiable seeds (high) or satisfiable seeds (low) (default: high, which is best for enumerating MUSes)")
     parser.add_argument('--smus', action='store_true',
                         help="calculate an SMUS (smallest MUS) ; implies -m")
     type_group = parser.add_mutually_exclusive_group()
@@ -70,14 +72,15 @@ def main():
     # setup config
     config = {}
     config['smus'] = args.smus
+    config['bias'] = (args.bias == 'high')
 
     # create appropriate map solver
     if args.max_seed or args.smus:
         from MinicardMapSolver import MinicardMapSolver
-        msolver = MinicardMapSolver(csolver.n)
+        msolver = MinicardMapSolver(n=csolver.n, bias=config['bias'])
     else:
         from MinisatMapSolver import MinisatMapSolver
-        msolver = MinisatMapSolver(csolver.n)
+        msolver = MinisatMapSolver(n=csolver.n, bias=config['bias'])
 
     # create a MarcoPolo instance with the constraint solver
     mp = MarcoPolo(csolver, msolver, config)

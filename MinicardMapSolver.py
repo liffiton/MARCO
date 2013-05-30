@@ -1,18 +1,23 @@
 from pyminisolvers import minicard
 
 class MinicardMapSolver:
-    def __init__(self, n):
+    def __init__(self, n, bias=True):   # bias=True is a high/inclusion/MUS bias; False is a low/exclusion/MSS bias.
         self.n = n
-        self.k = n  # initial lower bound on # of True variables
+        self.bias = bias
+        if bias:
+            self.k = n  # initial lower bound on # of True variables
+        else:
+            self.k = 0
         self.solver = minicard.Solver()
         while self.solver.nvars() < self.n:
-            self.solver.new_var(True)  # bias to True
+            self.solver.new_var(self.bias)
 
         # add "bound-setting" variables
         while self.solver.nvars() < self.n*2:
             self.solver.new_var()
 
-        # add cardinality constraint
+        # add cardinality constraint (comment is for high bias, maximal model;
+        #                             becomes AtMostK for low bias, minimal model)
         # want: generic AtLeastK over all n variables
         # how: make AtLeast([n vars, n bound-setting vars], n)
         #      then, assume the desired k out of the n bound-setting vars.
@@ -21,26 +26,40 @@ class MinicardMapSolver:
         #       for AtLeast 1: assume(-x)
         # and to make AtLeast into an AtMost:
         #   AtLeast([lits], k) ==> AtMost([-lits], #lits-k)
-        self.solver.add_atmost([-(x+1) for x in range(self.n * 2)], self.n)
+        if self.bias:
+            self.solver.add_atmost([-(x+1) for x in range(self.n * 2)], self.n)
+        else:
+            self.solver.add_atmost([(x+1) for x in range(self.n * 2)], self.n)
 
     def solve_with_bound(self, k):
-        return self.solver.solve([-(x+1+self.n) for x in range(k)] + [(x+1)+self.n+k for x in range(self.n-k)])
+        # same assumptions work both for high bias / atleast and for low bias / atmost
+        return self.solver.solve([-(self.n+x+1) for x in range(k)] + [(self.n+k+x+1) for x in range(self.n-k)])
 
     def has_seed(self):
         '''
             Find the next-most-maximal model.
         '''
-        while self.k >= 0 and not self.solve_with_bound(self.k):
-            self.k -= 1
+        if self.solve_with_bound(self.k):
+            return True
+
+        if self.bias:
             if not self.solve_with_bound(0):
                 # no more models
-                self.k = -1
-                break
-
-        if self.k < 0:
-            return False
+                return False
         else:
-            return True
+            if not self.solve_with_bound(self.n):
+                # no more models
+                return False
+
+        while not self.solve_with_bound(self.k):
+            if self.bias:
+                self.k -= 1
+            else:
+                self.k += 1
+
+        assert 0 <= self.k <= self.n
+
+        return True
 
     def get_seed(self):
         model = self.solver.get_model()
@@ -53,7 +72,7 @@ class MinicardMapSolver:
         return seed
 
     def check_seed(self, seed):
-        raise NotImplementedError  # TODO: how to check seeds when our instance has the cardinality constraint in it...?
+        raise NotImplementedError  # TODO: how to check seeds when our instance has cardinality constraints in it...?
         
         return self.solver.solve(seed)
 
@@ -77,4 +96,8 @@ class MinicardMapSolver:
 
     def block_above_size(self, size):
         self.solver.add_atmost([(x+1) for x in range(self.n)], size)
+        self.k = min(size, self.k)
+
+    def block_below_size(self, size):
+        self.solver.add_atmost([-(x+1) for x in range(self.n)], self.n-size)
         self.k = min(size, self.k)

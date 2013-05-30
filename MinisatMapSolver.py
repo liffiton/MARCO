@@ -1,11 +1,11 @@
 from pyminisolvers import minisat
 
 class MinisatMapSolver:
-    def __init__(self, n):
+    def __init__(self, n, bias=True):   # bias=True is a high/inclusion/MUS bias; False is a low/exclusion/MSS bias.
         self.n = n
         self.solver = minisat.Solver()
         while self.solver.nvars() < self.n:
-            self.solver.new_var(True)  # bias to True
+            self.solver.new_var(bias)
 
     def has_seed(self):
         return self.solver.solve()
