@@ -39,8 +39,12 @@ tar czvhf $dir.tar.gz $dir
 
 # cleanup
 rm -r $dir
-mkdir -p dist
-mv $dir.tar.gz dist
 
 # de-hack
 cd pyminisolvers ; git checkout master ; cd ..
+
+# save dist file
+mkdir -p dist
+mv $dir.tar.gz dist
+echo
+echo "$dir.tar.gz created in dist/"
