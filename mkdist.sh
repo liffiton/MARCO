@@ -6,7 +6,15 @@ cd pyminisolvers ; git checkout minisat_only ; cd ..
 # gather "whitelist" of files to include
 marco_files="*.py muser2-static README VERSION"
 test_files="tests/*.cnf tests/*.smt2 tests/*.gz tests/*.py tests/out/*"
-minisolvers_files=`find pyminisolvers/ -name "*.cc" -or -name "*.cpp" -or -name "*.h" -or -name "Makefile" -or -name "makefile" -or -name "*.py"`
+minisolvers_files=`find pyminisolvers/ -path pyminisolvers/minicard -prune -or \( -name "*.cc" -or -name "*.cpp" -or -name "*.h" -or -name "Makefile" -or -name "makefile" -or -name "*.py" \) -print`
+
+if [ "$1" = "list" ] ; then
+    echo "Selected files:"
+    for f in $marco_files $test_files $minisolvers_files ; do
+        echo $f
+    done
+    exit 0
+fi
 
 # setup temp named dir
 version=`cat VERSION`
@@ -31,6 +39,8 @@ tar czvhf $dir.tar.gz $dir
 
 # cleanup
 rm -r $dir
+mkdir -p dist
+mv $dir.tar.gz dist
 
 # de-hack
 cd pyminisolvers ; git checkout master ; cd ..
