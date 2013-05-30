@@ -40,7 +40,7 @@ def main():
         sys.exit(1)
 
     # create appropriate constraint solver
-    elif args.cnf or infile.name.endswith('.cnf') or infile.name.endswith('.cnf.gz'):
+    if args.cnf or infile.name.endswith('.cnf') or infile.name.endswith('.cnf.gz'):
         if args.force_minisat:
             from MinisatSubsetSolver import MinisatSubsetSolver
             csolver = MinisatSubsetSolver(infile)
