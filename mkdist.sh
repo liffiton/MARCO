@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# hack to get limited version of pyminisolvers
-#cd pyminisolvers ; git checkout minisat_only ; cd ..
-
 # gather "whitelist" of files to include
 marco_files="*.py muser2-static README VERSION"
 test_files="tests/*.cnf tests/*.smt2 tests/*.gz tests/*.py tests/out/*"
@@ -26,8 +23,9 @@ fi
 mkdir $dir
 
 # copy files into temp dir
+echo "Copying..."
 for file in $marco_files $test_files $minisolvers_files ; do
-    echo $file
+    echo "  $file"
     mkdir -p $dir/`dirname $file`/
     cp $file $dir/`dirname $file`/
 done
@@ -35,10 +33,15 @@ done
 echo
 
 # tar!
+echo "Tar-ing..."
 tar czvhf $dir.tar.gz $dir
 
 # cleanup
 rm -r $dir
 
-# de-hack
-#cd pyminisolvers ; git checkout master ; cd ..
+# save dist file
+mkdir -p dist
+mv $dir.tar.gz dist
+echo
+echo "$dir.tar.gz created in dist/"
+
