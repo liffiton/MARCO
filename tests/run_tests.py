@@ -6,10 +6,13 @@
 # Date: October 2012
 #
 
+import json
 import math
 import os
 import sys
 import subprocess
+import time
+from collections import defaultdict
 from multiprocessing import Process, Queue, JoinableQueue, cpu_count
 
 # pull in configuration from testconfig.py
@@ -17,17 +20,14 @@ import testconfig
 
 # globals (w/ default values)
 mode = 'runp'
-testexe = ''
 verbose = False
 
-# Build all tests to be run, add to returned Queue
-def makeTests():
-    global testexe
-
+# Build all tests to be run
+def makeTests(testexe):
     # Gather commands
     cmds = []
     for exe in testconfig.exes:
-        if testexe != '' and exe['name'] != testexe:
+        if testexe and exe['name'] != testexe:
             continue
 
         cmd = exe['cmd']
@@ -42,8 +42,7 @@ def makeTests():
         for flag in flags:
             cmds.append([ [cmd] + flag.split() , exclude ])
 
-    # Add individual tests to a Queue (to be returned)
-    q = JoinableQueue()
+    jobs = []
     testid = 0  # unique id for each test
     for (cmd, exclude) in cmds:
         for testfile in testconfig.files:
@@ -60,19 +59,19 @@ def makeTests():
             outfile = "out/" + outfile
             errfile = "out/" + infile + ".err"
 
-            q.put([ testid , cmd + [infile] , outfile , errfile ])
+            jobs.append( [ testid , cmd + [infile] , outfile , errfile ] )
             testid += 1
 
-    return q
+    return jobs
 
 def runTests(jobq, msgq, pid):
     while not jobq.empty():
         testid, cmd, outfile, errfile = jobq.get()
-        msgq.put((testid,'start'))
-        result = runTest(cmd, outfile, errfile, pid)
-        msgq.put((testid,result))
+        msgq.put((testid,'start',None))
+        result, runtime = runTest(cmd, outfile, errfile, pid)
+        msgq.put((testid,result,runtime))
         jobq.task_done()
-    msgq.put('done')
+    msgq.put((None,'done',None))
 
 # pid is so different processes don't overwrite each other's tmp files
 def runTest(cmd, outfile, errfile, pid):
@@ -94,17 +93,19 @@ def runTest(cmd, outfile, errfile, pid):
     # TODO: handle stderr
     with open(tmpout, 'w') as f_out, open(tmperr, 'w') as f_err:
         try:
+            start_time = time.time()
             ret = subprocess.call(cmd, stdout = f_out, stderr = f_err)
+            runtime = time.time() - start_time
         except KeyboardInterrupt:
             os.unlink(tmpout)
             os.unlink(tmperr)
-            return 'interrupted'   # not perfect, but seems to deal with CTL-C most of the time
+            return 'interrupted', None   # not perfect, but seems to deal with CTL-C most of the time
 
     if ret > 128:
-        return 'fail'
+        return 'fail', runtime
 
     if mode == "nocheck" or mode == "regenerate":
-        return None
+        return None, runtime
 
     result = checkFiles(outfile, tmpout)
 
@@ -131,7 +132,7 @@ def runTest(cmd, outfile, errfile, pid):
 
     os.unlink(tmpout)
     os.unlink(tmperr)
-    return result
+    return result, runtime
 
 def checkFiles(file1, file2):
     global verbose
@@ -161,111 +162,134 @@ def checkFiles(file1, file2):
     # everything checks out
     return 'pass'
 
-def printProgress(msgq, numTests, numProcs):
-    # setup indicator characters
-    chrPass="[32m*[0m"
-    chrSort="[33m^[0m"
-    chrStdErr="[34mo[0m"
-    chrFail="[37;41mx[0m"
+class Progress:
+    # indicator characters
+    chr_Pass="[32m*[0m"
+    chr_Sort="[33m^[0m"
+    chr_StdErr="[34mo[0m"
+    chr_Fail="[37;41mx[0m"
 
-    # maintain test stats
-    stats = {
-        'total': 0,
-        'passed': 0,
-        'sortsame': 0,
-        'stderr': 0,
-        'fail': 0,
-    }
+    def __init__(self, numTests, do_print):
+        # maintain test stats
+        self.stats = {
+            'total': 0,
+            'passed': 0,
+            'sortsame': 0,
+            'stderr': 0,
+            'fail': 0,
+        }
 
-    # get size of terminal (thanks: stackoverflow.com/questions/566746/)
-    rows, cols = os.popen('stty size', 'r').read().split()
-    cols = int(cols)
+        self.do_print = do_print
 
-    # figure size of printed area
-    printrows = int(math.ceil(float(numTests) / (cols-2)))
+        if self.do_print:
+            # get size of terminal (thanks: stackoverflow.com/questions/566746/)
+            self.rows, self.cols = os.popen('stty size', 'r').read().split()
+            self.cols = int(self.cols)
 
-    # move forward for blank lines to hold progress bars
-    for i in range(printrows + 1):
-        print
-    # print '.' for every test to be run
-    for i in range(numTests):
-        x = i % (cols-2) + 2
-        y = i / (cols-2)
-        printAt(x, printrows-y, '.')
+            # figure size of printed area
+            self.printrows = int(math.ceil(float(numTests) / (self.cols-2)))
 
-    numDone = 0
-    while numDone < numProcs:
+            # move forward for blank lines to hold progress bars
+            for i in range(self.printrows + 1):
+                print
+            # print '.' for every test to be run
+            for i in range(numTests):
+                x = i % (self.cols-2) + 2
+                y = i / (self.cols-2)
+                self.print_at(x, self.printrows-y, '.')
 
-        msg = msgq.get()
-
-        if msg == 'done':
-            numDone += 1
+    def update(self, testid, result):
+        # print correct mark, update stats
+        if result == 'start':
+            c = ':'
+            self.stats['total'] += 1
+        elif result == 'pass':
+            c = self.chr_Pass
+            self.stats['passed'] += 1
+        elif result == 'sortsame':
+            c = self.chr_Sort
+            self.stats['passed'] += 1
+            self.stats['sortsame'] += 1
+        elif result == 'stderr':
+            c = self.chr_StdErr
+            self.stats['stderr'] += 1
         else:
-            testid, result = msg
+            c = self.chr_Fail
+            self.stats['fail'] += 1
 
-            # print correct mark, update stats
-            if result == 'start':
-                c = ':'
-                stats['total'] += 1
-            elif result == 'pass':
-                c = chrPass
-                stats['passed'] += 1
-            elif result == 'sortsame':
-                c = chrSort
-                stats['passed'] += 1
-                stats['sortsame'] += 1
-            elif result == 'stderr':
-                c = chrStdErr
-                stats['stderr'] += 1
-            else:
-                c = chrFail
-                stats['fail'] += 1
+        if self.do_print:
+            x = testid % (self.cols-2) + 2
+            y = testid / (self.cols-2)
+            self.print_at(x, self.printrows-y, c)
 
-            x = testid % (cols-2) + 2
-            y = testid / (cols-2)
-            printAt(x, printrows-y, c)
-
-    if mode == "run" or mode == "runp":
-        # report stats
+    def printstats(self):
         print
         print " %s : %2d / %2d  Passed" % \
-                (chrPass, stats['passed'], stats['total'])
-        if stats['sortsame'] > 0:
+                (self.chr_Pass, self.stats['passed'], self.stats['total'])
+        if self.stats['sortsame'] > 0:
             print " %s : %2d       Different order, same contents" % \
-                    (chrSort, stats['sortsame'])
-        if stats['stderr'] > 0:
+                    (self.chr_Sort, self.stats['sortsame'])
+        if self.stats['stderr'] > 0:
             print " %s : %2d       Produced output to STDERR" % \
-                    (chrStdErr, stats['stderr'])
-        if stats['fail'] > 0:
+                    (self.chr_StdErr, self.stats['stderr'])
+        if self.stats['fail'] > 0:
             print " %s : %2d       Failed" % \
-                    (chrFail, stats['fail'])
-            if not verbose:
+                    (self.chr_Fail, self.stats['fail'])
+            if not self.do_print:
                 print "     Re-run in 'runverbose' mode to see failure details."
 
-# x is 1-based
-# y is 0-based, with 0 = lowest row, 1 above that, etc.
-def printAt(x,y, string):
-    # move to correct position
-    sys.stdout.write("[%dF" % y)  # y (moves to start of row)
-    sys.stdout.write("[%dG" % x)         # x
+    # x is 1-based
+    # y is 0-based, with 0 = lowest row, 1 above that, etc.
+    def print_at(self, x,y, string):
+        # move to correct position
+        sys.stdout.write("[%dF" % y)  # y (moves to start of row)
+        sys.stdout.write("[%dG" % x)         # x
 
-    sys.stdout.write(string)
+        sys.stdout.write(string)
 
-    # move back down
-    sys.stdout.write("[%dE" % y)
+        # move back down
+        sys.stdout.write("[%dE" % y)
 
-    # move cursor to side and flush anything pending
-    sys.stdout.write("[999G")
-    sys.stdout.flush()
+        # move cursor to side and flush anything pending
+        sys.stdout.write("[999G")
+        sys.stdout.flush()
+
+class TimeData:
+    def __init__(self, filename="runtimes.json"):
+        self.filename = filename
+        try:
+            with open(self.filename, 'r') as f:
+                data = f.read()
+            self.times = defaultdict(int, json.loads(data))
+            #for x in sorted(self.times, key=lambda x: self.times[x]):
+            #    print self.times[x], x
+        except:
+            print "No timing data found.  Timing data will be regenerated."
+            self.times = defaultdict(int)
+
+    def sort_by_time(self, jobs):
+        return sorted(jobs, key = lambda x: self.times[" ".join(x[1])])
+
+    def get_time(self, cmdarray):
+        return self.times[" ".join(cmdarray)]
+
+    def store_time(self, cmdarray, runtime):
+        self.times[" ".join(cmdarray)] = runtime
+
+    def save_data(self):
+        with open(self.filename, 'w') as f:
+            f.write(json.dumps(self.times))
 
 def main():
-    global mode, testexe, verbose
+    global mode, verbose
 
     if len(sys.argv) >= 2:
         mode = sys.argv[1]
 
     if len(sys.argv) >= 3:
         testexe = sys.argv[2]
+    else:
+        testexe = None
 
     validmodes = ['run','runp','runverbose','nocheck','regenerate']
 
@@ -282,18 +306,19 @@ def main():
         if sure.lower() != 'y':
             print "Exiting."
             return 1
+
     if mode == "runp":
         # run tests in parallel
-        numProcs = cpu_count()
+        num_procs = cpu_count()
     else:
         # run, nocheck, and regenerate are done serially.
         #  (nocheck is best for timing, and regenerate
         #  can have issues with output file clashes.)
-        numProcs = 1
+        num_procs = 1
 
     # say what we are about to do
     report = "Running all tests"
-    if testexe != '':
+    if testexe:
         report += " for " + testexe
     if mode == 'nocheck':
         report += " (skipping results checks)"
@@ -302,22 +327,43 @@ def main():
     report += "."
     print report
 
+    # build the tests
+    jobs = makeTests(testexe)
+    numTests = len(jobs)
+
     # run the tests
-    jobq = makeTests()
-    numTests = jobq.qsize()
+    # sort by times, if we have them
+    td = TimeData()
+    jobq = JoinableQueue()
+    for job in td.sort_by_time(jobs):
+        jobq.put(job)
     msgq = Queue()
-    for pid in range(numProcs):
+    for pid in range(num_procs):
         p = Process(target=runTests, args=(jobq,msgq,pid,))
         p.daemon = True
         p.start()
 
     # wait for completion, printing progress/stats as needed
     try:
-        if not verbose:
-            printProgress(msgq, numTests, numProcs)
+        prog = Progress(numTests, do_print = (not verbose))
+                                  # if verbose is on, printing the progress bar is not needed/wanted
+        procs_done = 0
+        while procs_done < num_procs:
+            testid, result, runtime = msgq.get()
+            if result == 'done':
+                procs_done += 1
+            else:
+                if runtime: td.store_time(jobs[testid][1], runtime)
+                prog.update(testid, result)
+
         jobq.join()
+        if mode == "run" or mode == "runp":
+            prog.printstats()
+
     except KeyboardInterrupt:
         pass
+
+    td.save_data()
 
 if __name__=='__main__':
     main()
