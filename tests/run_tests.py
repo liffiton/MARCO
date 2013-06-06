@@ -233,7 +233,7 @@ class Progress:
         if self.stats['fail'] > 0:
             print " %s : %2d       Failed" % \
                     (self.chr_Fail, self.stats['fail'])
-            if not self.do_print:
+            if self.do_print:
                 print "     Re-run in 'runverbose' mode to see failure details."
 
     # x is 1-based
@@ -259,11 +259,9 @@ class TimeData:
             with open(self.filename, 'r') as f:
                 data = f.read()
             self.times = defaultdict(int, json.loads(data))
-            #for x in sorted(self.times, key=lambda x: self.times[x]):
-            #    print self.times[x], x
             self.have_times = True
         except:
-            print "No timing data found.  Timing data will be regenerated."
+            #print "No timing data found.  Timing data will be regenerated."
             self.times = defaultdict(int)
             self.have_times = False
 
