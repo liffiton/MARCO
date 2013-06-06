@@ -43,7 +43,6 @@ def makeTests(testexe):
             cmds.append([ [cmd] + flag.split() , exclude ])
 
     jobs = []
-    testid = 0  # unique id for each test
     for (cmd, exclude) in cmds:
         for testfile in testconfig.files:
             infile = testfile[0]
@@ -59,17 +58,16 @@ def makeTests(testexe):
             outfile = "out/" + outfile
             errfile = "out/" + infile + ".err"
 
-            jobs.append( [ testid , cmd + [infile] , outfile , errfile ] )
-            testid += 1
+            jobs.append( {'cmdarray': cmd + [infile] , 'outfile': outfile , 'errfile': errfile } )
 
     return jobs
 
 def runTests(jobq, msgq, pid):
     while not jobq.empty():
-        testid, cmd, outfile, errfile = jobq.get()
-        msgq.put((testid,'start',None))
-        result, runtime = runTest(cmd, outfile, errfile, pid)
-        msgq.put((testid,result,runtime))
+        job = jobq.get()
+        msgq.put((job['id'],'start',None))
+        result, runtime = runTest(job['cmdarray'], job['outfile'], job['errfile'], pid)
+        msgq.put((job['id'],result,runtime))
         jobq.task_done()
     msgq.put((None,'done',None))
 
@@ -263,12 +261,14 @@ class TimeData:
             self.times = defaultdict(int, json.loads(data))
             #for x in sorted(self.times, key=lambda x: self.times[x]):
             #    print self.times[x], x
+            self.have_times = True
         except:
             print "No timing data found.  Timing data will be regenerated."
             self.times = defaultdict(int)
+            self.have_times = False
 
     def sort_by_time(self, jobs):
-        return sorted(jobs, key = lambda x: self.times[" ".join(x[1])])
+        return sorted(jobs, key = lambda x: self.times[" ".join(x['cmdarray'])])
 
     def get_time(self, cmdarray):
         return self.times[" ".join(cmdarray)]
@@ -290,6 +290,8 @@ def main():
         testexe = sys.argv[2]
     else:
         testexe = None
+
+    td = TimeData()
 
     validmodes = ['run','runp','runverbose','nocheck','regenerate']
 
@@ -317,27 +319,32 @@ def main():
         num_procs = 1
 
     # say what we are about to do
-    report = "Running all tests"
+    report = "Running all tests on %d cores" % num_procs
     if testexe:
         report += " for " + testexe
     if mode == 'nocheck':
         report += " (skipping results checks)"
     if mode == 'regenerate':
         report += " (to regenerate output files)"
+    if td.have_times:
+        report += " (sorted by previously recorded runtimes)"
     report += "."
     print report
 
     # build the tests
     jobs = makeTests(testexe)
     numTests = len(jobs)
+    # sort by times, if we have them
+    jobs = td.sort_by_time(jobs)
+    # give each an increasing 'id'
+    for idx, job in enumerate(jobs):
+        job['id'] = idx
 
     # run the tests
-    # sort by times, if we have them
-    td = TimeData()
-    jobq = JoinableQueue()
-    for job in td.sort_by_time(jobs):
+    jobq = JoinableQueue()  # jobs *to* each process
+    for job in jobs:
         jobq.put(job)
-    msgq = Queue()
+    msgq = Queue()  # messages *from* each process
     for pid in range(num_procs):
         p = Process(target=runTests, args=(jobq,msgq,pid,))
         p.daemon = True
@@ -353,7 +360,7 @@ def main():
             if result == 'done':
                 procs_done += 1
             else:
-                if runtime: td.store_time(jobs[testid][1], runtime)
+                if runtime: td.store_time(jobs[testid]['cmdarray'], runtime)
                 prog.update(testid, result)
 
         jobq.join()
