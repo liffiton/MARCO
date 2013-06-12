@@ -170,11 +170,12 @@ class Progress:
     def __init__(self, numTests, do_print):
         # maintain test stats
         self.stats = {
-            'total': 0,
+            'total': numTests,
             'passed': 0,
             'sortsame': 0,
             'stderr': 0,
             'fail': 0,
+            'incomplete': numTests,
         }
 
         self.do_print = do_print
@@ -200,20 +201,23 @@ class Progress:
         # print correct mark, update stats
         if result == 'start':
             c = ':'
-            self.stats['total'] += 1
         elif result == 'pass':
             c = self.chr_Pass
             self.stats['passed'] += 1
+            self.stats['incomplete'] -= 1
         elif result == 'sortsame':
             c = self.chr_Sort
             self.stats['passed'] += 1
             self.stats['sortsame'] += 1
+            self.stats['incomplete'] -= 1
         elif result == 'stderr':
             c = self.chr_StdErr
             self.stats['stderr'] += 1
+            self.stats['incomplete'] -= 1
         else:
             c = self.chr_Fail
             self.stats['fail'] += 1
+            self.stats['incomplete'] -= 1
 
         if self.do_print:
             x = testid % (self.cols-2) + 2
@@ -222,6 +226,12 @@ class Progress:
 
     def printstats(self):
         print
+        if self.stats['incomplete'] > 0:
+            # red text
+            sys.stdout.write("[31m")
+            print "     %2d / %2d  Incomplete" % \
+                (self.stats['incomplete'], self.stats['total'])
+            sys.stdout.write("[0m")
         print " %s : %2d / %2d  Passed" % \
                 (self.chr_Pass, self.stats['passed'], self.stats['total'])
         if self.stats['sortsame'] > 0:
@@ -349,9 +359,9 @@ def main():
         p.start()
 
     # wait for completion, printing progress/stats as needed
+    prog = Progress(numTests, do_print = (not verbose))
+                              # if verbose is on, printing the progress bar is not needed/wanted
     try:
-        prog = Progress(numTests, do_print = (not verbose))
-                                  # if verbose is on, printing the progress bar is not needed/wanted
         procs_done = 0
         while procs_done < num_procs:
             testid, result, runtime = msgq.get()
@@ -362,11 +372,13 @@ def main():
                 prog.update(testid, result)
 
         jobq.join()
-        if mode == "run" or mode == "runp":
-            prog.printstats()
 
     except KeyboardInterrupt:
-        pass
+        print
+        print "[31;1mInterrupted![0m"
+
+    if mode == "run" or mode == "runp":
+        prog.printstats()
 
     td.save_data()
 
