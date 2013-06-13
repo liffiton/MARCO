@@ -3,6 +3,8 @@
 import argparse
 import os
 import sys
+
+import mapsolvers
 from MarcoPolo import MarcoPolo
 
 def main():
@@ -76,11 +78,9 @@ def main():
 
     # create appropriate map solver
     if args.max_seed or args.smus:
-        from mapsolvers import MinicardMapSolver
-        msolver = MinicardMapSolver(n=csolver.n, bias=config['bias'])
+        msolver = mapsolvers.MinicardMapSolver(n=csolver.n, bias=config['bias'])
     else:
-        from mapsolvers import MinisatMapSolver
-        msolver = MinisatMapSolver(n=csolver.n, bias=config['bias'])
+        msolver = mapsolvers.MinisatMapSolver(n=csolver.n, bias=config['bias'])
 
     # create a MarcoPolo instance with the constraint solver
     mp = MarcoPolo(csolver, msolver, config)
