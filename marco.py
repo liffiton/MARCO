@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import argparse
+import atexit
 import os
 import signal
 import sys
@@ -99,6 +100,7 @@ def setup():
     return (csolver, msolver, config)
 
 def at_exit(config, timer):
+    # print stats, if needed
     if config['stats']:
         times = timer.get_times()
         for category, time in times.items():
@@ -110,14 +112,18 @@ def main():
     with timer.measure('setup'):
         (csolver, msolver, config) = setup()
 
+        # register at_exit to print stats when program exits, whatever the reason
+        atexit.register(at_exit, config, timer)
+
         # register timeout/interrupt handler
         def handler(signum, frame):
             if signum == signal.SIGALRM:
-                sys.stderr.write("Time limit exceeded.\n")
+                sys.stderr.write("Time limit reached.\n")
             else:
                 sys.stderr.write("Interrupted.\n")
-            at_exit(config, timer)
             sys.exit(128)
+            # at_exit will fire here
+
         signal.signal(signal.SIGTERM, handler)  # external termination
         signal.signal(signal.SIGINT, handler)   # ctl-c keyboard interrupt
         signal.signal(signal.SIGALRM, handler)  # timeout alarm
@@ -131,7 +137,8 @@ def main():
 
     # useful for timing just the parsing / setup
     if config['limit'] == 0:
-        return
+        sys.stderr.write("Result limit reached.\n")
+        sys.exit(0)
 
     # enumerate results
     remaining = config['limit']
@@ -145,8 +152,6 @@ def main():
             remaining -= 1
             if remaining == 0: break
 
-    # print stats, if needed
-    at_exit(config, timer)
 
 if __name__ == '__main__':
     main()
