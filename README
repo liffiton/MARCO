@@ -31,7 +31,7 @@ This implementation makes use of Python bindings for MiniSAT that must be
 built before running MARCO.
 
 Requirements:
- - Python 2.6+
+ - Python 2.7+
  - A standard build environment (make, gcc, etc.)
 
 To build the Python bindings:
