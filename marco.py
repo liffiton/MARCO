@@ -4,7 +4,6 @@ import argparse
 import os
 import sys
 
-import mapsolvers
 import utils
 from MarcoPolo import MarcoPolo
 
@@ -81,9 +80,11 @@ def setup():
 
     # create appropriate map solver
     if args.max_seed or args.smus:
-        msolver = mapsolvers.MinicardMapSolver(n=csolver.n, bias=config['bias'])
+        from mapsolvers import MinicardMapSolver
+        msolver  = MinicardMapSolver(n=csolver.n, bias=config['bias'])
     else:
-        msolver = mapsolvers.MinisatMapSolver(n=csolver.n, bias=config['bias'])
+        from mapsolvers import MinisatMapSolver
+        msolver = MinisatMapSolver(n=csolver.n, bias=config['bias'])
 
     return (csolver, msolver, config)
 
