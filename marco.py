@@ -5,9 +5,10 @@ import os
 import sys
 
 import mapsolvers
+import utils
 from MarcoPolo import MarcoPolo
 
-def main():
+def setup():
     parser = argparse.ArgumentParser()
     parser.add_argument('-v', '--verbose', action='store_true',
                         help="print more verbose output (constraint indexes)")
@@ -75,6 +76,8 @@ def main():
     config = {}
     config['smus'] = args.smus
     config['bias'] = (args.bias == 'high')
+    config['limit'] = args.limit
+    config['verbose'] = args.verbose
 
     # create appropriate map solver
     if args.max_seed or args.smus:
@@ -82,24 +85,34 @@ def main():
     else:
         msolver = mapsolvers.MinisatMapSolver(n=csolver.n, bias=config['bias'])
 
-    # create a MarcoPolo instance with the constraint solver
-    mp = MarcoPolo(csolver, msolver, config)
+    return (csolver, msolver, config)
+
+def main():
+    timer = utils.Timer()
+
+    with timer.measure('setup'):
+        (csolver, msolver, config) = setup()
+
+        # create a MarcoPolo instance with the constraint solver
+        mp = MarcoPolo(csolver, msolver, timer, config)
 
     # useful for timing just the parsing / setup
-    if args.limit == 0:
+    if config['limit'] == 0:
         return
 
     # enumerate results
-    lim = args.limit
+    remaining = config['limit']
     for result in mp.enumerate():
-        if args.verbose:
+        if config['verbose']:
             print result[0], " ".join([str(x+1) for x in result[1]])
         else:
             print result[0]
 
-        if lim:
-            lim -= 1
-            if lim == 0: break
+        if remaining:
+            remaining -= 1
+            if remaining == 0: break
+
+    print timer.get_times()
 
 if __name__ == '__main__':
     main()
