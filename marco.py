@@ -74,13 +74,15 @@ def setup():
         sys.exit(1)
 
     # setup config
+    # TODO: just pass out args directly?
     config = {}
     config['smus'] = args.smus
     config['bias'] = args.bias
     config['varbias'] = (args.bias == 'high')
+    config['maxseed'] = args.max_seed
     config['limit'] = args.limit
     config['verbose'] = args.verbose
-    config['maxseed'] = args.max_seed
+    config['stats'] = args.stats
 
     # create appropriate map solver
     if args.max_seed or args.smus:
@@ -117,7 +119,10 @@ def main():
             remaining -= 1
             if remaining == 0: break
 
-    sys.stderr.write(str(timer.get_times()))
+    if config['stats']:
+        times = timer.get_times()
+        for category, time in times.items():
+            sys.stderr.write("%10s : %8.2f\n" % (category, time))
 
 if __name__ == '__main__':
     main()

@@ -28,6 +28,6 @@ class Timer:
         return False  # doesn't handle any exceptions itself
     
     def get_times(self):
-        self.times['_total'] = self.total_time()
+        self.times['total'] = self.total_time()
         return self.times
 
