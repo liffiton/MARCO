@@ -40,7 +40,7 @@ def makeTests(testexe):
         exclude = exe.get('exclude', [])
 
         for flag in flags:
-            cmds.append([ [cmd] + flag.split() , exclude ])
+            cmds.append([ [cmd] + testconfig.common_flags + flag.split() , exclude ])
 
     jobs = []
     for (cmd, exclude) in cmds:

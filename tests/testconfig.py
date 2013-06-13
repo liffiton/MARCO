@@ -13,10 +13,12 @@ files.extend(glob.glob('*.smt2'))
 files.extend(glob.glob('*.gz'))
 files = [[x] for x in files]
 
+common_flags = ['-v']
+
 exes = [
     {
       'name':    'marco_py', 
       'cmd':     '../marco.py',
-      'flags':   ['-v', '-v -b low', '-v -m', '-v -m -b low'],
+      'flags':   ['', '-b low', '-m', '-m -b low'],
     },
 ]
