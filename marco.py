@@ -2,6 +2,7 @@
 
 import argparse
 import os
+import signal
 import sys
 
 import utils
@@ -13,6 +14,8 @@ def setup():
                         help="print more verbose output (constraint indexes)")
     parser.add_argument('-s', '--stats', action='store_true',
                         help="print timing statistics to stderr")
+    parser.add_argument('-T', '--timeout', type=int, default=None,
+                        help="limit the runtime to N seconds")
     parser.add_argument('-l', '--limit', type=int, default=None,
                         help="limit number of subsets output (counting both MCSes and MUSes)")
     parser.add_argument('-m', '--max-seed', action='store_true',
@@ -83,6 +86,7 @@ def setup():
     config['limit'] = args.limit
     config['verbose'] = args.verbose
     config['stats'] = args.stats
+    config['timeout'] = args.timeout
 
     # create appropriate map solver
     if args.max_seed or args.smus:
@@ -94,11 +98,33 @@ def setup():
 
     return (csolver, msolver, config)
 
+def at_exit(config, timer):
+    if config['stats']:
+        times = timer.get_times()
+        for category, time in times.items():
+            sys.stderr.write("%10s : %8.2f\n" % (category, time))
+
 def main():
     timer = utils.Timer()
 
     with timer.measure('setup'):
         (csolver, msolver, config) = setup()
+
+        # register timeout/interrupt handler
+        def handler(signum, frame):
+            if signum == signal.SIGALRM:
+                sys.stderr.write("Time limit exceeded.\n")
+            else:
+                sys.stderr.write("Interrupted.\n")
+            at_exit(config, timer)
+            sys.exit(128)
+        signal.signal(signal.SIGTERM, handler)  # external termination
+        signal.signal(signal.SIGINT, handler)   # ctl-c keyboard interrupt
+        signal.signal(signal.SIGALRM, handler)  # timeout alarm
+
+        # register a timeout alarm, if needed
+        if config['timeout']:
+            signal.alarm(config['timeout'])
 
         # create a MarcoPolo instance with the constraint solver
         mp = MarcoPolo(csolver, msolver, timer, config)
@@ -119,10 +145,8 @@ def main():
             remaining -= 1
             if remaining == 0: break
 
-    if config['stats']:
-        times = timer.get_times()
-        for category, time in times.items():
-            sys.stderr.write("%10s : %8.2f\n" % (category, time))
+    # print stats, if needed
+    at_exit(config, timer)
 
 if __name__ == '__main__':
     main()
