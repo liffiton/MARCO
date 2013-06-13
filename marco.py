@@ -11,6 +11,8 @@ def setup():
     parser = argparse.ArgumentParser()
     parser.add_argument('-v', '--verbose', action='store_true',
                         help="print more verbose output (constraint indexes)")
+    parser.add_argument('-s', '--stats', action='store_true',
+                        help="print timing statistics to stderr")
     parser.add_argument('-l', '--limit', type=int, default=None,
                         help="limit number of subsets output (counting both MCSes and MUSes)")
     parser.add_argument('-m', '--max-seed', action='store_true',
@@ -74,7 +76,8 @@ def setup():
     # setup config
     config = {}
     config['smus'] = args.smus
-    config['bias'] = (args.bias == 'high')
+    config['bias'] = args.bias
+    config['varbias'] = (args.bias == 'high')
     config['limit'] = args.limit
     config['verbose'] = args.verbose
     config['maxseed'] = args.max_seed
@@ -82,10 +85,10 @@ def setup():
     # create appropriate map solver
     if args.max_seed or args.smus:
         from mapsolvers import MinicardMapSolver
-        msolver  = MinicardMapSolver(n=csolver.n, bias=config['bias'])
+        msolver  = MinicardMapSolver(n=csolver.n, bias=config['varbias'])
     else:
         from mapsolvers import MinisatMapSolver
-        msolver = MinisatMapSolver(n=csolver.n, bias=config['bias'])
+        msolver = MinisatMapSolver(n=csolver.n, bias=config['varbias'])
 
     return (csolver, msolver, config)
 
