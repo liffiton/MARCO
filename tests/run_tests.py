@@ -91,7 +91,7 @@ def runTest(cmd, outfile, errfile, pid):
     # TODO: handle stderr
     with open(tmpout, 'w') as f_out, open(tmperr, 'w') as f_err:
         try:
-            start_time = time.time()
+            start_time = time.time()  # time() for wall-clock time
             ret = subprocess.call(cmd, stdout = f_out, stderr = f_err)
             runtime = time.time() - start_time
         except KeyboardInterrupt:
@@ -100,12 +100,15 @@ def runTest(cmd, outfile, errfile, pid):
             return 'interrupted', None   # not perfect, but seems to deal with CTL-C most of the time
 
     if ret > 128:
-        return 'fail', runtime
+        return 'fail', None
 
     if mode == "nocheck" or mode == "regenerate":
         return None, runtime
 
     result = checkFiles(outfile, tmpout)
+    if result != 'pass' and result != 'sortsame':
+        # don't report/store a runtime for failures
+        runtime = None
 
     if verbose:
         if result == 'pass':
