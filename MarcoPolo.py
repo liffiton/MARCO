@@ -9,7 +9,7 @@ class MarcoPolo:
         while True:
             with self.timer.measure('seed'):
                 if not self.map.has_seed():
-                    break
+                    return
                 seed = self.map.get_seed()
                 #print "Seed:", seed
                 #print "Seed length:", len(seed)
@@ -19,19 +19,27 @@ class MarcoPolo:
             with self.timer.measure('subsets'):
                 if seed_is_sat:
                     #print "Growing..."
-                    try:
-                        MSS = self.subs.grow_current()
-                    except NotImplementedError:
-                        # not yet implemented for Z3 solver
-                        MSS = self.subs.grow(seed)
+                    if self.config['maxseed'] and self.config['bias'] == 'high':
+                        # seed guaranteed to be maximal
+                        MSS = set(seed)
+                    else:
+                        try:
+                            MSS = self.subs.grow_current()
+                        except NotImplementedError:
+                            # not yet implemented for Z3 solver
+                            MSS = self.subs.grow(seed)
                     yield ("S", MSS)
                     self.map.block_down(MSS)
                 else:
                     #print "Shrinking..."
-                    MUS = self.subs.shrink_current()
+                    if self.config['maxseed'] and self.config['bias'] == 'low':
+                        # seed guaranteed to be minimal
+                        MUS = set(seed)
+                    else:
+                        MUS = self.subs.shrink_current()
                     yield ("U", MUS)
                     self.map.block_up(MUS)
-                    if (self.config['smus']):
+                    if self.config['smus']:
                         self.map.block_down(set(MUS))
                         self.map.block_above_size(len(MUS)-1)
 

@@ -77,6 +77,7 @@ def setup():
     config['bias'] = (args.bias == 'high')
     config['limit'] = args.limit
     config['verbose'] = args.verbose
+    config['maxseed'] = args.max_seed
 
     # create appropriate map solver
     if args.max_seed or args.smus:
@@ -113,7 +114,7 @@ def main():
             remaining -= 1
             if remaining == 0: break
 
-    print timer.get_times()
+    sys.stderr.write(str(timer.get_times()))
 
 if __name__ == '__main__':
     main()
