@@ -9,7 +9,7 @@ import sys
 import utils
 from MarcoPolo import MarcoPolo
 
-def setup():
+def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-v', '--verbose', action='store_true',
                         help="print more verbose output (constraint indexes)")
@@ -41,11 +41,41 @@ def setup():
         parser.print_help()
         sys.exit(1)
 
-    infile = args.infile
-
-    if args.smt and infile == sys.stdin:
+    if args.smt and args.infile == sys.stdin:
         sys.stderr.write("SMT cannot be read from STDIN.  Please specify a filename.\n")
         sys.exit(1)
+
+    return args
+
+def at_exit(timer):
+    times = timer.get_times()
+    for category, time in times.items():
+        sys.stderr.write("%10s : %8.2f\n" % (category, time))
+
+def setup_execution(args, timer):
+    # register at_exit to print stats when program exits
+    if args.stats:
+        atexit.register(at_exit, timer)
+
+    # register timeout/interrupt handler
+    def handler(signum, frame):
+        if signum == signal.SIGALRM:
+            sys.stderr.write("Time limit reached.\n")
+        else:
+            sys.stderr.write("Interrupted.\n")
+        sys.exit(128)
+        # at_exit will fire here
+
+    signal.signal(signal.SIGTERM, handler)  # external termination
+    signal.signal(signal.SIGINT, handler)   # ctl-c keyboard interrupt
+    signal.signal(signal.SIGALRM, handler)  # timeout alarm
+
+    # register a timeout alarm, if needed
+    if args.timeout:
+        signal.alarm(args.timeout)
+
+def setup_solvers(args):
+    infile = args.infile
 
     # create appropriate constraint solver
     if args.cnf or infile.name.endswith('.cnf') or infile.name.endswith('.cnf.gz'):
@@ -78,80 +108,54 @@ def setup():
         )
         sys.exit(1)
 
-    # setup config
-    # TODO: just pass out args directly?
-    config = {}
-    config['smus'] = args.smus
-    config['bias'] = args.bias
-    config['varbias'] = (args.bias == 'high')
-    config['maxseed'] = args.max_seed
-    config['limit'] = args.limit
-    config['verbose'] = args.verbose
-    config['stats'] = args.stats
-    config['timeout'] = args.timeout
-
     # create appropriate map solver
+    varbias = (args.bias == 'high')
     if args.max_seed or args.smus:
         from mapsolvers import MinicardMapSolver
-        msolver  = MinicardMapSolver(n=csolver.n, bias=config['varbias'])
+        msolver  = MinicardMapSolver(n=csolver.n, bias=varbias)
     else:
         from mapsolvers import MinisatMapSolver
-        msolver = MinisatMapSolver(n=csolver.n, bias=config['varbias'])
+        #import trace_calls
+        #trace_calls.trace_class(MinisatMapSolver)
+        msolver = MinisatMapSolver(n=csolver.n, bias=varbias)
 
-    return (csolver, msolver, config)
-
-def at_exit(config, timer):
-    # print stats, if needed
-    if config['stats']:
-        times = timer.get_times()
-        for category, time in times.items():
-            sys.stderr.write("%10s : %8.2f\n" % (category, time))
+    return (csolver, msolver)
 
 def main():
     timer = utils.Timer()
 
     with timer.measure('setup'):
-        (csolver, msolver, config) = setup()
+        args = parse_args()
 
-        # register at_exit to print stats when program exits, whatever the reason
-        atexit.register(at_exit, config, timer)
+        setup_execution(args, timer)
 
-        # register timeout/interrupt handler
-        def handler(signum, frame):
-            if signum == signal.SIGALRM:
-                sys.stderr.write("Time limit reached.\n")
-            else:
-                sys.stderr.write("Interrupted.\n")
-            sys.exit(128)
-            # at_exit will fire here
+        (csolver, msolver) = setup_solvers(args)
 
-        signal.signal(signal.SIGTERM, handler)  # external termination
-        signal.signal(signal.SIGINT, handler)   # ctl-c keyboard interrupt
-        signal.signal(signal.SIGALRM, handler)  # timeout alarm
+        config = {}
+        config['smus'] = args.smus
+        config['bias'] = args.bias
+        config['maxseed'] = args.max_seed
 
-        # register a timeout alarm, if needed
-        if config['timeout']:
-            signal.alarm(config['timeout'])
-
-        # create a MarcoPolo instance with the constraint solver
         mp = MarcoPolo(csolver, msolver, timer, config)
 
     # useful for timing just the parsing / setup
-    if config['limit'] == 0:
+    if args.limit == 0:
         sys.stderr.write("Result limit reached.\n")
         sys.exit(0)
 
     # enumerate results
-    remaining = config['limit']
+    remaining = args.limit
     for result in mp.enumerate():
-        if config['verbose']:
+        if args.verbose:
             print result[0], " ".join([str(x+1) for x in result[1]])
         else:
             print result[0]
 
         if remaining:
             remaining -= 1
-            if remaining == 0: break
+            if remaining == 0:
+                sys.stderr.write("Result limit reached.\n")
+                sys.exit(0)
 
 
 if __name__ == '__main__':
