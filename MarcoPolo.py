@@ -14,6 +14,7 @@ class MarcoPolo:
                 #print "Seed:", seed
                 #print "Seed length:", len(seed)
 
+            with self.timer.measure('check'):
                 seed_is_sat = self.subs.check_subset(seed)
 
             with self.timer.measure('subsets'):
