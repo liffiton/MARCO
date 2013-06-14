@@ -14,7 +14,11 @@ if [ "$1" = "list" ] ; then
 fi
 
 # setup temp named dir
-version=`cat VERSION`
+if [ "$1" = "commit" ] ; then
+    version=`git rev-parse --short HEAD`
+else
+    version=`cat VERSION`
+fi
 dir=marco_py-$version
 if [ -e $dir ] ; then
     echo "WHOA WHOA WHOA...  $dir exists?!  Not going to touch that..."
