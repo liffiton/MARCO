@@ -21,9 +21,9 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
         # Open tmpfile
         with tempfile.NamedTemporaryFile() as cnf:
             # Write CNF
-            print >>cnf, "p cnf %d %d" % (self.nvars, len(seed))
+            cnf.write("p cnf %d %d\n" % (self.nvars, len(seed)))
             for i in seed:
-                print >>cnf, self.dimacs[i],  # dimacs[i] has newline
+                cnf.write(self.dimacs[i])  # dimacs[i] has newline
             cnf.flush()
             # Run MUSer
             p = subprocess.Popen([self.muser_path, '-comp', '-v', '-1', cnf.name], stdout=subprocess.PIPE, stderr=subprocess.PIPE)

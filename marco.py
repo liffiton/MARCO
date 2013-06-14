@@ -44,7 +44,7 @@ def setup():
     infile = args.infile
 
     if args.smt and infile == sys.stdin:
-        print >>sys.stderr, "SMT cannot be read from STDIN.  Please specify a filename."
+        sys.stderr.write("SMT cannot be read from STDIN.  Please specify a filename.\n")
         sys.exit(1)
 
     # create appropriate constraint solver
@@ -58,7 +58,7 @@ def setup():
                 from MUSerSubsetSolver import MUSerSubsetSolver
                 csolver = MUSerSubsetSolver(infile)
             except Exception as e:
-                print >>sys.stderr, "ERROR: Unable to use MUSer2 for MUS extraction.\n\n%s\n\nUse --force-minisat to use Minisat instead (NOTE: it will be much slower.)" % str(e)
+                sys.stderr.write("ERROR: Unable to use MUSer2 for MUS extraction.\n\n%s\n\nUse --force-minisat to use Minisat instead (NOTE: it will be much slower.)\n" % str(e))
                 sys.exit(1)
             
         infile.close()
@@ -66,15 +66,16 @@ def setup():
         try:
             from Z3SubsetSolver import Z3SubsetSolver
         except ImportError as e:
-            print >>sys.stderr, "ERROR: Unable to import z3 module:  %s\n\nPlease install Z3 from https://z3.codeplex.com/" % str(e)
+            sys.stderr.write("ERROR: Unable to import z3 module:  %s\n\nPlease install Z3 from https://z3.codeplex.com/\n" % str(e))
             sys.exit(1)
         # z3 has to be given a filename, not a file object, so close infile and just pass its name
         infile.close()
         csolver = Z3SubsetSolver(infile.name)
     else:
-        print >>sys.stderr, \
+        sys.stderr.write(
             "Cannot determine filetype (cnf or smt) of input: %s\n" \
-            "Please provide --cnf or --smt option." % infile.name
+            "Please provide --cnf or --smt option.\n" % infile.name
+        )
         sys.exit(1)
 
     # setup config
