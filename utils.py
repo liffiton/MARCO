@@ -2,32 +2,39 @@
 
 # time.clock() is not portable - behaves differently per OS
 # TODO: Consider using time.process_time() (only in 3.3, though)
-#from time import clock
-from os import times
+import time
+import os
 from collections import Counter
+
+def get_time():
+    #return sum(os.times()[:4])  # combined user/sys time for this process and its children
+    return time.time()   # wall-time
+    #return time.clock()   # user-time
 
 class Timer:
     def __init__(self):
-        self.curr = 0
+        self.start = get_time()
         self.times = Counter()
         self.category = None
-
-    def total_time(self):
-        """Sum times[0-3]: user&sys for proc&children."""
-        return sum(times()[:4])
 
     def measure(self, category):
         self.category = category
         return self
 
     def __enter__(self):
-        self.curr = self.total_time()
+        self.curr = get_time()
 
     def __exit__(self, ex_type, ex_value, traceback):
-        self.times[self.category] += self.total_time() - self.curr
+        self.times[self.category] += get_time() - self.curr
+        self.category = None
         return False  # doesn't handle any exceptions itself
     
     def get_times(self):
-        self.times['total'] = self.total_time()
+        self.times['total'] = get_time() - self.start
+        if self.category:
+            # If we're in a category currently,
+            # give it the time up to this point.
+            self.times[self.category] += get_time() - self.curr
+
         return self.times
 
