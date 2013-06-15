@@ -53,10 +53,6 @@ def at_exit(timer):
         sys.stderr.write("%10s : %8.2f\n" % (category, time))
 
 def setup_execution(args, timer):
-    # register at_exit to print stats when program exits
-    if args.stats:
-        atexit.register(at_exit, timer)
-
     # register timeout/interrupt handler
     def handler(signum, frame):
         if signum == signal.SIGALRM:
@@ -68,11 +64,16 @@ def setup_execution(args, timer):
 
     signal.signal(signal.SIGTERM, handler)  # external termination
     signal.signal(signal.SIGINT, handler)   # ctl-c keyboard interrupt
-    signal.signal(signal.SIGALRM, handler)  # timeout alarm
 
     # register a timeout alarm, if needed
     if args.timeout:
+        signal.signal(signal.SIGALRM, handler)  # timeout alarm
         signal.alarm(args.timeout)
+    
+    # register at_exit to print stats when program exits
+    if args.stats:
+        atexit.register(at_exit, timer)
+
 
 def setup_solvers(args):
     infile = args.infile
@@ -115,8 +116,6 @@ def setup_solvers(args):
         msolver  = MinicardMapSolver(n=csolver.n, bias=varbias)
     else:
         from mapsolvers import MinisatMapSolver
-        #import trace_calls
-        #trace_calls.trace_class(MinisatMapSolver)
         msolver = MinisatMapSolver(n=csolver.n, bias=varbias)
 
     return (csolver, msolver)
