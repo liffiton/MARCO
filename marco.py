@@ -32,7 +32,7 @@ def parse_args():
                         help="Treat input as SMT2 format.")
     parser.add_argument('--force-minisat', action='store_true',
                         help="use Minisat in place of MUSer2 for CNF (NOTE: much slower and usually not worth doing!)")
-    parser.add_argument('infile', nargs='?', type=argparse.FileType('r'),
+    parser.add_argument('infile', nargs='?', type=argparse.FileType('rb'),
                         default=sys.stdin,
                         help="name of file to process (STDIN if omitted)")
     args = parser.parse_args()
@@ -88,9 +88,9 @@ def setup_solvers(args):
             try:
                 from MUSerSubsetSolver import MUSerSubsetSolver
                 csolver = MUSerSubsetSolver(infile)
-            except Exception as e:
-                sys.stderr.write("ERROR: Unable to use MUSer2 for MUS extraction.\n\n%s\n\nUse --force-minisat to use Minisat instead (NOTE: it will be much slower.)\n" % str(e))
-                sys.exit(1)
+            except:
+                sys.stderr.write("[31;1mERROR:[m Unable to use MUSer2 for MUS extraction.\n[33mUse --force-minisat to use Minisat instead[m (NOTE: it will be much slower.)\n\n")
+                raise
             
         infile.close()
     elif args.smt or infile.name.endswith('.smt2') or infile.name.endswith('.smt2.gz'):
@@ -146,9 +146,10 @@ def main():
     remaining = args.limit
     for result in mp.enumerate():
         if args.verbose:
-            print result[0], " ".join([str(x+1) for x in result[1]])
+            output = "%s %s" % (result[0], " ".join([str(x+1) for x in result[1]]))
+            print(output)
         else:
-            print result[0]
+            print(result[0])
 
         if remaining:
             remaining -= 1

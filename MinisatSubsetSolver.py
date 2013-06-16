@@ -13,16 +13,16 @@ class MinisatSubsetSolver:
     def parse_dimacs(self, f):
         i = 0
         for line in f:
-            if line.startswith('p'):
-                pattern = re.compile('p\s+cnf\s+(\d+)\s+(\d+)')
-                matches = re.match(pattern, line).groups()
+            if line.startswith(b'p'):
+                pattern = re.compile(r'p\s+cnf\s+(\d+)\s+(\d+)')
+                matches = re.match(pattern, line.decode()).groups()
                 self.nvars = int(matches[0])
                 self.n = int(matches[1])
                 self.s.set_orig(self.nvars, self.n)
                 while self.s.nvars() < self.nvars + self.n:
                     self.s.new_var()
                 continue
-            if line.startswith('c'):
+            if line.startswith(b'c'):
                 continue
             assert self.n > 0
             self.s.add_clause([int(x) for x in line.split()[:-1]])
@@ -33,11 +33,10 @@ class MinisatSubsetSolver:
 
     def read_dimacs(self, infile):
         if infile.name.endswith('.gz'):
-            # use gzip to decompress and pass a file object
-            # (Python 2.6 gzip doesn't support "with gzip.open...")
-            gz_f = gzip.GzipFile(fileobj = infile)
-            self.parse_dimacs(gz_f)
-            gz_f.close()
+            # use gzip to decompress
+            infile.close()
+            with gzip.open(infile.name) as gz_f:
+                self.parse_dimacs(gz_f)
         else:
             # assume plain .cnf and pass through the file object
             self.parse_dimacs(infile)

@@ -33,7 +33,7 @@ def makeTests(testexe):
         cmd = exe['cmd']
 
         if not os.access(cmd, os.X_OK):
-            print "ERROR: %s is not an executable file.  Do you need to run make?" % cmd
+            print("ERROR: %s is not an executable file.  Do you need to run make?" % cmd)
             sys.exit(1)
 
         flags = exe.get('flags', [''])
@@ -86,7 +86,7 @@ def runTest(cmd, outfile, errfile, pid):
         tmperr = errfile + str(pid)
 
     if verbose:
-        print "\n[34;1mRunning test:[0m %s > %s 2> %s" % (" ".join(cmd), tmpout, tmperr)
+        print("\n[34;1mRunning test:[0m %s > %s 2> %s" % (" ".join(cmd), tmpout, tmperr))
 
     # TODO: handle stderr
     with open(tmpout, 'w') as f_out, open(tmperr, 'w') as f_err:
@@ -114,20 +114,20 @@ def runTest(cmd, outfile, errfile, pid):
         if result == 'pass':
             errsize = os.path.getsize(tmperr)
             if errsize:
-                print "  [32mTest passed (with output to stderr).[0m"
+                print("  [32mTest passed (with output to stderr).[0m")
                 result = 'stderr'
             else:
-                print "  [32mTest passed.[0m"
+                print("  [32mTest passed.[0m")
         elif result == 'sortsame':
-            print "  [33mOutputs not equivalent, but sort to same contents.[0m"
+            print("  [33mOutputs not equivalent, but sort to same contents.[0m")
         else:
-            print "\n  [37;41mTest failed:[0m %s" % " ".join(cmd)
+            print("\n  [37;41mTest failed:[0m %s" % " ".join(cmd))
             errsize = os.path.getsize(tmperr)
             if errsize:
-                print "  [31mStderr output:[0m"
+                print("  [31mStderr output:[0m")
                 with open(tmperr, 'r') as f:
                     for line in f:
-                        print "    " + line,
+                        print("    " + line.rstrip())
             # TODO: viewdiff
             # TODO: updateout
 
@@ -145,7 +145,7 @@ def checkFiles(file1, file2):
 
     if len(data1) != len(data2):
         if verbose:
-            print "\n  [31mOutputs differ (size).[0m"
+            print("\n  [31mOutputs differ (size).[0m")
         return 'diffsize'
 
     if data1 != data2:
@@ -154,7 +154,7 @@ def checkFiles(file1, file2):
         sort2 = data2.split('\n').sort()
         if sort1 != sort2:
             if verbose:
-                print "\n  [31mOutputs differ (contents).[0m"
+                print("\n  [31mOutputs differ (contents).[0m")
             return 'diffcontent'
         else:
             # outputs not equivalent, but sort to same contents
@@ -193,7 +193,7 @@ class Progress:
 
             # move forward for blank lines to hold progress bars
             for i in range(self.printrows + 1):
-                print
+                print('')
             # print '.' for every test to be run
             for i in range(numTests):
                 x = i % (self.cols-2) + 2
@@ -228,26 +228,26 @@ class Progress:
             self.print_at(x, self.printrows-y, c)
 
     def printstats(self):
-        print
+        print('')
         if self.stats['incomplete'] > 0:
             # red text
             sys.stdout.write("[31m")
-            print "     %2d / %2d  Incomplete" % \
-                (self.stats['incomplete'], self.stats['total'])
+            print("     %2d / %2d  Incomplete" % \
+                (self.stats['incomplete'], self.stats['total']))
             sys.stdout.write("[0m")
-        print " %s : %2d / %2d  Passed" % \
-                (self.chr_Pass, self.stats['passed'], self.stats['total'])
+        print(" %s : %2d / %2d  Passed" % \
+                (self.chr_Pass, self.stats['passed'], self.stats['total']))
         if self.stats['sortsame'] > 0:
-            print " %s : %2d       Different order, same contents" % \
-                    (self.chr_Sort, self.stats['sortsame'])
+            print(" %s : %2d       Different order, same contents" % \
+                    (self.chr_Sort, self.stats['sortsame']))
         if self.stats['stderr'] > 0:
-            print " %s : %2d       Produced output to STDERR" % \
-                    (self.chr_StdErr, self.stats['stderr'])
+            print(" %s : %2d       Produced output to STDERR" % \
+                    (self.chr_StdErr, self.stats['stderr']))
         if self.stats['fail'] > 0:
-            print " %s : %2d       Failed" % \
-                    (self.chr_Fail, self.stats['fail'])
+            print(" %s : %2d       Failed" % \
+                    (self.chr_Fail, self.stats['fail']))
             if self.do_print:
-                print "     Re-run in 'runverbose' mode to see failure details."
+                print("     Re-run in 'runverbose' mode to see failure details.")
 
     # x is 1-based
     # y is 0-based, with 0 = lowest row, 1 above that, etc.
@@ -307,17 +307,20 @@ def main():
     validmodes = ['run','runp','runverbose','nocheck','regenerate']
 
     if mode not in validmodes:
-        print "Invalid mode: %s" % mode
-        print "Options:", (", ".join(validmode))
+        print("Invalid mode: %s" % mode)
+        print("Options:", (", ".join(validmode)))
         return 1
 
     if mode =='runverbose':
         verbose = True
         mode = 'run'
     elif mode == 'regenerate':
-        sure = raw_input("Are you sure you want to regenerate all test outputs (y/n)? ")
+        # hack to work in both python 2 and 3
+        try: input = raw_input
+        except NameError: pass
+        sure = input("Are you sure you want to regenerate all test outputs (y/n)? ")
         if sure.lower() != 'y':
-            print "Exiting."
+            print("Exiting.")
             return 1
 
     if mode == "runp":
@@ -340,7 +343,7 @@ def main():
     if td.have_times:
         report += " (sorted by previously recorded runtimes)"
     report += "."
-    print report
+    print(report)
 
     # build the tests
     jobs = makeTests(testexe)
@@ -377,8 +380,8 @@ def main():
         jobq.join()
 
     except KeyboardInterrupt:
-        print
-        print "[31;1mInterrupted![0m"
+        print('')
+        print("[31;1mInterrupted![0m")
 
     if mode == "run" or mode == "runp":
         prog.printstats()
