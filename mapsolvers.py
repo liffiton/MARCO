@@ -30,9 +30,13 @@ class MapSolver:
         Returns:
             A seed as an array of 0-based constraint indexes.
         """
-        model = self.solver.get_model()
-        seed = [i for i in range(self.n) if model[i]]
+        seed = self.solver.get_model_trues(start=0, end=self.n)
+
         # slower:
+        #model = self.solver.get_model()
+        #seed = [i for i in range(self.n) if model[i]]
+
+        # slowest:
         #seed = set()
         #for i in range(self.n):
         #    if self.solver.model_value(i+1):
