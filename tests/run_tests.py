@@ -13,7 +13,8 @@ import sys
 import subprocess
 import time
 from collections import defaultdict
-from multiprocessing import Process, Queue, JoinableQueue, cpu_count
+from Queue import Empty
+from multiprocessing import Process, Queue, cpu_count
 
 # pull in configuration from testconfig.py
 import testconfig
@@ -63,7 +64,7 @@ def makeTests(testexe):
             else:
                 outfile = infile + ".out"
 
-            outdir = "out/" + name
+            outdir = "out/" + name + "/"
             if not os.path.exists(outdir):
                 os.makedirs(outdir)
             outfile = outdir + outfile
@@ -74,12 +75,14 @@ def makeTests(testexe):
     return jobs
 
 def runTests(jobq, msgq, pid):
-    while not jobq.empty():
-        job = jobq.get()
+    while True:
+        try:
+            job = jobq.get_nowait()
+        except Empty:
+            break
         msgq.put((job['id'],'start',None))
         result, runtime = runTest(job['cmdarray'], job['outfile'], job['errfile'], pid)
         msgq.put((job['id'],result,runtime))
-        jobq.task_done()
     msgq.put((None,'done',None))
 
 # pid is so different processes don't overwrite each other's tmp files
@@ -95,6 +98,10 @@ def runTest(cmd, outfile, errfile, pid):
     else:
         tmpout = outfile + ".NEW" + str(pid)
         tmperr = errfile + str(pid)
+        if not os.path.exists(outfile):
+            if verbose:
+                print("\nKnown-good output does not exist: %s\nPlease run in 'regenerate' mode first." % outfile)
+            return 'missing output', None
 
     if verbose:
         print("\n[34;1mRunning test:[0m %s > %s 2> %s" % (" ".join(cmd), tmpout, tmperr))
@@ -114,7 +121,7 @@ def runTest(cmd, outfile, errfile, pid):
         return 'fail', None
 
     if mode == "nocheck" or mode == "regenerate":
-        return None, runtime
+        return 'pass', runtime
 
     result = checkFiles(outfile, tmpout)
     if result != 'pass' and result != 'sortsame':
@@ -366,7 +373,7 @@ def main():
         job['id'] = idx
 
     # run the tests
-    jobq = JoinableQueue()  # jobs *to* each process
+    jobq = Queue()  # jobs *to* each process
     for job in jobs:
         jobq.put(job)
     msgq = Queue()  # messages *from* each process
@@ -387,8 +394,6 @@ def main():
             else:
                 if runtime: td.store_time(jobs[testid]['cmdarray'], runtime)
                 prog.update(testid, result)
-
-        jobq.join()
 
     except KeyboardInterrupt:
         print('')

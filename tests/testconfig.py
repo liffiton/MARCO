@@ -19,7 +19,13 @@ exes = [
     {
       'name':    'marco_py', 
       'cmd':     '../marco.py',
-      'flags':   ['', '-b low', '-m', '-m -b low'],
+      'flags':   ['', '-m'],
+    },
+    {
+      'name':    'marco_py', 
+      'cmd':     '../marco.py',
+      'flags':   ['-b low', '-m -b low'],
+      'exclude': ['c10.cnf', 'dlx2_aa.cnf'],
     },
     {
       'name':    'marco_py_smus', 
