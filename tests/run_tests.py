@@ -40,10 +40,18 @@ def makeTests(testexe):
         exclude = exe.get('exclude', [])
 
         for flag in flags:
-            cmds.append([ [cmd] + testconfig.common_flags + flag.split() , exclude ])
+            cmds.append({
+                'cmd': [cmd] + testconfig.common_flags + flag.split(),
+                'exclude': exclude,
+                'name': exe['name'],
+                })
 
     jobs = []
-    for (cmd, exclude) in cmds:
+    for jobset in cmds:
+        cmd = jobset['cmd']
+        exclude = jobset['exclude']
+        name = jobset['name']
+
         for testfile in testconfig.files:
             infile = testfile[0]
 
@@ -55,8 +63,11 @@ def makeTests(testexe):
             else:
                 outfile = infile + ".out"
 
-            outfile = "out/" + outfile
-            errfile = "out/" + infile + ".err"
+            outdir = "out/" + name
+            if not os.path.exists(outdir):
+                os.makedirs(outdir)
+            outfile = outdir + outfile
+            errfile = outdir + infile + ".err"
 
             jobs.append( {'cmdarray': cmd + [infile] , 'outfile': outfile , 'errfile': errfile } )
 

@@ -21,4 +21,9 @@ exes = [
       'cmd':     '../marco.py',
       'flags':   ['', '-b low', '-m', '-m -b low'],
     },
+    {
+      'name':    'marco_py_smus', 
+      'cmd':     '../marco.py',
+      'flags':   ['--smus'],
+    },
 ]
