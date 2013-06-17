@@ -87,7 +87,7 @@ def runTest(cmd, outfile, errfile, pid):
         tmperr = errfile + str(pid)
         if not os.path.exists(outfile):
             if verbose:
-                print("\nKnown-good output does not exist: %s\nPlease run in 'regenerate' mode first." % outfile)
+                print("\n[33mKnown-good output does not exist:[0m %s\nPlease run in '[34;1mregenerate[0m' mode first." % outfile)
             return 'missing output', None
 
     if verbose:
@@ -313,7 +313,7 @@ def main():
 
     if mode not in validmodes:
         print("Invalid mode: %s" % mode)
-        print("Options:", (", ".join(validmode)))
+        print("Options: %s" % ", ".join(validmodes))
         return 1
 
     if mode =='runverbose':

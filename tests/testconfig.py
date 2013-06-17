@@ -16,13 +16,13 @@ jobs = [
     {
       'name':    'marco_py', 
       'cmd':     '../marco.py',
-      'flags':   ['', '-m'],
+      'flags':   ['', '-m', '-M'],
       'flags_all': common_flags,
     },
     {
       'name':    'marco_py', 
       'cmd':     '../marco.py',
-      'flags':   ['-b low', '-m -b low'],
+      'flags':   ['-b low', '-m -b low', '-M -b low'],
       'flags_all': common_flags,
       'exclude': ['c10.cnf', 'dlx2_aa.cnf'],
     },
