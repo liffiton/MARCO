@@ -25,7 +25,7 @@ class MapSolver:
         raise NotImplementedError
 
     def get_seed(self):
-        """Get a new, unexplored seed.
+        """Get the seed from the current model.  (Depends on work in next_seed to be valid.)
 
         Returns:
             A seed as an array of 0-based constraint indexes.
@@ -100,21 +100,25 @@ class MinicardMapSolver(MapSolver):
         # same assumptions work both for high bias / atleast and for low bias / atmost
         return self.solver.solve([-(self.n+x+1) for x in range(k)] + [(self.n+k+x+1) for x in range(self.n-k)])
 
-    def has_seed(self):
+    def next_seed(self):
         '''
             Find the next-most-maximal model.
         '''
         if self.solve_with_bound(self.k):
-            return True
+            return self.get_seed()
 
         if self.bias:
             if not self.solve_with_bound(0):
                 # no more models
-                return False
+                return None
+            # move to the next bound
+            self.k -= 1
         else:
             if not self.solve_with_bound(self.n):
                 # no more models
-                return False
+                return None
+            # move to the next bound
+            self.k += 1
 
         while not self.solve_with_bound(self.k):
             if self.bias:
@@ -124,7 +128,7 @@ class MinicardMapSolver(MapSolver):
 
         assert 0 <= self.k <= self.n
 
-        return True
+        return self.get_seed()
 
     def block_above_size(self, size):
         self.solver.add_atmost([(x+1) for x in range(self.n)], size)
@@ -142,8 +146,11 @@ class MinisatMapSolver(MapSolver):
         while self.solver.nvars() < self.n:
             self.solver.new_var(self.bias)
 
-    def has_seed(self):
-        return self.solver.solve()
+    def next_seed(self):
+        if self.solver.solve():
+            return self.get_seed()
+        else:
+            return None
 
     def check_seed(self, seed):
         return self.solver.solve(seed)

@@ -7,11 +7,10 @@ class MarcoPolo:
 
     def enumerate(self):
         while True:
-            with self.timer.measure('has_seed'):
-                if not self.map.has_seed():
+            with self.timer.measure('seed'):
+                seed = self.map.next_seed()
+                if seed is None:
                     return
-            with self.timer.measure('get_seed'):
-                seed = self.map.get_seed()
                 #print "Seed:", seed
                 #print "Seed length:", len(seed)
 
