@@ -5,10 +5,30 @@ class MarcoPolo:
         self.timer = timer
         self.config = config
 
+    def enumerate_basic(self):
+        '''Basic MUS/MCS enumeration, as a simple example.'''
+        while True:
+            seed = self.map.next_seed()
+            if seed is None:
+                return
+
+            if self.subs.check_subset(seed):
+                MSS = self.subs.grow_current()
+                yield ("S", MSS)
+                self.map.block_down(MSS)
+            else:
+                MUS = self.subs.shrink_current()
+                yield ("S", MUS)
+                self.map.block_up(MUS)
+
     def enumerate(self):
+        '''MUS/MCS enumeration with all the bells and whistles...'''
         while True:
             with self.timer.measure('seed'):
-                seed = self.map.next_seed()
+                if self.config['maxseed']:
+                    seed = self.map.next_max_seed()
+                else:
+                    seed = self.map.next_seed()
                 if seed is None:
                     return
                 #print "Seed:", seed

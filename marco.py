@@ -19,12 +19,15 @@ def parse_args():
                         help="limit the runtime to N seconds")
     parser.add_argument('-l', '--limit', type=int, default=None,
                         help="limit number of subsets output (counting both MCSes and MUSes)")
-    parser.add_argument('-m', '--max-seed', action='store_true',
-                        help="always find a maximal/minimal seed, controlled by bias setting (high=maximal, low=minimal) (uses MiniCard as Map solver)")
     parser.add_argument('-b', '--bias', type=str, choices=['high','low'], default='high',
                         help="bias the Map solver toward unsatisfiable seeds (high) or satisfiable seeds (low) (default: high, which is best for enumerating MUSes)")
-    parser.add_argument('--smus', action='store_true',
-                        help="calculate an SMUS (smallest MUS) ; implies -m")
+    max_group = parser.add_mutually_exclusive_group()
+    max_group.add_argument('-m', '--max-seed', action='store_true',
+                        help="always find a maximal/minimal seed (local optimum), controlled by bias setting (high=maximal, low=minimal)")
+    max_group.add_argument('-M', '--maximum-seed', action='store_true',
+                        help="always find a maximum/minimum seed (largest/smallest cardinality), controlled by bias setting (high=maximum, low=minimum) (uses MiniCard as Map solver)")
+    max_group.add_argument('--smus', action='store_true',
+                        help="calculate an SMUS (smallest MUS) ; implies -M")
     type_group = parser.add_mutually_exclusive_group()
     type_group.add_argument('--cnf', action='store_true',
                         help="Treat input as DIMACS CNF format.")
@@ -111,7 +114,7 @@ def setup_solvers(args):
 
     # create appropriate map solver
     varbias = (args.bias == 'high')
-    if args.max_seed or args.smus:
+    if args.maximum_seed or args.smus:
         from mapsolvers import MinicardMapSolver
         msolver  = MinicardMapSolver(n=csolver.n, bias=varbias)
     else:
@@ -133,7 +136,7 @@ def main():
         config = {}
         config['smus'] = args.smus
         config['bias'] = args.bias
-        config['maxseed'] = args.max_seed
+        config['maxseed'] = args.max_seed or args.maximum_seed
 
         mp = MarcoPolo(csolver, msolver, timer, config)
 
