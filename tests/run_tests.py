@@ -62,7 +62,9 @@ def makeTests(testexe):
 def runTests(jobq, msgq, pid):
     while True:
         try:
-            job = jobq.get_nowait()
+            # Block with a small timeout, because the non-blocking get_nowait()
+            # sometimes thinks the Queue is empty when it's not...
+            job = jobq.get(True, 0.1)
         except Empty:
             break
         msgq.put((job['id'],'start',None))
