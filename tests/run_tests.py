@@ -25,54 +25,39 @@ verbose = False
 
 # Build all tests to be run
 def makeTests(testexe):
-    # Gather commands
-    cmds = []
-    for exe in testconfig.exes:
-        if testexe and exe['name'] != testexe:
+    tests = []
+
+    for job in testconfig.jobs:
+        if testexe is not None and job['name'] != testexe:
             continue
 
-        cmd = exe['cmd']
+        name = job['name']
+        cmd = job['cmd']
+        flags = job.get('flags', [''])
+        flags_all = job.get('flags_all', [])
+        exclude = job.get('exclude', [])
 
         if not os.access(cmd, os.X_OK):
             print("ERROR: %s is not an executable file.  Do you need to run make?" % cmd)
             sys.exit(1)
 
-        flags = exe.get('flags', [''])
-        exclude = exe.get('exclude', [])
+        outdir = "out/" + name + "/"
+        if not os.path.exists(outdir):
+            os.makedirs(outdir)
 
         for flag in flags:
-            cmds.append({
-                'cmd': [cmd] + testconfig.common_flags + flag.split(),
-                'exclude': exclude,
-                'name': exe['name'],
-                })
+            cmdarray = [cmd] + flags_all + flag.split()
+    
+            for infile in testconfig.files:
+                if infile in exclude:
+                    continue
 
-    jobs = []
-    for jobset in cmds:
-        cmd = jobset['cmd']
-        exclude = jobset['exclude']
-        name = jobset['name']
+                outfile = outdir + infile + ".out"
+                errfile = outdir + infile + ".err"
 
-        for testfile in testconfig.files:
-            infile = testfile[0]
+                tests.append( {'cmdarray': cmdarray + [infile] , 'outfile': outfile , 'errfile': errfile } )
 
-            if infile in exclude:
-                continue
-
-            if len(testfile) > 1:
-                outfile = testfile[1]
-            else:
-                outfile = infile + ".out"
-
-            outdir = "out/" + name + "/"
-            if not os.path.exists(outdir):
-                os.makedirs(outdir)
-            outfile = outdir + outfile
-            errfile = outdir + infile + ".err"
-
-            jobs.append( {'cmdarray': cmd + [infile] , 'outfile': outfile , 'errfile': errfile } )
-
-    return jobs
+    return tests
 
 def runTests(jobq, msgq, pid):
     while True:

@@ -3,33 +3,33 @@
 
 import glob
 
+# The files list is used for all jobs, modified by each job's 'exclude' list if
+# available.
 files = []
-# Each entry is a list: [INFILE] or [INFILE,OUTFILE]
-# INFILE is found in the "in/" subdirectory.
-# OUTFILE is found in the "out/" subdirectory,
-#  and it is derived from INFILE (adding '.out') if none is specified.
 files.extend(glob.glob('*.cnf'))
 files.extend(glob.glob('*.smt2'))
 files.extend(glob.glob('*.gz'))
-files = [[x] for x in files]
 
 common_flags = ['-v']
 
-exes = [
+jobs = [
     {
       'name':    'marco_py', 
       'cmd':     '../marco.py',
       'flags':   ['', '-m'],
+      'flags_all': common_flags,
     },
     {
       'name':    'marco_py', 
       'cmd':     '../marco.py',
       'flags':   ['-b low', '-m -b low'],
+      'flags_all': common_flags,
       'exclude': ['c10.cnf', 'dlx2_aa.cnf'],
     },
     {
       'name':    'marco_py_smus', 
       'cmd':     '../marco.py',
       'flags':   ['--smus'],
+      'flags_all': common_flags,
     },
 ]
