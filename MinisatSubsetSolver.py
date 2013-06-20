@@ -1,10 +1,10 @@
 import gzip
 import re
-from pyminisolvers import minisat
+from pyminisolvers import minisolvers
 
 class MinisatSubsetSolver:
     def __init__(self, infile, store_dimacs=False):
-        self.s = minisat.SubsetSolver()
+        self.s = minisolvers.MinisatSubsetSolver()
         self.store_dimacs = store_dimacs
         if self.store_dimacs:
             self.dimacs = []

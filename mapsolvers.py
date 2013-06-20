@@ -1,5 +1,4 @@
-from pyminisolvers import minicard
-from pyminisolvers import minisat
+from pyminisolvers import minisolvers
 
 class MapSolver:
     """The base class for any MapSolver, implementing common utility functions."""
@@ -73,7 +72,7 @@ class MinicardMapSolver(MapSolver):
             self.k = n  # initial lower bound on # of True variables
         else:
             self.k = 0
-        self.solver = minicard.Solver()
+        self.solver = minisolvers.MinicardSolver()
         while self.solver.nvars() < self.n:
             self.solver.new_var(self.bias)
 
@@ -145,7 +144,7 @@ class MinisatMapSolver(MapSolver):
     def __init__(self, n, bias=True):   # bias=True is a high/inclusion/MUS bias; False is a low/exclusion/MSS bias.
         MapSolver.__init__(self, n, bias)
 
-        self.solver = minisat.Solver()
+        self.solver = minisolvers.MinisatSolver()
         while self.solver.nvars() < self.n:
             self.solver.new_var(self.bias)
 
