@@ -7,6 +7,7 @@ class MarcoPolo:
         self.seeds = SeedManager(msolver, timer, config)
         self.timer = timer
         self.config = config
+        self.n = self.map.n  # number of constraints
 
     def enumerate_basic(self):
         '''Basic MUS/MCS enumeration, as a simple example.'''
@@ -16,16 +17,13 @@ class MarcoPolo:
                 return
 
             if self.subs.check_subset(seed):
-                MSS = self.subs.grow_current()
+                MSS = self.subs.grow(seed)
                 yield ("S", MSS)
                 self.map.block_down(MSS)
             else:
-                MUS = self.subs.shrink_current()
+                MUS = self.subs.shrink(seed)
                 yield ("S", MUS)
                 self.map.block_up(MUS)
-
-    def complement(self, aset):
-        return set(range(self.map.n)) - aset
 
     def enumerate(self):
         '''MUS/MCS enumeration with all the bells and whistles...'''
@@ -52,7 +50,7 @@ class MarcoPolo:
                 self.map.block_down(MSS)
 
                 # length check to avoid checking single-clause MCSes (common), whose parent is known-UNSAT
-                if self.config['mssguided'] and len(MSS) < self.map.n-1:
+                if self.config['mssguided'] and len(MSS) < self.n-1:
                     with self.timer.measure('mssguided'):
                         # add first unexplored superset to the queue
                         for i in self.complement(MSS):
@@ -76,6 +74,10 @@ class MarcoPolo:
                 if self.config['smus']:
                     self.map.block_down(MUS)
                     self.map.block_above_size(len(MUS)-1)
+
+    def complement(self, aset):
+        return set(range(self.n)) - aset
+
 
 class SeedManager:
     def __init__(self, msolver, timer, config):
