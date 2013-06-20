@@ -31,5 +31,6 @@ jobs = [
       'cmd':     '../marco.py',
       'flags':   ['--smus'],
       'flags_all': common_flags,
+      'exclude': ['dlx2_aa.cnf'],
     },
 ]

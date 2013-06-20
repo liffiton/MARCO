@@ -73,6 +73,9 @@ def runTests(jobq, msgq, pid):
             break
         msgq.put((job['id'],'start',None))
         result, runtime = runTest(job['cmdarray'], job['outfile'], job['errfile'], pid)
+        if result == 'interrupted':
+            msgq.put((None,'done',None))
+            return
         msgq.put((job['id'],result,runtime))
     msgq.put((None,'done',None))
 
@@ -105,7 +108,7 @@ def runTest(cmd, outfile, errfile, pid):
         except KeyboardInterrupt:
             os.remove(tmpout)
             os.remove(tmperr)
-            return 'interrupted', None   # not perfect, but seems to deal with CTL-C most of the time
+            return 'interrupted', None
 
     if ret > 128:
         return 'fail', None
@@ -136,10 +139,14 @@ def runTest(cmd, outfile, errfile, pid):
                 with open(tmperr, 'r') as f:
                     for line in f:
                         print("    " + line.rstrip())
-            # TODO: updateout
+            viewdiff(outfile, tmpout)
+            updateout(outfile, tmpout)
 
-    os.remove(tmpout)
-    os.remove(tmperr)
+    try:
+        os.remove(tmpout)
+        os.remove(tmperr)
+    except OSError:
+        pass
     return result, runtime
 
 def checkFiles(file1, file2):
@@ -170,14 +177,20 @@ def checkFiles(file1, file2):
     # everything checks out
     return 'pass'
 
-def view_diff(f1, f2):
-    # TODO: read single keypress, like "read -n 1" in old bash script
-    #       http://stackoverflow.com/questions/510357/
-    choice = input("View diff? (T for terminal, V for vimdiff, other for no) ")
+# TODO: read single keypress, like "read -n 1" in old bash script, for viewdiff and updateout
+#       http://stackoverflow.com/questions/510357/
+def viewdiff(f1, f2):
+    choice = input("  View diff? (T for terminal, V for vimdiff, other for no) ")
     if choice.lower() == 'v':
         subprocess.call(["vimdiff",f1,f2])
     elif choice.lower() == 't':
         subprocess.call(["diff",f1,f2])
+
+def updateout(outfile, newoutput):
+    choice = input("  Store new output as correct? ")
+    if choice.lower() == 'y':
+        print "  [33mmv %s %s[0m" % (newoutput, outfile)
+        os.rename(newoutput, outfile)
 
 class Progress:
     # indicator characters
@@ -320,7 +333,7 @@ def main():
 
     td = TimeData()
 
-    validmodes = ['run','runp','runverbose','nocheck','regenerate']
+    validmodes = ('run','runp','runverbose','nocheck','regenerate')
 
     if mode not in validmodes:
         print("Invalid mode: %s" % mode)
@@ -372,15 +385,21 @@ def main():
     for job in jobs:
         jobq.put(job)
     msgq = Queue()  # messages *from* each process
-    for pid in range(num_procs):
-        p = Process(target=runTests, args=(jobq,msgq,pid,))
-        p.daemon = True
-        p.start()
 
     # wait for completion, printing progress/stats as needed
     prog = Progress(numTests, do_print = (not verbose))
                               # if verbose is on, printing the progress bar is not needed/wanted
+
     try:
+        if num_procs == 1:
+            # run in same process so viewdiff, etc. can get stdin
+            runTests(jobq,msgq,1)
+        else:
+            for pid in range(num_procs):
+                p = Process(target=runTests, args=(jobq,msgq,pid,))
+                p.daemon = True
+                p.start()
+
         procs_done = 0
         while procs_done < num_procs:
             testid, result, runtime = msgq.get()
@@ -397,6 +416,7 @@ def main():
     if mode == "run" or mode == "runp":
         prog.printstats()
 
+    # save any time data to disk
     td.save_data()
 
 if __name__=='__main__':
