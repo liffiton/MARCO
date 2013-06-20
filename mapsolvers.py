@@ -30,6 +30,7 @@ class MapSolver:
             A seed as an array of 0-based constraint indexes.
         """
         seed = self.solver.get_model_trues(start=0, end=self.n)
+        seed = set(seed)
 
         # slower:
         #model = self.solver.get_model()
@@ -154,9 +155,6 @@ class MinisatMapSolver(MapSolver):
         else:
             return None
 
-    def comlement(self, aset):
-        return set(range(self.map.n)) - aset
-
     def next_max_seed(self):
         if not self.solver.solve():
             return None
@@ -168,7 +166,7 @@ class MinisatMapSolver(MapSolver):
                 if i in seed:
                     # May have been "also-satisfied"
                     continue
-                test = seed + [i]
+                test = seed | set([i])
                 if self.solver.solve([i+1 for i in test]):
                     seed = self.get_seed()
                     # or

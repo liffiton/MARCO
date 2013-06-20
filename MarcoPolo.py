@@ -43,7 +43,7 @@ class MarcoPolo:
                 #print "Growing..."
                 if known_max and self.config['bias'] == 'high':
                     # seed guaranteed to be maximal
-                    MSS = set(seed)
+                    MSS = seed
                 else:
                     with self.timer.measure('grow'):
                         MSS = self.subs.grow(seed)
@@ -66,14 +66,15 @@ class MarcoPolo:
                 #print "Shrinking..."
                 if known_max and self.config['bias'] == 'low':
                     # seed guaranteed to be minimal
-                    MUS = set(seed)
+                    MUS = seed
                 else:
-                    MUS = self.subs.shrink(seed)
+                    with self.timer.measure('shrink'):
+                        MUS = self.subs.shrink(seed)
 
                 yield ("U", MUS)
                 self.map.block_up(MUS)
                 if self.config['smus']:
-                    self.map.block_down(set(MUS))
+                    self.map.block_down(MUS)
                     self.map.block_above_size(len(MUS)-1)
 
 class SeedManager:

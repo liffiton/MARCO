@@ -37,5 +37,5 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
         # Parse result
         matchline = re.search(self.core_pattern, result).group(0)
         core = [seed[int(x)-1] for x in matchline.split()[1:-1]]
-        return core
+        return set(core)
 

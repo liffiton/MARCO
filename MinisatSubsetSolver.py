@@ -48,7 +48,7 @@ class MinisatSubsetSolver:
                 seed = self.s.sat_subset()
             else:
                 seed = self.s.unsat_core()
-            return is_sat, seed
+            return is_sat, set(seed)
         else:
             return is_sat
         
@@ -57,7 +57,7 @@ class MinisatSubsetSolver:
         return set(range(self.n)) - aset
 
     def shrink(self, seed):
-        current = set(seed)
+        current = seed.copy()
         for i in seed:
             if i not in current:
                 # May have been "also-removed"
@@ -84,7 +84,7 @@ class MinisatSubsetSolver:
         return ret
 
     def grow(self, seed):
-        current = set(seed)
+        current = seed.copy()
 
         #while self.check_above(current):
         #    current = set(self.s.sat_subset())

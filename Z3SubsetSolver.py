@@ -69,7 +69,7 @@ class Z3SubsetSolver:
                 pass
             else:
                 seed = self.seed_from_core()
-            return is_sat, seed
+            return is_sat, set(seed)
         else:
             return is_sat
         
@@ -87,7 +87,7 @@ class Z3SubsetSolver:
         return [self.cname_to_int(x.decl().name()) for x in core]
 
     def shrink(self, seed):
-        current = set(seed)
+        current = seed.copy()
         for i in seed:
     #        if i not in current:
     #            # May have been "also-removed"
@@ -99,7 +99,7 @@ class Z3SubsetSolver:
         return current
 
     def grow(self, seed):
-        current = set(seed)
+        current = seed.copy()
         for i in self.complement(current):
     #        if i in current:
     #            # May have been "also-satisfied"
