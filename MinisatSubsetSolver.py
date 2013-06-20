@@ -20,7 +20,7 @@ class MinisatSubsetSolver:
                 self.n = int(matches[1])
                 self.s.set_orig(self.nvars, self.n)
                 while self.s.nvars() < self.nvars + self.n:
-                    self.s.new_var()
+                    self.s.new_var(True)  # default to try *enabling* clauses (to find larger sat subsets and/or hit unsat sooner)
                 continue
             if line.startswith(b'c'):
                 continue
