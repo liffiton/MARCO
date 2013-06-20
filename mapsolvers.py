@@ -19,10 +19,9 @@ class MapSolver:
 
         Returns:
             True if seed is unexplored (i.e., its corresponding assignment is a model)
-
-        Must be overridden.
         """
-        raise NotImplementedError
+        out = self.complement(seed)
+        return self.solver.solve([(i+1) for i in seed] + [-(i+1) for i in out])
 
     def get_seed(self):
         """Get the seed from the current model.  (Depends on work in next_seed to be valid.)
@@ -155,14 +154,15 @@ class MinisatMapSolver(MapSolver):
         else:
             return None
 
+    def comlement(self, aset):
+        return set(range(self.map.n)) - aset
+
     def next_max_seed(self):
         if not self.solver.solve():
             return None
 
         seed = self.get_seed()
-
-        # TODO: make this more efficient...
-        complement = list(set(range(self.n)) - set(seed))
+        complement = self.complement(seed)
         if self.bias:
             for i in complement:
                 if i in seed:
@@ -176,13 +176,10 @@ class MinisatMapSolver(MapSolver):
 
         else:
             for i in seed:
-                test = complement + [i]
+                test = complement | set([i])
                 if self.solver.solve([-(i+1) for i in test]):
                     complement = test
-            seed = list(set(range(self.n)) - set(complement))
+            seed = set(range(self.n)) - set(complement)
 
         return seed
-
-    def check_seed(self, seed):
-        return self.solver.solve(seed)
 

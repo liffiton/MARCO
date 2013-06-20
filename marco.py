@@ -28,6 +28,8 @@ def parse_args():
                         help="always find a maximum/minimum seed (largest/smallest cardinality), controlled by bias setting (high=maximum, low=minimum) (uses MiniCard as Map solver)")
     max_group.add_argument('--smus', action='store_true',
                         help="calculate an SMUS (smallest MUS) ; implies -M")
+    parser.add_argument('--mssguided', action='store_true',
+                        help="check for unexplored subsets in immediate supersets of any MSS found")
     type_group = parser.add_mutually_exclusive_group()
     type_group.add_argument('--cnf', action='store_true',
                         help="Treat input as DIMACS CNF format.")
@@ -137,6 +139,7 @@ def main():
         config['smus'] = args.smus
         config['bias'] = args.bias
         config['maxseed'] = args.max_seed or args.maximum_seed
+        config['mssguided'] = args.mssguided
 
         mp = MarcoPolo(csolver, msolver, timer, config)
 

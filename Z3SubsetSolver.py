@@ -59,9 +59,19 @@ class Z3SubsetSolver:
                 self.varcache[i] = Not(Bool(self.c_prefix+str(-i)))
         return self.varcache[i]
 
-    def check_subset(self, seed):
+    def check_subset(self, seed, improve_seed=False):
         assumptions = self.to_c_lits(seed)
-        return self.s.check(assumptions) == sat
+        is_sat = (self.s.check(assumptions) == sat)
+        if improve_seed:
+            if is_sat:
+                # TODO: difficult to do efficiently...
+                #seed = seed_from_model(solver.model(), n)
+                pass
+            else:
+                seed = self.seed_from_core()
+            return is_sat, seed
+        else:
+            return is_sat
         
     def to_c_lits(self, seed):
         return [self.c_var(i) for i in seed]
@@ -76,10 +86,6 @@ class Z3SubsetSolver:
         core = self.s.unsat_core()
         return [self.cname_to_int(x.decl().name()) for x in core]
 
-    def shrink_current(self):
-        seed = self.seed_from_core()
-        return self.shrink(seed)
-
     def shrink(self, seed):
         current = set(seed)
         for i in seed:
@@ -91,13 +97,6 @@ class Z3SubsetSolver:
                 #current = self.seed_from_core()  # doesn't seem to help much (I think the subset is almost always sat)
                 current.remove(i)
         return current
-
-    def grow_current(self):
-        # TODO: not yet implemented...
-        #       difficult to do efficiently...
-        raise NotImplementedError
-        #seed = seed_from_model(solver.model(), n)
-        #return self.grow(seed)
 
     def grow(self, seed):
         current = set(seed)

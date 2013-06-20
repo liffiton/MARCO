@@ -20,6 +20,7 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
 
     # override shrink method to use MUSer2
     def shrink(self, seed):
+        seed = list(seed)  # need to look up clauses from MUS as indexes into this list
         # Open tmpfile
         with tempfile.NamedTemporaryFile('wb') as cnf:
             # Write CNF

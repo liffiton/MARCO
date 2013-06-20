@@ -41,15 +41,20 @@ class MinisatSubsetSolver:
             # assume plain .cnf and pass through the file object
             self.parse_dimacs(infile)
 
-    def check_subset(self, seed):
-        return self.s.solve_subset(seed)
+    def check_subset(self, seed, improve_seed=False):
+        is_sat = self.s.solve_subset(seed)
+        if improve_seed:
+            if is_sat:
+                seed = self.s.sat_subset()
+            else:
+                seed = self.s.unsat_core()
+            return is_sat, seed
+        else:
+            return is_sat
+        
 
     def complement(self, aset):
         return set(range(self.n)) - aset
-
-    def shrink_current(self):
-        seed = self.s.unsat_core()
-        return self.shrink(seed)
 
     def shrink(self, seed):
         current = set(seed)
@@ -77,10 +82,6 @@ class MinisatSubsetSolver:
         ret = self.s.solve([x] + self.to_c_lits(seed))  # activate the temporary clause and all seed clauses
         self.s.add_clause([-x])  # remove the temporary clause
         return ret
-
-    def grow_current(self):
-        seed = self.s.sat_subset()
-        return self.grow(seed)
 
     def grow(self, seed):
         current = set(seed)
