@@ -22,6 +22,20 @@ class MapSolver:
         out = self.complement(seed)
         return self.solver.solve([(i+1) for i in seed] + [-(i+1) for i in out])
 
+    def find_above(self, seed):
+        """Look for and return any unexplored point including the given seed.
+            Calling map.find_above(MSS) after map.block_down(MSS) will thus find
+            strict supersets of the MSS, as the MSS itself has been blocked.
+
+        Returns:
+            Any unexplored strict superset of seed, if one exists.
+        """
+        superset_exists = self.solver.solve( (i+1) for i in seed )
+        if superset_exists:
+            return self.get_seed()
+        else:
+            return None
+
     def get_seed(self):
         """Get the seed from the current model.  (Depends on work in next_seed to be valid.)
 
@@ -50,7 +64,7 @@ class MapSolver:
         """Block down from a given set."""
         comp = self.complement(frompoint)
         if comp:
-            self.solver.add_clause([i+1 for i in comp])
+            self.solver.add_clause( [(i+1) for i in comp] )
         else:
             # *could* be empty (if instance is SAT)
             self.solver.add_clause( [] )
@@ -58,7 +72,7 @@ class MapSolver:
     def block_up(self, frompoint):
         """Block up from a given set."""
         if frompoint:
-            self.solver.add_clause([-(i+1) for i in frompoint])
+            self.solver.add_clause( [-(i+1) for i in frompoint] )
         else:
             # *could* be empty (if instance is SAT)
             self.solver.add_clause( [] )
@@ -91,13 +105,13 @@ class MinicardMapSolver(MapSolver):
         # and to make AtLeast into an AtMost:
         #   AtLeast([lits], k) ==> AtMost([-lits], #lits-k)
         if self.bias:
-            self.solver.add_atmost([-(x+1) for x in range(self.n * 2)], self.n)
+            self.solver.add_atmost( [-(x+1) for x in range(self.n * 2)] , self.n)
         else:
-            self.solver.add_atmost([(x+1) for x in range(self.n * 2)], self.n)
+            self.solver.add_atmost( [(x+1) for x in range(self.n * 2)] , self.n)
 
     def solve_with_bound(self, k):
         # same assumptions work both for high bias / atleast and for low bias / atmost
-        return self.solver.solve([-(self.n+x+1) for x in range(k)] + [(self.n+k+x+1) for x in range(self.n-k)])
+        return self.solver.solve( [-(self.n+x+1) for x in range(k)] + [(self.n+k+x+1) for x in range(self.n-k)] )
 
     def next_seed(self):
         return self.next_max_seed()
@@ -133,11 +147,11 @@ class MinicardMapSolver(MapSolver):
         return self.get_seed()
 
     def block_above_size(self, size):
-        self.solver.add_atmost([(x+1) for x in range(self.n)], size)
+        self.solver.add_atmost( [(x+1) for x in range(self.n)] , size)
         self.k = min(size, self.k)
 
     def block_below_size(self, size):
-        self.solver.add_atmost([-(x+1) for x in range(self.n)], self.n-size)
+        self.solver.add_atmost( [-(x+1) for x in range(self.n)] , self.n-size)
         self.k = min(size, self.k)
 
 class MinisatMapSolver(MapSolver):
@@ -166,7 +180,7 @@ class MinisatMapSolver(MapSolver):
                     # May have been "also-satisfied"
                     continue
                 test = seed | set([i])
-                if self.solver.solve([i+1 for i in test]):
+                if self.solver.solve( (i+1) for i in test ):
                     seed = self.get_seed()
                     # or
                     #seed = test
@@ -174,7 +188,7 @@ class MinisatMapSolver(MapSolver):
         else:
             for i in seed:
                 test = complement | set([i])
-                if self.solver.solve([-(i+1) for i in test]):
+                if self.solver.solve( -(i+1) for i in test ):
                     complement = test
             seed = set(range(self.n)) - set(complement)
 

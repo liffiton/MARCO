@@ -58,13 +58,16 @@ class MarcoPolo:
                     with self.timer.measure('mssguided'):
                         # don't check parents if parent is top and we've already seen it (common)
                         if len(MSS) < self.n-1 or not self.got_top:
-                            # add first unexplored superset to the queue
-                            for i in self.complement(MSS):
-                                #print "Trying", MSS | set([i])
-                                if self.map.check_seed(MSS | set([i])):
-                                    #print "Added!"
-                                    self.seeds.add_seed(MSS | set([i]), False)
-                                    break
+                            # add any unexplored superset to the queue
+                            newseed = self.map.find_above(MSS)
+                            if newseed:
+                                self.seeds.add_seed(newseed, False)
+#                            for i in self.complement(MSS):
+#                                #print "Trying", MSS | set([i])
+#                                if self.map.check_seed(MSS | set([i])):
+#                                    #print "Added!"
+#                                    self.seeds.add_seed(MSS | set([i]), False)
+#                                    break
 
             else:
                 #print "Shrinking..."
