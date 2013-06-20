@@ -23,6 +23,10 @@ import testconfig
 mode = 'runp'
 verbose = False
 
+# hack to work in both python 2 and 3
+try: input = raw_input
+except NameError: pass
+
 # Build all tests to be run
 def makeTests(testexe):
     tests = []
@@ -93,15 +97,14 @@ def runTest(cmd, outfile, errfile, pid):
     if verbose:
         print("\n[34;1mRunning test:[0m %s > %s 2> %s" % (" ".join(cmd), tmpout, tmperr))
 
-    # TODO: handle stderr
     with open(tmpout, 'w') as f_out, open(tmperr, 'w') as f_err:
         try:
             start_time = time.time()  # time() for wall-clock time
             ret = subprocess.call(cmd, stdout = f_out, stderr = f_err)
             runtime = time.time() - start_time
         except KeyboardInterrupt:
-            os.unlink(tmpout)
-            os.unlink(tmperr)
+            os.remove(tmpout)
+            os.remove(tmperr)
             return 'interrupted', None   # not perfect, but seems to deal with CTL-C most of the time
 
     if ret > 128:
@@ -133,11 +136,10 @@ def runTest(cmd, outfile, errfile, pid):
                 with open(tmperr, 'r') as f:
                     for line in f:
                         print("    " + line.rstrip())
-            # TODO: viewdiff
             # TODO: updateout
 
-    os.unlink(tmpout)
-    os.unlink(tmperr)
+    os.remove(tmpout)
+    os.remove(tmperr)
     return result, runtime
 
 def checkFiles(file1, file2):
@@ -167,6 +169,15 @@ def checkFiles(file1, file2):
     
     # everything checks out
     return 'pass'
+
+def view_diff(f1, f2):
+    # TODO: read single keypress, like "read -n 1" in old bash script
+    #       http://stackoverflow.com/questions/510357/
+    choice = input("View diff? (T for terminal, V for vimdiff, other for no) ")
+    if choice.lower() == 'v':
+        subprocess.call(["vimdiff",f1,f2])
+    elif choice.lower() == 't':
+        subprocess.call(["diff",f1,f2])
 
 class Progress:
     # indicator characters
@@ -320,9 +331,6 @@ def main():
         verbose = True
         mode = 'run'
     elif mode == 'regenerate':
-        # hack to work in both python 2 and 3
-        try: input = raw_input
-        except NameError: pass
         sure = input("Are you sure you want to regenerate all test outputs (y/n)? ")
         if sure.lower() != 'y':
             print("Exiting.")
