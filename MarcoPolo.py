@@ -8,6 +8,7 @@ class MarcoPolo:
         self.timer = timer
         self.config = config
         self.n = self.map.n  # number of constraints
+        self.got_top = False # track whether we've explored the complete set (top of the lattice)
 
     def enumerate_basic(self):
         '''Basic MUS/MCS enumeration, as a simple example.'''
@@ -31,6 +32,10 @@ class MarcoPolo:
             #print seed, seed_is_sat, known_max
             
             with self.timer.measure('check'):
+                if len(seed) == self.n:
+                    seed_is_sat = False
+                    self.got_top = True
+
                 if seed_is_sat is None:
                     # subset check may improve upon seed w/ unsat_core or sat_subset
                     seed_is_sat, seed = self.subs.check_subset(seed, improve_seed=True)
@@ -49,17 +54,18 @@ class MarcoPolo:
                 yield ("S", MSS)
                 self.map.block_down(MSS)
 
-                # length check to avoid checking single-clause MCSes (common), whose parent is known-UNSAT
-                if self.config['mssguided'] and len(MSS) < self.n-1:
+                if self.config['mssguided']:
                     with self.timer.measure('mssguided'):
-                        # add first unexplored superset to the queue
-                        for i in self.complement(MSS):
-                            #print "Trying", MSS | set([i])
-                            if self.map.check_seed(MSS | set([i])):
-                                #print "Added!"
-                                self.seeds.add_seed(MSS | set([i]), False)
-                                break
-            
+                        # don't check parents if parent is top and we've already seen it (common)
+                        if len(MSS) < self.n-1 or not self.got_top:
+                            # add first unexplored superset to the queue
+                            for i in self.complement(MSS):
+                                #print "Trying", MSS | set([i])
+                                if self.map.check_seed(MSS | set([i])):
+                                    #print "Added!"
+                                    self.seeds.add_seed(MSS | set([i]), False)
+                                    break
+
             else:
                 #print "Shrinking..."
                 if known_max and self.config['bias'] == 'low':
