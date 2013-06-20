@@ -248,19 +248,19 @@ class Progress:
         if self.stats['incomplete'] > 0:
             # red text
             sys.stdout.write("[31m")
-            print("     %2d / %2d  Incomplete" % \
+            print("     %3d / %d  Incomplete" % \
                 (self.stats['incomplete'], self.stats['total']))
             sys.stdout.write("[0m")
-        print(" %s : %2d / %2d  Passed" % \
+        print(" %s : %3d / %d  Passed" % \
                 (self.chr_Pass, self.stats['passed'], self.stats['total']))
         if self.stats['sortsame'] > 0:
-            print(" %s : %2d       Different order, same contents" % \
+            print(" %s : %3d   Different order, same contents" % \
                     (self.chr_Sort, self.stats['sortsame']))
         if self.stats['stderr'] > 0:
-            print(" %s : %2d       Produced output to STDERR" % \
+            print(" %s : %3d   Produced output to STDERR" % \
                     (self.chr_StdErr, self.stats['stderr']))
         if self.stats['fail'] > 0:
-            print(" %s : %2d       Failed" % \
+            print(" %s : %3d   Failed" % \
                     (self.chr_Fail, self.stats['fail']))
             if self.do_print:
                 print("     Re-run in 'runverbose' mode to see failure details.")
