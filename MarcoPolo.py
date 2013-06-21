@@ -1,4 +1,7 @@
-import Queue
+try:
+    import queue
+except ImportError:
+    import Queue as queue
 
 class MarcoPolo:
     def __init__(self, csolver, msolver, timer, config):
@@ -93,7 +96,7 @@ class SeedManager:
         self.map = msolver
         self.timer = timer
         self.config = config
-        self.queue = Queue.Queue()
+        self.queue = queue.Queue()
 
     def __iter__(self):
         return self
