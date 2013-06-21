@@ -2,6 +2,7 @@ import re
 import os
 import tempfile
 import subprocess
+import atexit
 from MinisatSubsetSolver import MinisatSubsetSolver
 
 class MUSerSubsetSolver(MinisatSubsetSolver):
@@ -18,6 +19,14 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
         except:
             raise Exception("MUSer2 binary %s is not executable.\nIt may be compiled for a different platform." % self.muser_path)
 
+        self._proc = None  # track the MUSer process
+        atexit.register(self.cleanup)
+
+    # kill MUSer process if still running when we exit (e.g. due to a timeout)
+    def cleanup(self):
+        if self._proc:
+            self._proc.kill()
+
     # override shrink method to use MUSer2
     def shrink(self, seed):
         seed = list(seed)  # need to look up clauses from MUS as indexes into this list
@@ -30,12 +39,13 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
                 cnf.write(self.dimacs[i])  # dimacs[i] has newline
             cnf.flush()
             # Run MUSer
-            p = subprocess.Popen([self.muser_path, '-comp', '-v', '-1', cnf.name], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            out,err = p.communicate()
-            result = out.decode()
+            self._proc = subprocess.Popen([self.muser_path, '-comp', '-v', '-1', cnf.name],
+                                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            out,err = self._proc.communicate()
+            self._proc = None  # clear it when we're done (so cleanup won't try to kill it)
+            out = out.decode()
 
-        # Parse result
-        matchline = re.search(self.core_pattern, result).group(0)
-        core = [seed[int(x)-1] for x in matchline.split()[1:-1]]
-        return set(core)
+        # Parse result, return the core
+        matchline = re.search(self.core_pattern, out).group(0)
+        return set( seed[int(x)-1] for x in matchline.split()[1:-1] )
 
