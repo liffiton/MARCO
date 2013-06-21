@@ -19,13 +19,18 @@ class MinisatSubsetSolver:
                 self.nvars = int(matches[0])
                 self.n = int(matches[1])
                 self.s.set_orig(self.nvars, self.n)
+                while self.s.nvars() < self.nvars:
+                    self.s.new_var()      # let instance variable do whatever...
                 while self.s.nvars() < self.nvars + self.n:
-                    self.s.new_var(True)  # default to try *enabling* clauses (to find larger sat subsets and/or hit unsat sooner)
+                    self.s.new_var(True)  # but default relaxation variables to
+                                          # try to *enable* clauses (to find
+                                          # larger sat subsets and/or hit unsat
+                                          # sooner)
                 continue
             if line.startswith(b'c'):
                 continue
             assert self.n > 0
-            self.s.add_clause([int(x) for x in line.split()[:-1]])
+            self.s.add_clause_instrumented([int(x) for x in line.split()[:-1]])
             i += 1
             if self.store_dimacs:
                 self.dimacs.append(line)
@@ -78,7 +83,6 @@ class MinisatSubsetSolver:
         comp = self.complement(seed)
         x = self.s.new_var() + 1
         self.s.add_clause([-x] + self.to_c_lits(comp))  # add a temporary clause
-        #ret = self.check_subset(seed)
         ret = self.s.solve([x] + self.to_c_lits(seed))  # activate the temporary clause and all seed clauses
         self.s.add_clause([-x])  # remove the temporary clause
         return ret
