@@ -173,6 +173,28 @@ class MinisatMapSolver(MapSolver):
             return None
 
         seed = self.get_seed()
+
+        if self.bias:
+            while True:
+                comp = self.complement(seed)
+                x = self.solver.new_var() + 1
+                self.solver.add_clause([-x] + [i+1 for i in comp])  # add a temporary clause
+                ret = self.solver.solve([x] + [i+1 for i in seed])  # activate the temporary clause and all seed clauses
+                self.solver.add_clause([-x])  # remove the temporary clause
+                if not ret:
+                    return seed
+                seed = self.get_seed()
+        else:
+            while True:
+                comp = self.complement(seed)
+                x = self.solver.new_var() + 1
+                self.solver.add_clause([-x] + [-(i+1) for i in seed])  # add a temporary clause
+                ret = self.solver.solve([x] + [-(i+1) for i in comp])  # activate the temporary clause and all seed clauses
+                self.solver.add_clause([-x])  # remove the temporary clause
+                if not ret:
+                    return seed
+                seed = self.get_seed()
+
         complement = self.complement(seed)
         if self.bias:
             for i in complement:
