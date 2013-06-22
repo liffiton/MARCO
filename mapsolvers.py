@@ -172,47 +172,24 @@ class MinisatMapSolver(MapSolver):
         if not self.solver.solve():
             return None
 
-        seed = self.get_seed()
-
-        if self.bias:
-            while True:
-                comp = self.complement(seed)
-                x = self.solver.new_var() + 1
-                self.solver.add_clause([-x] + [i+1 for i in comp])  # add a temporary clause
-                ret = self.solver.solve([x] + [i+1 for i in seed])  # activate the temporary clause and all seed clauses
-                self.solver.add_clause([-x])  # remove the temporary clause
-                if not ret:
-                    return seed
-                seed = self.get_seed()
-        else:
-            while True:
-                comp = self.complement(seed)
-                x = self.solver.new_var() + 1
-                self.solver.add_clause([-x] + [-(i+1) for i in seed])  # add a temporary clause
-                ret = self.solver.solve([x] + [-(i+1) for i in comp])  # activate the temporary clause and all seed clauses
-                self.solver.add_clause([-x])  # remove the temporary clause
-                if not ret:
-                    return seed
-                seed = self.get_seed()
-
-        complement = self.complement(seed)
-        if self.bias:
-            for i in complement:
-                if i in seed:
-                    # May have been "also-satisfied"
-                    continue
-                test = seed | set([i])
-                if self.solver.solve( (i+1) for i in test ):
-                    seed = self.get_seed()
-                    # or
-                    #seed = test
-
-        else:
-            for i in seed:
-                test = complement | set([i])
-                if self.solver.solve( -(i+1) for i in test ):
-                    complement = test
-            seed = set(range(self.n)) - set(complement)
+        havenew = True
+        while havenew:
+            seed = self.get_seed()
+            comp = self.complement(seed)
+            x = self.solver.new_var() + 1
+            if self.bias:
+                # search for a solution w/ all of the current seed plus at
+                # least one from the current complement.
+                self.solver.add_clause([-x] + [i+1 for i in comp])  # temporary clause
+                # activate the temporary clause and all seed clauses
+                havenew = self.solver.solve([x] + [i+1 for i in seed])
+            else:
+                # search for a solution w/ none of current complement and at
+                # least one from the current seed removed.
+                self.solver.add_clause([-x] + [-(i+1) for i in seed])  # temporary clause
+                # activate the temporary clause and deactivate complement clauses
+                havenew = self.solver.solve([x] + [-(i+1) for i in comp])
+            self.solver.add_clause([-x])  # remove the temporary clause
 
         return seed
 
