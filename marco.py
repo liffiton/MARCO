@@ -26,8 +26,8 @@ def parse_args():
                         help="always find a maximal/minimal seed (local optimum), controlled by bias setting (high=maximal, low=minimal)")
     max_group.add_argument('-M', '--maximum-seed', action='store_true',
                         help="always find a maximum/minimum seed (largest/smallest cardinality), controlled by bias setting (high=maximum, low=minimum) (uses MiniCard as Map solver)")
-    max_group.add_argument('--smus', action='store_true',
-                        help="calculate an SMUS (smallest MUS) ; implies -M")
+    parser.add_argument('--smus', action='store_true',
+                        help="calculate an SMUS (smallest MUS)")
     parser.add_argument('--mssguided', action='store_true',
                         help="check for unexplored subsets in immediate supersets of any MSS found")
     type_group = parser.add_mutually_exclusive_group()
