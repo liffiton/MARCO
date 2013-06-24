@@ -12,6 +12,7 @@ class MapSolver:
         """
         self.n = n
         self.bias = bias
+        self.all_n = set(range(n))  # used in complement fairly frequently
 
     def check_seed(self, seed):
         """Check whether a given seed is still unexplored.
@@ -42,23 +43,22 @@ class MapSolver:
         Returns:
             A seed as an array of 0-based constraint indexes.
         """
-        seed = self.solver.get_model_trues(start=0, end=self.n)
-        seed = set(seed)
+        return self.solver.get_model_trues(start=0, end=self.n)
 
         # slower:
         #model = self.solver.get_model()
-        #seed = [i for i in range(self.n) if model[i]]
+        #return [i for i in range(self.n) if model[i]]
 
         # slowest:
-        #seed = set()
+        #seed = []
         #for i in range(self.n):
         #    if self.solver.model_value(i+1):
         #        seed.add(i)
-        return seed
+        #return seed
 
     def complement(self, aset):
         """Return the complement of a given set w.r.t. the set of mapped constraints."""
-        return set(range(self.n)) - aset
+        return self.all_n.difference(aset)
 
     def block_down(self, frompoint):
         """Block down from a given set."""

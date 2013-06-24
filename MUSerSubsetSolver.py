@@ -2,6 +2,7 @@ import re
 import os
 import tempfile
 import subprocess
+import array
 import atexit
 from MinisatSubsetSolver import MinisatSubsetSolver
 
@@ -28,8 +29,8 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
             self._proc.kill()
 
     # override shrink method to use MUSer2
+    # NOTE: seed must be indexed (i.e., not a set)
     def shrink(self, seed):
-        seed = list(seed)  # need to look up clauses from MUS as indexes into this list
         # Open tmpfile
         with tempfile.NamedTemporaryFile('wb') as cnf:
             # Write CNF
@@ -47,5 +48,5 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
 
         # Parse result, return the core
         matchline = re.search(self.core_pattern, out).group(0)
-        return set( seed[int(x)-1] for x in matchline.split()[1:-1] )
+        return array.array('i', (seed[int(x)-1] for x in matchline.split()[1:-1]) )
 

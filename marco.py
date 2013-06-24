@@ -150,6 +150,7 @@ def main():
 
     # enumerate results
     remaining = args.limit
+
     for result in mp.enumerate():
         if args.verbose:
             output = "%s %s" % (result[0], " ".join([str(x+1) for x in result[1]]))

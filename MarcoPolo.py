@@ -52,7 +52,7 @@ class MarcoPolo:
                     MSS = seed
                 else:
                     with self.timer.measure('grow'):
-                        MSS = self.subs.grow(seed)
+                        MSS = self.subs.grow(seed, inplace=True)
 
                 yield ("S", MSS)
                 self.map.block_down(MSS)
@@ -65,12 +65,6 @@ class MarcoPolo:
                             newseed = self.map.find_above(MSS)
                             if newseed:
                                 self.seeds.add_seed(newseed, False)
-#                            for i in self.complement(MSS):
-#                                #print "Trying", MSS | set([i])
-#                                if self.map.check_seed(MSS | set([i])):
-#                                    #print "Added!"
-#                                    self.seeds.add_seed(MSS | set([i]), False)
-#                                    break
 
             else:
                 #print "Shrinking..."
@@ -86,9 +80,6 @@ class MarcoPolo:
                 if self.config['smus']:
                     self.map.block_down(MUS)
                     self.map.block_above_size(len(MUS)-1)
-
-    def complement(self, aset):
-        return set(range(self.n)) - aset
 
 
 class SeedManager:

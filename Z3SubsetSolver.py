@@ -69,7 +69,7 @@ class Z3SubsetSolver:
                 pass
             else:
                 seed = self.seed_from_core()
-            return is_sat, set(seed)
+            return is_sat, seed
         else:
             return is_sat
         
@@ -77,7 +77,7 @@ class Z3SubsetSolver:
         return [self.c_var(i) for i in seed]
 
     def complement(self, aset):
-        return set(range(self.n)) - aset
+        return set(range(self.n)).difference(aset)
 
     def cname_to_int(self, name):
         return int(name[len(self.c_prefix):])
@@ -87,26 +87,37 @@ class Z3SubsetSolver:
         return [self.cname_to_int(x.decl().name()) for x in core]
 
     def shrink(self, seed):
-        current = seed.copy()
+        current = set(seed)
         for i in seed:
-    #        if i not in current:
-    #            # May have been "also-removed"
-    #            continue
-            if not self.check_subset(current - set([i])):
+            if i not in current:
+                # May have been "also-removed"
+                continue
+            current.remove(i)
+            if not self.check_subset(current):
                 # Remove any also-removed constraints
-                #current = self.seed_from_core()  # doesn't seem to help much (I think the subset is almost always sat)
-                current.remove(i)
+                current = set(self.seed_from_core())
+                pass
+            else:
+                current.add(i)
         return current
 
-    def grow(self, seed):
-        current = seed.copy()
+    def grow(self, seed, inplace):
+        if inplace:
+            current = seed
+        else:
+            current = seed[:]
+
         for i in self.complement(current):
-    #        if i in current:
-    #            # May have been "also-satisfied"
-    #            continue
-            if self.check_subset(current | set([i])):
+            #if i in current:
+            #    # May have been "also-satisfied"
+            #    continue
+            current.append(i)
+            if self.check_subset(current):
                 # Add any also-satisfied constraint
                 #current = seed_from_model(s.model(), n)  # still too slow to help here
-                current.add(i)
+                pass
+            else:
+                current.pop()
+
         return current
 
