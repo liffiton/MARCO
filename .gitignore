@@ -1,5 +1,6 @@
 __pycache__
 *.pyc
+*.pyo
 *.stackdump
 marco_py-*.tar.gz
 tests/runtimes.json
