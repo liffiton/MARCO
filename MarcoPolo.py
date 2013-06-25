@@ -35,13 +35,12 @@ class MarcoPolo:
             #print seed, seed_is_sat, known_max
             
             with self.timer.measure('check'):
-                if len(seed) == self.n:
-                    seed_is_sat = False
-                    self.got_top = True
+                # subset check may improve upon seed w/ unsat_core or sat_subset
+                seed_is_sat, seed = self.subs.check_subset(seed, improve_seed=True)
 
-                if seed_is_sat is None:
-                    # subset check may improve upon seed w/ unsat_core or sat_subset
-                    seed_is_sat, seed = self.subs.check_subset(seed, improve_seed=True)
+                if not seed_is_sat:
+                    self.got_top = True  # any unsat set covers the top of the lattice
+
             
             #print seed, seed_is_sat, known_max
 
