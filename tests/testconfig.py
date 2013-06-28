@@ -16,7 +16,7 @@ jobs = [
     {
       'name':    'marco_py', 
       'cmd':     '../marco.py',
-      'flags':   ['', '-m', '-M', '--mssguided', '-m --mssguided'],
+      'flags':   ['', '-m', '-M', '--mssguided', '--nogrow'],
       'flags_all': common_flags,
     },
     {

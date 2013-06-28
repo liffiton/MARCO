@@ -32,7 +32,6 @@ class MarcoPolo:
     def enumerate(self):
         '''MUS/MCS enumeration with all the bells and whistles...'''
         for seed, seed_is_sat, known_max in self.seeds:
-            #print seed, seed_is_sat, known_max
             
             with self.timer.measure('check'):
                 # subset check may improve upon seed w/ unsat_core or sat_subset
@@ -40,14 +39,9 @@ class MarcoPolo:
 
                 if not seed_is_sat:
                     self.got_top = True  # any unsat set covers the top of the lattice
-
             
-            #print seed, seed_is_sat, known_max
-
             if seed_is_sat:
-                #print "Growing..."
-                if known_max and self.config['bias'] == 'high':
-                    # seed guaranteed to be maximal
+                if self.config['bias'] == 'high' and (self.config['nogrow'] or known_max):
                     MSS = seed
                 else:
                     with self.timer.measure('grow'):
@@ -66,9 +60,7 @@ class MarcoPolo:
                                 self.seeds.add_seed(newseed, False)
 
             else:
-                #print "Shrinking..."
                 if known_max and self.config['bias'] == 'low':
-                    # seed guaranteed to be minimal
                     MUS = seed
                 else:
                     with self.timer.measure('shrink'):
@@ -102,8 +94,6 @@ class SeedManager:
                     raise StopIteration
                 ret = (seed, None, known_max)
 
-        #print "Seed:", ret
-        #print "Seed length:", len(ret[0])
         return ret
 
     def add_seed(self, seed, is_sat):

@@ -30,6 +30,8 @@ def parse_args():
                         help="calculate an SMUS (smallest MUS)")
     parser.add_argument('--mssguided', action='store_true',
                         help="check for unexplored subsets in immediate supersets of any MSS found")
+    parser.add_argument('--nogrow', action='store_true',
+                        help="do not grow any satisfiable subsets found, just block as-is")
     type_group = parser.add_mutually_exclusive_group()
     type_group.add_argument('--cnf', action='store_true',
                         help="Treat input as DIMACS CNF format.")
@@ -140,6 +142,7 @@ def main():
         config['bias'] = args.bias
         config['maxseed'] = args.max_seed or args.maximum_seed
         config['mssguided'] = args.mssguided
+        config['nogrow'] = args.nogrow
 
         mp = MarcoPolo(csolver, msolver, timer, config)
 
