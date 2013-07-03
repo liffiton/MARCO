@@ -10,6 +10,7 @@ class MarcoPolo:
         self.seeds = SeedManager(msolver, timer, config)
         self.timer = timer
         self.config = config
+        self.bias_high = self.config['bias'] == 'high'  # used frequently
         self.n = self.map.n  # number of constraints
         self.got_top = False # track whether we've explored the complete set (top of the lattice)
 
@@ -37,11 +38,16 @@ class MarcoPolo:
                 # subset check may improve upon seed w/ unsat_core or sat_subset
                 seed_is_sat, seed = self.subs.check_subset(seed, improve_seed=True)
 
-                if not seed_is_sat:
-                    self.got_top = True  # any unsat set covers the top of the lattice
+            if self.config['half_max'] and not known_max and (seed_is_sat == self.bias_high):
+                assert not self.config['maxseed']
+                with self.timer.measure('half_max'):
+                    # Maximize within Map and re-check satisfiability
+                    seed = self.map.maximize_seed(seed, direction=self.bias_high)
+                    seed_is_sat, seed = self.subs.check_subset(seed, improve_seed=True)
+                    known_max = True
             
             if seed_is_sat:
-                if self.config['bias'] == 'high' and (self.config['nogrow'] or known_max):
+                if self.bias_high and (self.config['nogrow'] or known_max):
                     MSS = seed
                 else:
                     with self.timer.measure('grow'):
@@ -60,7 +66,8 @@ class MarcoPolo:
                                 self.seeds.add_seed(newseed, False)
 
             else:
-                if known_max and self.config['bias'] == 'low':
+                self.got_top = True  # any unsat set covers the top of the lattice
+                if known_max and not self.bias_high:
                     MUS = seed
                 else:
                     with self.timer.measure('shrink'):

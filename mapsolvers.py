@@ -56,6 +56,35 @@ class MapSolver:
         #        seed.add(i)
         #return seed
 
+    def maximize_seed(self, seed, direction):
+        """Maximize a given seed within the current set of constraints.
+           The Boolean direction parameter specifies up (True) or down (False)
+
+        Returns:
+            A seed as an array of 0-based constraint indexes.
+        """
+        while True:
+            comp = self.complement(seed)
+            x = self.solver.new_var() + 1
+            if direction:
+                # search for a solution w/ all of the current seed plus at
+                # least one from the current complement.
+                self.solver.add_clause([-x] + [i+1 for i in comp])  # temporary clause
+                # activate the temporary clause and all seed clauses
+                havenew = self.solver.solve([x] + [i+1 for i in seed])
+            else:
+                # search for a solution w/ none of current complement and at
+                # least one from the current seed removed.
+                self.solver.add_clause([-x] + [-(i+1) for i in seed])  # temporary clause
+                # activate the temporary clause and deactivate complement clauses
+                havenew = self.solver.solve([x] + [-(i+1) for i in comp])
+            self.solver.add_clause([-x])  # remove the temporary clause
+
+            if havenew:
+                seed = self.get_seed()
+            else:
+                return seed
+
     def complement(self, aset):
         """Return the complement of a given set w.r.t. the set of mapped constraints."""
         return self.all_n.difference(aset)
@@ -172,24 +201,5 @@ class MinisatMapSolver(MapSolver):
         if not self.solver.solve():
             return None
 
-        havenew = True
-        while havenew:
-            seed = self.get_seed()
-            comp = self.complement(seed)
-            x = self.solver.new_var() + 1
-            if self.bias:
-                # search for a solution w/ all of the current seed plus at
-                # least one from the current complement.
-                self.solver.add_clause([-x] + [i+1 for i in comp])  # temporary clause
-                # activate the temporary clause and all seed clauses
-                havenew = self.solver.solve([x] + [i+1 for i in seed])
-            else:
-                # search for a solution w/ none of current complement and at
-                # least one from the current seed removed.
-                self.solver.add_clause([-x] + [-(i+1) for i in seed])  # temporary clause
-                # activate the temporary clause and deactivate complement clauses
-                havenew = self.solver.solve([x] + [-(i+1) for i in comp])
-            self.solver.add_clause([-x])  # remove the temporary clause
-
-        return seed
+        return self.maximize_seed(self.get_seed(), direction=self.bias)
 

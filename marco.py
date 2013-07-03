@@ -32,6 +32,8 @@ def parse_args():
                         help="check for unexplored subsets in immediate supersets of any MSS found")
     parser.add_argument('--nogrow', action='store_true',
                         help="do not grow any satisfiable subsets found, just block as-is")
+    parser.add_argument('--half-max', action='store_true',
+                        help="only compute a maximal model if the initial seed is SAT / bias is high or seed is UNSAT /bias is low")
     type_group = parser.add_mutually_exclusive_group()
     type_group.add_argument('--cnf', action='store_true',
                         help="Treat input as DIMACS CNF format.")
@@ -143,6 +145,7 @@ def main():
         config['maxseed'] = args.max_seed or args.maximum_seed
         config['mssguided'] = args.mssguided
         config['nogrow'] = args.nogrow
+        config['half_max'] = args.half_max
 
         mp = MarcoPolo(csolver, msolver, timer, config)
 

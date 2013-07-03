@@ -16,13 +16,13 @@ jobs = [
     {
       'name':    'marco_py', 
       'cmd':     '../marco.py',
-      'flags':   ['', '-m', '-M', '--mssguided', '--nogrow'],
+      'flags':   ['', '-m', '-M', '--mssguided', '--nogrow', '--half-max'],
       'flags_all': common_flags,
     },
     {
       'name':    'marco_py', 
       'cmd':     '../marco.py',
-      'flags':   ['-b low', '-m -b low', '-M -b low', '-b low --mssguided', '-b low -m --mssguided'],
+      'flags':   ['-b low', '-m -b low', '-M -b low', '-b low --mssguided', '-b low -m --mssguided', '-b low --half-max'],
       'flags_all': common_flags,
       'exclude': ['dlx2_aa.cnf'],
     },
