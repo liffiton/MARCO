@@ -16,7 +16,7 @@ def parse_args():
     parser.add_argument('-s', '--stats', action='store_true',
                         help="print timing statistics to stderr")
     parser.add_argument('-T', '--timeout', type=int, default=None,
-                        help="limit the runtime to N seconds")
+                        help="limit the runtime to TIMEOUT seconds")
     parser.add_argument('-l', '--limit', type=int, default=None,
                         help="limit number of subsets output (counting both MCSes and MUSes)")
     parser.add_argument('-b', '--bias', type=str, choices=['high','low'], default='high',
@@ -36,9 +36,9 @@ def parse_args():
                         help="only compute a maximal model if the initial seed is SAT / bias is high or seed is UNSAT /bias is low")
     type_group = parser.add_mutually_exclusive_group()
     type_group.add_argument('--cnf', action='store_true',
-                        help="Treat input as DIMACS CNF format.")
+                        help="assume input is in DIMACS CNF format (autodetected if filename is *.cnf or *.cnf.gz).")
     type_group.add_argument('--smt', action='store_true',
-                        help="Treat input as SMT2 format.")
+                        help="assume input is in SMT2 format (autodetected if filename is *.smt2 or *.smt2.gz).")
     parser.add_argument('--force-minisat', action='store_true',
                         help="use Minisat in place of MUSer2 for CNF (NOTE: much slower and usually not worth doing!)")
     parser.add_argument('infile', nargs='?', type=argparse.FileType('rb'),
