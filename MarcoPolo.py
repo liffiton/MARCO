@@ -38,16 +38,8 @@ class MarcoPolo:
                 # subset check may improve upon seed w/ unsat_core or sat_subset
                 seed_is_sat, seed = self.subs.check_subset(seed, improve_seed=True)
 
-            if self.config['half_max'] and not known_max and (seed_is_sat == self.bias_high):
-                assert not self.config['maxseed']
-                with self.timer.measure('half_max'):
-                    # Maximize within Map and re-check satisfiability
-                    seed = self.map.maximize_seed(seed, direction=self.bias_high)
-                    seed_is_sat, seed = self.subs.check_subset(seed, improve_seed=True)
-                    known_max = True
-            
             if seed_is_sat:
-                if self.bias_high and (self.config['nogrow'] or known_max):
+                if self.bias_high and known_max:
                     MSS = seed
                 else:
                     with self.timer.measure('grow'):
@@ -55,15 +47,6 @@ class MarcoPolo:
 
                 yield ("S", MSS)
                 self.map.block_down(MSS)
-
-                if self.config['mssguided']:
-                    with self.timer.measure('mssguided'):
-                        # don't check parents if parent is top and we've already seen it (common)
-                        if len(MSS) < self.n-1 or not self.got_top:
-                            # add any unexplored superset to the queue
-                            newseed = self.map.find_above(MSS)
-                            if newseed:
-                                self.seeds.add_seed(newseed, False)
 
             else:
                 self.got_top = True  # any unsat set covers the top of the lattice
@@ -75,9 +58,6 @@ class MarcoPolo:
 
                 yield ("U", MUS)
                 self.map.block_up(MUS)
-                if self.config['smus']:
-                    self.map.block_down(MUS)
-                    self.map.block_above_size(len(MUS)-1)
 
 
 class SeedManager:

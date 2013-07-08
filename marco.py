@@ -26,14 +26,6 @@ def parse_args():
                         help="always find a maximal/minimal seed (local optimum), controlled by bias setting (high=maximal, low=minimal)")
     max_group.add_argument('-M', '--maximum-seed', action='store_true',
                         help="always find a maximum/minimum seed (largest/smallest cardinality), controlled by bias setting (high=maximum, low=minimum) (uses MiniCard as Map solver)")
-    parser.add_argument('--smus', action='store_true',
-                        help="calculate an SMUS (smallest MUS)")
-    parser.add_argument('--mssguided', action='store_true',
-                        help="check for unexplored subsets in immediate supersets of any MSS found")
-    parser.add_argument('--nogrow', action='store_true',
-                        help="do not grow any satisfiable subsets found, just block as-is")
-    parser.add_argument('--half-max', action='store_true',
-                        help="only compute a maximal model if the initial seed is SAT / bias is high or seed is UNSAT /bias is low")
     type_group = parser.add_mutually_exclusive_group()
     type_group.add_argument('--cnf', action='store_true',
                         help="assume input is in DIMACS CNF format (autodetected if filename is *.cnf or *.cnf.gz).")
@@ -120,7 +112,7 @@ def setup_solvers(args):
 
     # create appropriate map solver
     varbias = (args.bias == 'high')
-    if args.maximum_seed or args.smus:
+    if args.maximum_seed:
         from mapsolvers import MinicardMapSolver
         msolver  = MinicardMapSolver(n=csolver.n, bias=varbias)
     else:
@@ -140,12 +132,8 @@ def main():
         (csolver, msolver) = setup_solvers(args)
 
         config = {}
-        config['smus'] = args.smus
         config['bias'] = args.bias
         config['maxseed'] = args.max_seed or args.maximum_seed
-        config['mssguided'] = args.mssguided
-        config['nogrow'] = args.nogrow
-        config['half_max'] = args.half_max
 
         mp = MarcoPolo(csolver, msolver, timer, config)
 
