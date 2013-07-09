@@ -7,7 +7,8 @@ import glob
 # available.
 files = []
 files.extend(glob.glob('*.cnf'))
-#files.extend(glob.glob('*.smt2'))
+files.extend(glob.glob('*.gcnf'))
+files.extend(glob.glob('*.smt2'))
 files.extend(glob.glob('*.gz'))
 
 common_flags = ['-v']
@@ -18,6 +19,13 @@ jobs = [
       'cmd':     '../marco.py',
       'flags':   ['', '-m', '-M', '--mssguided', '--nogrow', '--half-max'],
       'flags_all': common_flags,
+    },
+    {
+      'name':    'marco_py', 
+      'cmd':     '../marco.py',
+      'flags':   ['', '-m', '-M', '--mssguided', '--nogrow', '--half-max'],
+      'flags_all': common_flags + ['--force-minisat'],
+      'exclude': ['c10.cnf', 'dlx2_aa.cnf'],
     },
     {
       'name':    'marco_py', 

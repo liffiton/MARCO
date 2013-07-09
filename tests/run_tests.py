@@ -391,7 +391,7 @@ def main():
                               # if verbose is on, printing the progress bar is not needed/wanted
 
     try:
-        if num_procs == 1:
+        if mode == 'runverbose':
             # run in same process so viewdiff, etc. can get stdin
             runTests(jobq,msgq,1)
         else:
