@@ -106,6 +106,10 @@ class MapSolver:
             # *could* be empty (if instance is SAT)
             self.solver.add_clause( [] )
 
+    def force(self, indexes):
+        """Force the given indexes to be always True."""
+        for i in indexes:
+            self.solver.add_clause( [i+1] )
 
 class MinicardMapSolver(MapSolver):
     def __init__(self, n, bias=True):   # bias=True is a high/inclusion/MUS bias; False is a low/exclusion/MSS bias.

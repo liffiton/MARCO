@@ -31,16 +31,23 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
     # override shrink method to use MUSer2
     # NOTE: seed must be indexed (i.e., not a set)
     def shrink(self, seed):
+        seed = [x for x in seed if x not in self.hard_clauses]  # XXX: Hack.  Best to just make seeds not include hard clauses ever
+
         # Open tmpfile
         with tempfile.NamedTemporaryFile('wb') as cnf:
-            # Write CNF
-            header = "p cnf %d %d\n" % (self.nvars, len(seed))
+            # Write CNF (grouped, with hard clauses, if any, in the 0 / D / Don't-care group)
+            header = "p gcnf %d %d %d\n" % (self.nvars, len(seed), len(seed))
             cnf.write(header.encode())
+            for i in self.hard_clauses:
+                cnf.write("{0} " + self.dimacs[i])  # {0} = D = "Don't care" group -- dimacs[i] has newline
+            k = 1
             for i in seed:
-                cnf.write(self.dimacs[i])  # dimacs[i] has newline
+                cnf.write(("{%d} " % k) + self.dimacs[i])  # dimacs[i] has newline
+                k += 1
+
             cnf.flush()
             # Run MUSer
-            self._proc = subprocess.Popen([self.muser_path, '-comp', '-v', '-1', cnf.name],
+            self._proc = subprocess.Popen([self.muser_path, '-comp', '-grp', '-v', '-1', cnf.name],
                                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             out,err = self._proc.communicate()
             self._proc = None  # clear it when we're done (so cleanup won't try to kill it)

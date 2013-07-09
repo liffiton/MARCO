@@ -122,10 +122,14 @@ def setup_solvers(args):
     varbias = (args.bias == 'high')
     if args.maximum_seed or args.smus:
         from mapsolvers import MinicardMapSolver
-        msolver  = MinicardMapSolver(n=csolver.n, bias=varbias)
+        msolver = MinicardMapSolver(n=csolver.n, bias=varbias)
     else:
         from mapsolvers import MinisatMapSolver
         msolver = MinisatMapSolver(n=csolver.n, bias=varbias)
+
+    # setup hard clauses in the map
+    if csolver.partial:
+        msolver.force(csolver.hard_clauses)
 
     return (csolver, msolver)
 

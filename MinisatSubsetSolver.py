@@ -9,19 +9,22 @@ class MinisatSubsetSolver:
         self.store_dimacs = store_dimacs
         if self.store_dimacs:
             self.dimacs = []
+        self.hard_clauses = []
         self.read_dimacs(infile)
 
     def parse_dimacs(self, f):
         i = 0
         for line in f:
             if line.startswith(b'p'):
-                pattern = re.compile(r'p\s+cnf\s+(\d+)\s+(\d+)')
-                matches = re.match(pattern, line.decode()).groups()
-                self.nvars = int(matches[0])
-                self.n = int(matches[1])
+                tokens = line.split()
+                self.partial = (tokens[1] == "wcnf")  # "partial" = partial MaxSAT format, for specifying hard clauses
+                self.nvars = int(tokens[2])
+                self.n = int(tokens[3])
+                if self.partial:
+                    top_weight = int(tokens[4])
                 self.s.set_orig(self.nvars, self.n)
                 while self.s.nvars() < self.nvars:
-                    # let instance variable do whatever...
+                    # let instance variables do whatever...
                     self.s.new_var()
                 while self.s.nvars() < self.nvars + self.n:
                     # but default relaxation variables to try to *enable*
@@ -29,13 +32,37 @@ class MinisatSubsetSolver:
                     # sooner)
                     self.s.new_var(True)
                 continue
+
             if line.startswith(b'c'):
                 continue
+
+            # anything else is a clause
             assert self.n > 0
-            self.s.add_clause_instrumented([int(x) for x in line.split()[:-1]])
-            i += 1
+            vals = [int(x) for x in line.split()]
+            assert vals[-1] == 0
+
+            if self.partial:
+                weight = vals[0]
+                assert weight == 1 or weight == top_weight
+                clause = vals[1:-1]
+            else:
+                clause = vals[:-1]
+
+            if self.partial and weight == top_weight:
+                # add as a hard clause
+                self.s.add_clause(clause)
+                self.hard_clauses.append(i)
+            else:
+                self.s.add_clause_instrumented(clause, i)
+
             if self.store_dimacs:
-                self.dimacs.append(line)
+                if self.partial:
+                    self.dimacs.append(" ".join(str(x) for x in clause) + " 0\n")
+                else:
+                    self.dimacs.append(line)
+
+            i += 1
+
         assert i == self.n
 
     def read_dimacs(self, infile):
@@ -115,4 +142,3 @@ class MinisatSubsetSolver:
                 current.pop()
 
         return current
-

@@ -7,7 +7,7 @@ import glob
 # available.
 files = []
 files.extend(glob.glob('*.cnf'))
-files.extend(glob.glob('*.smt2'))
+#files.extend(glob.glob('*.smt2'))
 files.extend(glob.glob('*.gz'))
 
 common_flags = ['-v']
