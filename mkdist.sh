@@ -2,7 +2,7 @@
 
 # gather "whitelist" of files to include
 marco_files="*.py muser2-static README VERSION"
-test_files="tests/*.cnf tests/*.smt2 tests/*.gz tests/*.py tests/out/*"
+test_files="tests/*.cnf tests/*.smt2 tests/*.gz tests/*.py tests/out/*/*"
 minisolvers_files=`find pyminisolvers/ \( -name "*.cc" -or -name "*.cpp" -or -name "*.h" -or -name "Makefile" -or -name "makefile" -or -name "*.py" -or -name "*.pyx" \) -print`
 
 if [ "$1" = "list" ] ; then
@@ -15,7 +15,7 @@ fi
 
 # setup temp named dir
 if [ "$1" = "commit" ] ; then
-    version=`git rev-parse --short HEAD`
+    version=`date +%Y%m%d`-`git rev-parse --short HEAD`
 else
     version=`cat VERSION`
 fi
