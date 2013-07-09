@@ -1,3 +1,4 @@
+import collections
 import gzip
 import re
 import bisect
@@ -9,7 +10,7 @@ class MinisatSubsetSolver:
         self.store_dimacs = store_dimacs
         if self.store_dimacs:
             self.dimacs = []
-        self.hard_clauses = []
+            self.groups = collections.defaultdict(list)
         self.read_dimacs(infile)
 
     def parse_dimacs(self, f):
@@ -17,12 +18,18 @@ class MinisatSubsetSolver:
         for line in f:
             if line.startswith(b'p'):
                 tokens = line.split()
-                self.partial = (tokens[1] == "wcnf")  # "partial" = partial MaxSAT format, for specifying hard clauses
+                gcnf_in = (tokens[1] == "gcnf")
                 self.nvars = int(tokens[2])
-                self.n = int(tokens[3])
-                if self.partial:
-                    top_weight = int(tokens[4])
-                self.s.set_orig(self.nvars, self.n)
+                self.nclauses = int(tokens[3])
+
+                # self.n = number of soft constraints
+                if gcnf_in:
+                    self.n = int(tokens[4])
+                else:
+                    self.n = self.nclauses
+
+                self.s.set_varcounts(self.nvars, self.n)
+
                 while self.s.nvars() < self.nvars:
                     # let instance variables do whatever...
                     self.s.new_var()
@@ -38,32 +45,35 @@ class MinisatSubsetSolver:
 
             # anything else is a clause
             assert self.n > 0
-            vals = [int(x) for x in line.split()]
-            assert vals[-1] == 0
+            vals = line.split()
+            assert vals[-1] == '0'
 
-            if self.partial:
-                weight = vals[0]
-                assert weight == 1 or weight == top_weight
-                clause = vals[1:-1]
+            if gcnf_in:
+                groupid = int(vals[0][1:-1])  # "parse" the '{x}' group ID
+                assert 0 <= groupid <= self.n
+                clause = [int(x) for x in vals[1:-1]]
             else:
-                clause = vals[:-1]
+                groupid = i+1
+                clause = [int(x) for x in vals[:-1]]
 
-            if self.partial and weight == top_weight:
+            if groupid == 0:
                 # add as a hard clause
                 self.s.add_clause(clause)
-                self.hard_clauses.append(i)
             else:
-                self.s.add_clause_instrumented(clause, i)
+                self.s.add_clause_instrumented(clause, groupid-1)
 
             if self.store_dimacs:
-                if self.partial:
+                if gcnf_in:
+                    # need to reform clause without '{x}' group index
                     self.dimacs.append(" ".join(str(x) for x in clause) + " 0\n")
+                    self.groups[groupid].append(i)
                 else:
                     self.dimacs.append(line)
+                    self.groups[groupid] = [i]
 
             i += 1
 
-        assert i == self.n
+        assert i == self.nclauses
 
     def read_dimacs(self, infile):
         if infile.name.endswith('.gz'):

@@ -36,9 +36,9 @@ def parse_args():
                         help="only compute a maximal model if the initial seed is SAT / bias is high or seed is UNSAT /bias is low")
     type_group = parser.add_mutually_exclusive_group()
     type_group.add_argument('--cnf', action='store_true',
-                        help="assume input is in DIMACS CNF format (autodetected if filename is *.cnf or *.cnf.gz).")
+                        help="assume input is in DIMACS CNF or Group CNF format (autodetected if filename is *.[g]cnf or *.[g]cnf.gz).")
     type_group.add_argument('--smt', action='store_true',
-                        help="assume input is in SMT2 format (autodetected if filename is *.smt2 or *.smt2.gz).")
+                        help="assume input is in SMT2 format (autodetected if filename is *.smt2).")
     parser.add_argument('--force-minisat', action='store_true',
                         help="use Minisat in place of MUSer2 for CNF (NOTE: much slower and usually not worth doing!)")
     parser.add_argument('infile', nargs='?', type=argparse.FileType('rb'),
@@ -88,21 +88,22 @@ def setup_solvers(args):
     infile = args.infile
 
     # create appropriate constraint solver
-    if args.cnf or infile.name.endswith('.cnf') or infile.name.endswith('.cnf.gz'):
+    if args.cnf or infile.name.endswith('.cnf') or infile.name.endswith('.cnf.gz') or infile.name.endswith('.gcnf') or infile.name.endswith('.gcnf.gz'):
         if args.force_minisat:
             from MinisatSubsetSolver import MinisatSubsetSolver
             csolver = MinisatSubsetSolver(infile)
             infile.close()
         else:
             try:
-                from MUSerSubsetSolver import MUSerSubsetSolver
+                from MUSerSubsetSolver import MUSerSubsetSolver, MUSerException
                 csolver = MUSerSubsetSolver(infile)
-            except:
+            except MUSerException as e:
                 sys.stderr.write("[31;1mERROR:[m Unable to use MUSer2 for MUS extraction.\n[33mUse --force-minisat to use Minisat instead[m (NOTE: it will be much slower.)\n\n")
-                raise
+                sys.stderr.write(str(e) + "\n")
+                sys.exit(1)
             
         infile.close()
-    elif args.smt or infile.name.endswith('.smt2') or infile.name.endswith('.smt2.gz'):
+    elif args.smt or infile.name.endswith('.smt2'):
         try:
             from Z3SubsetSolver import Z3SubsetSolver
         except ImportError as e:
@@ -126,10 +127,6 @@ def setup_solvers(args):
     else:
         from mapsolvers import MinisatMapSolver
         msolver = MinisatMapSolver(n=csolver.n, bias=varbias)
-
-    # setup hard clauses in the map
-    if csolver.partial:
-        msolver.force(csolver.hard_clauses)
 
     return (csolver, msolver)
 
