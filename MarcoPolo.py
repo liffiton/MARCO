@@ -27,7 +27,7 @@ class MarcoPolo:
                 self.map.block_down(MSS)
             else:
                 MUS = self.subs.shrink(seed)
-                yield ("S", MUS)
+                yield ("U", MUS)
                 self.map.block_up(MUS)
 
     def enumerate(self):
