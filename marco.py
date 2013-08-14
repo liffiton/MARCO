@@ -57,9 +57,19 @@ def parse_args():
     return args
 
 def at_exit(timer):
+    # print stats
     times = timer.get_times()
-    for category, time in times.items():
-        sys.stderr.write("%10s : %8.2f\n" % (category, time))
+    counts = timer.get_counts()
+    # sort categories by total runtime
+    categories = sorted(times, key=times.get)
+    maxlen = max(len(x) for x in categories)
+    for category in categories:
+        time = times[category]
+        sys.stderr.write("%-*s : %8.3f\n" % (maxlen, category, time))
+    for category in categories:
+        if category in counts and counts[category] > 1:
+            sys.stderr.write("%-*s : %8d\n" % (maxlen + 8, category + " (count)", counts[category]))
+            sys.stderr.write("%-*s : %8.4f\n" % (maxlen + 8, category + " (per)", time/counts[category]))
 
 def setup_execution(args, timer):
     # register timeout/interrupt handler

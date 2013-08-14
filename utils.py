@@ -6,35 +6,38 @@ import time
 import os
 from collections import Counter
 
-def get_time():
-    #return sum(os.times()[:4])  # combined user/sys time for this process and its children
-    return time.time()   # wall-time
-    #return time.clock()   # user-time
+get_time = lambda: sum(os.times()[:4])  # combined user/sys time for this process and its children
+get_time = time.time   # wall-time
+#get_time = time.clock   # user-time
 
 class Timer:
     def __init__(self):
-        self.start = get_time()
-        self.times = Counter()
-        self.category = None
+        self._start = get_time()
+        self._times = Counter()
+        self._counts = Counter()
+        self._category = None
 
     def measure(self, category):
-        self.category = category
+        self._category = category
         return self
 
     def __enter__(self):
-        self.curr = get_time()
+        self._counts[self._category] += 1
+        self._curr = get_time()
 
     def __exit__(self, ex_type, ex_value, traceback):
-        self.times[self.category] += get_time() - self.curr
-        self.category = None
+        self._times[self._category] += get_time() - self._curr
+        self._category = None
         return False  # doesn't handle any exceptions itself
     
     def get_times(self):
-        self.times['total'] = get_time() - self.start
-        if self.category:
+        self._times['total'] = get_time() - self._start
+        if self._category:
             # If we're in a category currently,
             # give it the time up to this point.
-            self.times[self.category] += get_time() - self.curr
+            self._times[self._category] += get_time() - self._curr
 
-        return self.times
+        return self._times
 
+    def get_counts(self):
+        return self._counts
