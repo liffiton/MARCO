@@ -64,12 +64,11 @@ def at_exit(timer):
     categories = sorted(times, key=times.get)
     maxlen = max(len(x) for x in categories)
     for category in categories:
-        time = times[category]
-        sys.stderr.write("%-*s : %8.3f\n" % (maxlen, category, time))
+        sys.stderr.write("%-*s : %8.3f\n" % (maxlen, category, times[category]))
     for category in categories:
         if category in counts and counts[category] > 1:
-            sys.stderr.write("%-*s : %8d\n" % (maxlen + 8, category + " (count)", counts[category]))
-            sys.stderr.write("%-*s : %8.4f\n" % (maxlen + 8, category + " (per)", time/counts[category]))
+            sys.stderr.write("%-*s : %8d\n" % (maxlen + 6, category + " count", counts[category]))
+            sys.stderr.write("%-*s : %8.5f\n" % (maxlen + 6, category + " per", times[category]/counts[category]))
 
 def setup_execution(args, timer):
     # register timeout/interrupt handler
