@@ -134,11 +134,8 @@ class MinicardMapSolver(MapSolver):
         return self.solver.solve( [-(self.n+x+1) for x in range(k)] + [(self.n+k+x+1) for x in range(self.n-k)] )
 
     def next_seed(self):
-        return self.next_max_seed()
-
-    def next_max_seed(self):
         '''
-            Find the next maximum model.
+            Find the next *maximum* model.
         '''
         if self.solve_with_bound(self.k):
             return self.get_seed()
@@ -187,10 +184,3 @@ class MinisatMapSolver(MapSolver):
             return self.get_seed()
         else:
             return None
-
-    def next_max_seed(self):
-        if not self.solver.solve():
-            return None
-
-        return self.maximize_seed(self.get_seed(), direction=self.bias)
-

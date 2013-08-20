@@ -33,24 +33,29 @@ class MarcoPolo:
 
     def enumerate(self):
         '''MUS/MCS enumeration with all the bells and whistles...'''
-        for seed, known_max in self.seeds:
+        for seed in self.seeds:
+
+            if self.config['maxseed'] == 'always':
+                with self.timer.measure('maximize'):
+                    seed = self.map.maximize_seed(seed, direction=self.bias_high)
             
             with self.timer.measure('check'):
                 # subset check may improve upon seed w/ unsat_core or sat_subset
                 seed_is_sat, seed = self.subs.check_subset(seed, improve_seed=True)
 
-            if self.config['half_max'] and not known_max and (seed_is_sat == self.bias_high):
-                assert not self.config['maxseed']
-                with self.timer.measure('half_max'):
-                    # Maximize within Map and re-check satisfiability
+            # --half-max: Only maximize if we're UNSAT w/ a low bias or SAT w/ a high bias
+            if self.config['maxseed'] == 'half' and (seed_is_sat == self.bias_high):
+                # Maximize within Map and re-check satisfiability
+                with self.timer.measure('maximize'):
                     seed = self.map.maximize_seed(seed, direction=self.bias_high)
-                    # improve_seed set to True in case seed is UNSAT
+                with self.timer.measure('check'):
+                    # improve_seed set to True in case maximized seed needs to go in opposite
+                    # direction of the maximization (i.e., UNSAT seed w/ high bias, SAT w/ low bias)
                     # (otherwise, no improvement is possible as we maximized it already)
                     seed_is_sat, seed = self.subs.check_subset(seed, improve_seed=True)
-                    known_max = True
-            
+
             if seed_is_sat:
-                if self.bias_high and (self.config['nogrow'] or known_max):
+                if self.bias_high and (self.config['nogrow'] or self.config['maxseed']):
                     MSS = seed
                 else:
                     with self.timer.measure('grow'):
@@ -75,7 +80,7 @@ class MarcoPolo:
 
             else:
                 self.got_top = True  # any unsat set covers the top of the lattice
-                if known_max and not self.bias_high:
+                if self.config['maxseed'] and not self.bias_high:
                     MUS = seed
                 else:
                     with self.timer.measure('shrink'):
@@ -100,26 +105,19 @@ class SeedManager:
 
     def __next__(self):
         with self.timer.measure('seed'):
-            # fields of ret: ( seedvalues, is_sat (T=SAT / F=UNSAT / None=unknown), known_max (T/F) )
             if not self.queue.empty():
-                ret = self.queue.get()
+                return self.queue.get()
             else:
-                seed, known_max = self.seed_from_solver()
+                seed = self.seed_from_solver()
                 if seed is None:
                     raise StopIteration
-                ret = (seed, known_max)
+                return seed
 
-        return ret
-
-    def add_seed(self, seed, known_max=False):
-        self.queue.put( (seed, known_max) )
+    def add_seed(self, seed):
+        self.queue.put(seed)
 
     def seed_from_solver(self):
-        if self.config['maxseed']:
-            return self.map.next_max_seed(), True
-        else:
-            return self.map.next_seed(), False
+        return self.map.next_seed()
 
     # for python 2 compatibility
     next = __next__
-

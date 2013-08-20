@@ -22,6 +22,8 @@ def parse_args():
     parser.add_argument('-b', '--bias', type=str, choices=['high','low'], default='high',
                         help="bias the Map solver toward unsatisfiable seeds (high) or satisfiable seeds (low) (default: high, which is best for enumerating MUSes)")
     max_group = parser.add_mutually_exclusive_group()
+    max_group.add_argument('--half-max', action='store_true',
+                        help="only compute a maximal model if the initial seed is SAT / bias is high or seed is UNSAT /bias is low")
     max_group.add_argument('-m', '--max-seed', action='store_true',
                         help="always find a maximal/minimal seed (local optimum), controlled by bias setting (high=maximal, low=minimal)")
     max_group.add_argument('-M', '--maximum-seed', action='store_true',
@@ -32,8 +34,6 @@ def parse_args():
                         help="check for unexplored subsets in immediate supersets of any MSS found")
     parser.add_argument('--nogrow', action='store_true',
                         help="do not grow any satisfiable subsets found, just block as-is")
-    parser.add_argument('--half-max', action='store_true',
-                        help="only compute a maximal model if the initial seed is SAT / bias is high or seed is UNSAT /bias is low")
     type_group = parser.add_mutually_exclusive_group()
     type_group.add_argument('--cnf', action='store_true',
                         help="assume input is in DIMACS CNF or Group CNF format (autodetected if filename is *.[g]cnf or *.[g]cnf.gz).")
@@ -152,7 +152,14 @@ def main():
         config = {}
         config['smus'] = args.smus
         config['bias'] = args.bias
-        config['maxseed'] = args.max_seed or args.maximum_seed
+        if args.max_seed:
+            config['maxseed'] = 'always'
+        elif args.maximum_seed:
+            config['maxseed'] = 'optimum'
+        elif args.half_max:
+            config['maxseed'] = 'half'
+        else:
+            config['maxseed'] = None
         config['mssguided'] = args.mssguided
         config['nogrow'] = args.nogrow
         config['half_max'] = args.half_max
