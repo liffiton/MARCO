@@ -23,14 +23,14 @@ jobs = [
     {
       'name':    'marco_py', 
       'cmd':     '../marco.py',
-      'flags':   ['', '-m', '-M', '--mssguided', '--nogrow', '--half-max'],
+      'flags':   ['', '-m', '-M', '--mssguided', '--nogrow', '--half-max', '--ignore-singletons'],
       'flags_all': common_flags + ['--force-minisat'],
       'exclude': ['c10.cnf', 'dlx2_aa.cnf'],
     },
     {
       'name':    'marco_py', 
       'cmd':     '../marco.py',
-      'flags':   ['-b low', '-m -b low', '-M -b low', '-b low --mssguided', '-b low -m --mssguided', '-b low --half-max'],
+      'flags':   ['-b low', '-m -b low', '-M -b low', '-b low --mssguided', '-b low -m --mssguided', '-b low --half-max', '--ignore-singletons'],
       'flags_all': common_flags,
       'exclude': ['dlx2_aa.cnf'],
     },

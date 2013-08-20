@@ -64,10 +64,11 @@ class MarcoPolo:
                 yield ("S", MSS)
                 self.map.block_down(MSS)
 
-                if len(MSS) == self.n-1:
-                    # singleton MCS, record to pass as hard clause to shrink()
-                    singleton = self.subs.complement(MSS).pop()  # TODO: more efficient...
-                    self.singleton_MCSes.add(singleton)
+                if self.config['use_singletons']:
+                    if len(MSS) == self.n-1:
+                        # singleton MCS, record to pass as hard clause to shrink()
+                        singleton = self.subs.complement(MSS).pop()  # TODO: more efficient...
+                        self.singleton_MCSes.add(singleton)
 
                 if self.config['mssguided']:
                     with self.timer.measure('mssguided'):

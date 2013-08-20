@@ -34,6 +34,8 @@ def parse_args():
                         help="check for unexplored subsets in immediate supersets of any MSS found")
     parser.add_argument('--nogrow', action='store_true',
                         help="do not grow any satisfiable subsets found, just block as-is")
+    parser.add_argument('--ignore-singletons', action='store_true',
+                        help="do not store singleton MCSes as hard constraints")
     type_group = parser.add_mutually_exclusive_group()
     type_group.add_argument('--cnf', action='store_true',
                         help="assume input is in DIMACS CNF or Group CNF format (autodetected if filename is *.[g]cnf or *.[g]cnf.gz).")
@@ -160,9 +162,9 @@ def main():
             config['maxseed'] = 'half'
         else:
             config['maxseed'] = None
+        config['use_singletons'] = not args.ignore_singletons  # default is to use them
         config['mssguided'] = args.mssguided
         config['nogrow'] = args.nogrow
-        config['half_max'] = args.half_max
 
         mp = MarcoPolo(csolver, msolver, timer, config)
 
