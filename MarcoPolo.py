@@ -32,7 +32,7 @@ class MarcoPolo:
 
     def enumerate(self):
         '''MUS/MCS enumeration with all the bells and whistles...'''
-        for seed, seed_is_sat, known_max in self.seeds:
+        for seed, known_max in self.seeds:
             
             with self.timer.measure('check'):
                 # subset check may improve upon seed w/ unsat_core or sat_subset
@@ -43,6 +43,8 @@ class MarcoPolo:
                 with self.timer.measure('half_max'):
                     # Maximize within Map and re-check satisfiability
                     seed = self.map.maximize_seed(seed, direction=self.bias_high)
+                    # improve_seed set to True in case seed is UNSAT
+                    # (otherwise, no improvement is possible as we maximized it already)
                     seed_is_sat, seed = self.subs.check_subset(seed, improve_seed=True)
                     known_max = True
             
@@ -63,7 +65,7 @@ class MarcoPolo:
                             # add any unexplored superset to the queue
                             newseed = self.map.find_above(MSS)
                             if newseed:
-                                self.seeds.add_seed(newseed, False)
+                                self.seeds.add_seed(newseed)
 
             else:
                 self.got_top = True  # any unsat set covers the top of the lattice
@@ -99,12 +101,12 @@ class SeedManager:
                 seed, known_max = self.seed_from_solver()
                 if seed is None:
                     raise StopIteration
-                ret = (seed, None, known_max)
+                ret = (seed, known_max)
 
         return ret
 
-    def add_seed(self, seed, is_sat):
-        self.queue.put( (seed, is_sat, False) )
+    def add_seed(self, seed, known_max=False):
+        self.queue.put( (seed, known_max) )
 
     def seed_from_solver(self):
         if self.config['maxseed']:
