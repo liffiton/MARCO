@@ -13,6 +13,7 @@ class MarcoPolo:
         self.bias_high = self.config['bias'] == 'high'  # used frequently
         self.n = self.map.n  # number of constraints
         self.got_top = False # track whether we've explored the complete set (top of the lattice)
+        self.singleton_MCSes = set()  # store singleton MCSes to pass as hard clauses to shrink()
 
     def enumerate_basic(self):
         '''Basic MUS/MCS enumeration, as a simple example.'''
@@ -58,6 +59,11 @@ class MarcoPolo:
                 yield ("S", MSS)
                 self.map.block_down(MSS)
 
+                if len(MSS) == self.n-1:
+                    # singleton MCS, record to pass as hard clause to shrink()
+                    singleton = self.subs.complement(MSS).pop()  # TODO: more efficient...
+                    self.singleton_MCSes.add(singleton)
+
                 if self.config['mssguided']:
                     with self.timer.measure('mssguided'):
                         # don't check parents if parent is top and we've already seen it (common)
@@ -73,7 +79,7 @@ class MarcoPolo:
                     MUS = seed
                 else:
                     with self.timer.measure('shrink'):
-                        MUS = self.subs.shrink(seed)
+                        MUS = self.subs.shrink(seed, hard=self.singleton_MCSes)
 
                 yield ("U", MUS)
                 self.map.block_up(MUS)

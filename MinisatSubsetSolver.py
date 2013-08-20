@@ -99,10 +99,10 @@ class MinisatSubsetSolver:
     def complement(self, aset):
         return set(range(self.n)).difference(aset)
 
-    def shrink(self, seed):
+    def shrink(self, seed, hard=[]):
         current = set(seed)
         for i in seed:
-            if i not in current:
+            if i not in current or i in hard:
                 # May have been "also-removed"
                 continue
             current.remove(i)

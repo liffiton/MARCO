@@ -33,19 +33,29 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
 
     # override shrink method to use MUSer2
     # NOTE: seed must be indexed (i.e., not a set)
-    def shrink(self, seed):
+    def shrink(self, seed, hard=[]):
         # Open tmpfile
         with tempfile.NamedTemporaryFile('wb') as cnf:
             # Write CNF (grouped, with hard clauses, if any, in the 0 / Don't-care group)
             header = "p gcnf %d %d %d\n" % (self.nvars, len(seed), len(seed))
             cnf.write(header.encode())
 
-            for i in self.groups[0]:
-                cnf.write("{0} " + self.dimacs[i])  # {0} = "Don't care" group -- dimacs[i] has newline
+            # Note: not writing newlines because dimacs[j] already contains a newline
+
+            # existing "Don't care" group
+            for j in self.groups[0]:
+                cnf.write("{0} " + self.dimacs[j])  # {0} = "Don't care" group
+            # also include hard clauses in "Don't care" group
+            for i in hard:
+                for j in self.groups[i+1]:
+                    cnf.write("{0} " + self.dimacs[j])
 
             for g, i in enumerate(seed):
+                if i in hard:
+                    # skip hard clauses
+                    continue
                 for j in self.groups[i+1]:
-                    cnf.write(("{%d} " % (g+1)) + self.dimacs[j])  # dimacs[j] has newline
+                    cnf.write(("{%d} " % (g+1)) + self.dimacs[j])
 
             cnf.flush()
 
@@ -58,5 +68,10 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
 
         # Parse result, return the core
         matchline = re.search(self.core_pattern, out).group(0)
-        return array.array('i', (seed[int(x)-1] for x in matchline.split()[1:-1]) )
+        ret = array.array('i', (seed[int(x)-1] for x in matchline.split()[1:-1]) )
+
+        # Add back in hard clauses
+        ret.extend(hard)
+
+        return ret
 
