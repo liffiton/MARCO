@@ -68,7 +68,7 @@ def at_exit(timer):
     for category in categories:
         sys.stderr.write("%-*s : %8.3f\n" % (maxlen, category, times[category]))
     for category in categories:
-        if category in counts and counts[category] > 1:
+        if category in counts:
             sys.stderr.write("%-*s : %8d\n" % (maxlen + 6, category + " count", counts[category]))
             sys.stderr.write("%-*s : %8.5f\n" % (maxlen + 6, category + " per", times[category]/counts[category]))
 
