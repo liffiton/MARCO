@@ -8,7 +8,8 @@ class MapSolver:
         Args:
             n: The number of constraints to map.
             bias: Boolean specifying the solver's bias.  True is a
-                high/inclusion/MUS bias; False is a low/exclusion/MSS bias.
+                  high/inclusion/MUS bias; False is a low/exclusion/MSS bias;
+                  None is no bias.
         """
         self.n = n
         self.bias = bias
@@ -172,12 +173,15 @@ class MinicardMapSolver(MapSolver):
         self.k = min(size, self.k)
 
 class MinisatMapSolver(MapSolver):
-    def __init__(self, n, bias=True):   # bias=True is a high/inclusion/MUS bias; False is a low/exclusion/MSS bias.
+    def __init__(self, n, bias=True):   # bias=True is a high/inclusion/MUS bias; False is a low/exclusion/MSS bias; None is no bias.
         MapSolver.__init__(self, n, bias)
 
         self.solver = minisolvers.MinisatSolver()
         while self.solver.nvars() < self.n:
             self.solver.new_var(self.bias)
+
+        if self.bias == None:
+            self.solver.set_rnd_pol(True)
 
     def next_seed(self):
         if self.solver.solve():

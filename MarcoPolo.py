@@ -10,7 +10,7 @@ class MarcoPolo:
         self.seeds = SeedManager(msolver, stats, config)
         self.stats = stats
         self.config = config
-        self.bias_high = self.config['bias'] == 'high'  # used frequently
+        self.aim_high = self.config['aim'] == 'MUSes'  # used frequently
         self.n = self.map.n  # number of constraints
         self.got_top = False # track whether we've explored the complete set (top of the lattice)
         self.singleton_MCSes = set()  # store singleton MCSes to pass as hard clauses to shrink()
@@ -38,7 +38,7 @@ class MarcoPolo:
             if self.config['maxseed'] == 'always':
                 with self.stats.time('maximize'):
                     oldlen = len(seed)
-                    seed = self.map.maximize_seed(seed, direction=self.bias_high)
+                    seed = self.map.maximize_seed(seed, direction=self.aim_high)
                     newlen = len(seed)
                     self.stats.add_stat("improvement", float(newlen-oldlen)/self.n)
             
@@ -46,22 +46,22 @@ class MarcoPolo:
                 # subset check may improve upon seed w/ unsat_core or sat_subset
                 seed_is_sat, seed = self.subs.check_subset(seed, improve_seed=True)
 
-            # --half-max: Only maximize if we're UNSAT w/ a low bias or SAT w/ a high bias
-            if self.config['maxseed'] == 'half' and (seed_is_sat == self.bias_high):
+            # --half-max: Only maximize if we're SAT and seeking MUSes or UNSAT and seeking MCSes
+            if self.config['maxseed'] == 'half' and (seed_is_sat == self.aim_high):
                 # Maximize within Map and re-check satisfiability
                 with self.stats.time('maximize'):
                     oldlen = len(seed)
-                    seed = self.map.maximize_seed(seed, direction=self.bias_high)
+                    seed = self.map.maximize_seed(seed, direction=self.aim_high)
                     newlen = len(seed)
                     self.stats.add_stat("improvement", float(newlen-oldlen)/self.n)
                 with self.stats.time('check'):
                     # improve_seed set to True in case maximized seed needs to go in opposite
-                    # direction of the maximization (i.e., UNSAT seed w/ high bias, SAT w/ low bias)
+                    # direction of the maximization (i.e., UNSAT seed w/ MUS aim, SAT w/ MCS aim)
                     # (otherwise, no improvement is possible as we maximized it already)
                     seed_is_sat, seed = self.subs.check_subset(seed, improve_seed=True)
 
             if seed_is_sat:
-                if self.bias_high and (self.config['nogrow'] or self.config['maxseed']):
+                if self.aim_high and (self.config['nogrow'] or self.config['maxseed']):
                     MSS = seed
                 else:
                     with self.stats.time('grow'):
@@ -87,7 +87,7 @@ class MarcoPolo:
 
             else:
                 self.got_top = True  # any unsat set covers the top of the lattice
-                if self.config['maxseed'] and not self.bias_high:
+                if self.config['maxseed'] and not self.aim_high:
                     MUS = seed
                 else:
                     with self.stats.time('shrink'):

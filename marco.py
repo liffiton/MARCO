@@ -19,11 +19,13 @@ def parse_args():
                         help="limit the runtime to TIMEOUT seconds")
     parser.add_argument('-l', '--limit', type=int, default=None,
                         help="limit number of subsets output (counting both MCSes and MUSes)")
-    parser.add_argument('-b', '--bias', type=str, choices=['high','low'], default='high',
-                        help="bias the Map solver toward unsatisfiable seeds (high) or satisfiable seeds (low) (default: high, which is best for enumerating MUSes)")
+    parser.add_argument('-a', '--aim', type=str, choices=['MUSes', 'MCSes'], default='MUSes',
+                        help="aim for MUSes or MCSes early in the execution (default: MUSes) -- all will be enumerated eventually; this just uses heuristics to find more of one or the other early in the enumeration.")
+    parser.add_argument('-b', '--bias', type=str, choices=['high','low','none'], default=None,
+                        help="bias the Map solver toward True assignments / unsatisfiable seeds (high) or False assignments / satisfiable seeds (low) or have it make random decisions (none) (default: high if --aim is MUSes, low if --aim is MCSes)")
     max_group = parser.add_mutually_exclusive_group()
     max_group.add_argument('--half-max', action='store_true',
-                        help="only compute a maximal model if the initial seed is SAT / bias is high or seed is UNSAT /bias is low")
+                        help="only compute a maximal model if the initial seed is SAT / bias is high or seed is UNSAT / bias is low")
     max_group.add_argument('-m', '--max-seed', action='store_true',
                         help="always find a maximal/minimal seed (local optimum), controlled by bias setting (high=maximal, low=minimal)")
     max_group.add_argument('-M', '--maximum-seed', action='store_true',
@@ -141,8 +143,14 @@ def setup_solvers(args):
         sys.exit(1)
 
     # create appropriate map solver
-    varbias = (args.bias == 'high')
+    varbias = {'high': True, 'low': False, 'none': None}[args.bias]
     if args.maximum_seed or args.smus:
+        if varbias == None:
+            sys.stderr.write("Bias must be either high or low to use MiniCard map solver (for maximum seed or SMUS computation)\n")
+            sys.exit(1)
+        if varbias != (args.aim == 'MUSes'):
+            sys.stderr.write("Bias must match aim (high/MUSes or low/MCSes) to use MiniCard map solver (for maximum seed or SMUS computation)\n")
+            sys.exit(1)
         from mapsolvers import MinicardMapSolver
         msolver = MinicardMapSolver(n=csolver.n, bias=varbias)
     else:
@@ -159,11 +167,17 @@ def main():
 
         setup_execution(args, stats)
 
+        if args.bias is None:
+            if args.aim == 'MUSes': 
+                args.bias = 'high'
+            else:
+                args.bias = 'low'
+
         (csolver, msolver) = setup_solvers(args)
 
         config = {}
         config['smus'] = args.smus
-        config['bias'] = args.bias
+        config['aim'] = args.aim
         if args.max_seed:
             config['maxseed'] = 'always'
         elif args.maximum_seed:
