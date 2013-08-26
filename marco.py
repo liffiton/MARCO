@@ -78,9 +78,9 @@ def at_exit(stats):
     if other:
         maxlen = max(len(x) for x in other)
         for name, values in other.items():
-            print "%-*s min : %f" % (maxlen, name, min(values))
-            print "%-*s max : %f" % (maxlen, name, max(values))
-            print "%-*s avg : %f" % (maxlen, name, sum(values)/float(len(values)))
+            sys.stderr.write("%-*s min : %f\n" % (maxlen, name, min(values)))
+            sys.stderr.write("%-*s max : %f\n" % (maxlen, name, max(values)))
+            sys.stderr.write("%-*s avg : %f\n" % (maxlen, name, sum(values)/float(len(values))))
 
 def setup_execution(args, stats):
     # register timeout/interrupt handler
