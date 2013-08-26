@@ -4,20 +4,27 @@
 # TODO: Consider using time.process_time() (only in 3.3, though)
 import time
 import os
-from collections import Counter
+from collections import Counter, defaultdict
 
 get_time = lambda: sum(os.times()[:4])  # combined user/sys time for this process and its children
 get_time = time.time   # wall-time
 #get_time = time.clock   # user-time
 
-class Timer:
+class Statistics:
     def __init__(self):
         self._start = get_time()
         self._times = Counter()
         self._counts = Counter()
+        self._stats = defaultdict(list)
         self._category = None
 
-    def measure(self, category):
+    # Usage:
+    #  s = Statistics()
+    #  with s.time("one")
+    #    # do first thing
+    #  with s.time("two")
+    #    # do second thing
+    def time(self, category):
         self._category = category
         return self
 
@@ -41,3 +48,10 @@ class Timer:
 
     def get_counts(self):
         return self._counts
+
+    def add_stat(self, name, value):
+        self._stats[name].append(value)
+
+    def get_stats(self):
+        return self._stats
+

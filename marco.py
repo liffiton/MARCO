@@ -58,10 +58,12 @@ def parse_args():
 
     return args
 
-def at_exit(timer):
+def at_exit(stats):
     # print stats
-    times = timer.get_times()
-    counts = timer.get_counts()
+    times = stats.get_times()
+    counts = stats.get_counts()
+    other = stats.get_stats()
+
     # sort categories by total runtime
     categories = sorted(times, key=times.get)
     maxlen = max(len(x) for x in categories)
@@ -69,10 +71,18 @@ def at_exit(timer):
         sys.stderr.write("%-*s : %8.3f\n" % (maxlen, category, times[category]))
     for category in categories:
         if category in counts:
-            sys.stderr.write("%-*s : %8d\n" % (maxlen + 6, category + " count", counts[category]))
-            sys.stderr.write("%-*s : %8.5f\n" % (maxlen + 6, category + " per", times[category]/counts[category]))
+            sys.stderr.write("%-*s count : %8d\n" % (maxlen, category, counts[category]))
+            sys.stderr.write("%-*s per   : %8.5f\n" % (maxlen, category, times[category]/counts[category]))
 
-def setup_execution(args, timer):
+    # print min, max, avg of other values recorded
+    if other:
+        maxlen = max(len(x) for x in other)
+        for name, values in other.items():
+            print "%-*s min : %f" % (maxlen, name, min(values))
+            print "%-*s max : %f" % (maxlen, name, max(values))
+            print "%-*s avg : %f" % (maxlen, name, sum(values)/float(len(values)))
+
+def setup_execution(args, stats):
     # register timeout/interrupt handler
     def handler(signum, frame):
         if signum == signal.SIGALRM:
@@ -92,7 +102,7 @@ def setup_execution(args, timer):
     
     # register at_exit to print stats when program exits
     if args.stats:
-        atexit.register(at_exit, timer)
+        atexit.register(at_exit, stats)
 
 
 def setup_solvers(args):
@@ -142,12 +152,12 @@ def setup_solvers(args):
     return (csolver, msolver)
 
 def main():
-    timer = utils.Timer()
+    stats = utils.Statistics()
 
-    with timer.measure('setup'):
+    with stats.time('setup'):
         args = parse_args()
 
-        setup_execution(args, timer)
+        setup_execution(args, stats)
 
         (csolver, msolver) = setup_solvers(args)
 
@@ -166,7 +176,7 @@ def main():
         config['mssguided'] = args.mssguided
         config['nogrow'] = args.nogrow
 
-        mp = MarcoPolo(csolver, msolver, timer, config)
+        mp = MarcoPolo(csolver, msolver, stats, config)
 
     # useful for timing just the parsing / setup
     if args.limit == 0:

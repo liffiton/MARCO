@@ -4,11 +4,11 @@ except ImportError:
     import Queue as queue
 
 class MarcoPolo:
-    def __init__(self, csolver, msolver, timer, config):
+    def __init__(self, csolver, msolver, stats, config):
         self.subs = csolver
         self.map = msolver
-        self.seeds = SeedManager(msolver, timer, config)
-        self.timer = timer
+        self.seeds = SeedManager(msolver, stats, config)
+        self.stats = stats
         self.config = config
         self.bias_high = self.config['bias'] == 'high'  # used frequently
         self.n = self.map.n  # number of constraints
@@ -36,19 +36,22 @@ class MarcoPolo:
         for seed in self.seeds:
 
             if self.config['maxseed'] == 'always':
-                with self.timer.measure('maximize'):
+                with self.stats.time('maximize'):
                     seed = self.map.maximize_seed(seed, direction=self.bias_high)
             
-            with self.timer.measure('check'):
+            with self.stats.time('check'):
                 # subset check may improve upon seed w/ unsat_core or sat_subset
                 seed_is_sat, seed = self.subs.check_subset(seed, improve_seed=True)
 
             # --half-max: Only maximize if we're UNSAT w/ a low bias or SAT w/ a high bias
             if self.config['maxseed'] == 'half' and (seed_is_sat == self.bias_high):
                 # Maximize within Map and re-check satisfiability
-                with self.timer.measure('maximize'):
+                with self.stats.time('maximize'):
+                    oldlen = len(seed)
                     seed = self.map.maximize_seed(seed, direction=self.bias_high)
-                with self.timer.measure('check'):
+                    newlen = len(seed)
+                    self.stats.add_stat("improvement", float(newlen-oldlen)/self.n)
+                with self.stats.time('check'):
                     # improve_seed set to True in case maximized seed needs to go in opposite
                     # direction of the maximization (i.e., UNSAT seed w/ high bias, SAT w/ low bias)
                     # (otherwise, no improvement is possible as we maximized it already)
@@ -58,7 +61,7 @@ class MarcoPolo:
                 if self.bias_high and (self.config['nogrow'] or self.config['maxseed']):
                     MSS = seed
                 else:
-                    with self.timer.measure('grow'):
+                    with self.stats.time('grow'):
                         MSS = self.subs.grow(seed, inplace=True)
 
                 yield ("S", MSS)
@@ -71,7 +74,7 @@ class MarcoPolo:
                         self.singleton_MCSes.add(singleton)
 
                 if self.config['mssguided']:
-                    with self.timer.measure('mssguided'):
+                    with self.stats.time('mssguided'):
                         # don't check parents if parent is top and we've already seen it (common)
                         if len(MSS) < self.n-1 or not self.got_top:
                             # add any unexplored superset to the queue
@@ -84,7 +87,7 @@ class MarcoPolo:
                 if self.config['maxseed'] and not self.bias_high:
                     MUS = seed
                 else:
-                    with self.timer.measure('shrink'):
+                    with self.stats.time('shrink'):
                         MUS = self.subs.shrink(seed, hard=self.singleton_MCSes)
 
                 yield ("U", MUS)
@@ -95,9 +98,9 @@ class MarcoPolo:
 
 
 class SeedManager:
-    def __init__(self, msolver, timer, config):
+    def __init__(self, msolver, stats, config):
         self.map = msolver
-        self.timer = timer
+        self.stats = stats
         self.config = config
         self.queue = queue.Queue()
 
@@ -105,7 +108,7 @@ class SeedManager:
         return self
 
     def __next__(self):
-        with self.timer.measure('seed'):
+        with self.stats.time('seed'):
             if not self.queue.empty():
                 return self.queue.get()
             else:
