@@ -37,7 +37,10 @@ class MarcoPolo:
 
             if self.config['maxseed'] == 'always':
                 with self.stats.time('maximize'):
+                    oldlen = len(seed)
                     seed = self.map.maximize_seed(seed, direction=self.bias_high)
+                    newlen = len(seed)
+                    self.stats.add_stat("improvement", float(newlen-oldlen)/self.n)
             
             with self.stats.time('check'):
                 # subset check may improve upon seed w/ unsat_core or sat_subset
