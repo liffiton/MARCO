@@ -48,17 +48,19 @@ class MarcoPolo:
 
             # --half-max: Only maximize if we're SAT and seeking MUSes or UNSAT and seeking MCSes
             if self.config['maxseed'] == 'half' and (seed_is_sat == self.aim_high):
-                # Maximize within Map and re-check satisfiability
+                # Maximize within Map and re-check satisfiability if needed
                 with self.stats.time('maximize'):
                     oldlen = len(seed)
                     seed = self.map.maximize_seed(seed, direction=self.aim_high)
                     newlen = len(seed)
                     self.stats.add_stat("improvement", float(newlen-oldlen)/self.n)
-                with self.stats.time('check'):
-                    # improve_seed set to True in case maximized seed needs to go in opposite
-                    # direction of the maximization (i.e., UNSAT seed w/ MUS aim, SAT w/ MCS aim)
-                    # (otherwise, no improvement is possible as we maximized it already)
-                    seed_is_sat, seed = self.subs.check_subset(seed, improve_seed=True)
+                if oldlen != newlen:
+                    # only need to re-check if maximization produced a different seed
+                    with self.stats.time('check'):
+                        # improve_seed set to True in case maximized seed needs to go in opposite
+                        # direction of the maximization (i.e., UNSAT seed w/ MUS aim, SAT w/ MCS aim)
+                        # (otherwise, no improvement is possible as we maximized it already)
+                        seed_is_sat, seed = self.subs.check_subset(seed, improve_seed=True)
 
             if seed_is_sat:
                 if self.aim_high and (self.config['nogrow'] or self.config['maxseed']):
