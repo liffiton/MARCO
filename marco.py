@@ -73,16 +73,16 @@ def at_exit(stats):
         sys.stderr.write("%-*s : %8.3f\n" % (maxlen, category, times[category]))
     for category in categories:
         if category in counts:
-            sys.stderr.write("%-*s count : %8d\n" % (maxlen, category, counts[category]))
-            sys.stderr.write("%-*s per   : %8.5f\n" % (maxlen, category, times[category]/counts[category]))
+            sys.stderr.write("%-*s : %8d\n" % (maxlen+6, category+' count', counts[category]))
+            sys.stderr.write("%-*s : %8.5f\n" % (maxlen+6, category+' per', times[category]/counts[category]))
 
     # print min, max, avg of other values recorded
     if other:
         maxlen = max(len(x) for x in other)
         for name, values in other.items():
-            sys.stderr.write("%-*s min : %f\n" % (maxlen, name, min(values)))
-            sys.stderr.write("%-*s max : %f\n" % (maxlen, name, max(values)))
-            sys.stderr.write("%-*s avg : %f\n" % (maxlen, name, sum(values)/float(len(values))))
+            sys.stderr.write("%-*s : %f\n" % (maxlen+4, name+' min', min(values)))
+            sys.stderr.write("%-*s : %f\n" % (maxlen+4, name+' max', max(values)))
+            sys.stderr.write("%-*s : %f\n" % (maxlen+4, name+' avg', sum(values)/float(len(values))))
 
 def setup_execution(args, stats):
     # register timeout/interrupt handler
