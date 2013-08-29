@@ -40,11 +40,17 @@ class MarcoPolo:
                     oldlen = len(seed)
                     seed = self.map.maximize_seed(seed, direction=self.aim_high)
                     newlen = len(seed)
-                    self.stats.add_stat("improvement", float(newlen-oldlen)/self.n)
+                    self.stats.add_stat("delta.max", float(newlen-oldlen)/self.n)
             
             with self.stats.time('check'):
                 # subset check may improve upon seed w/ unsat_core or sat_subset
+                oldlen = len(seed)
                 seed_is_sat, seed = self.subs.check_subset(seed, improve_seed=True)
+                newlen = len(seed)
+                if seed_is_sat:
+                    self.stats.add_stat("delta.checkA.up", float(newlen-oldlen)/self.n)
+                else:
+                    self.stats.add_stat("delta.checkA.down", float(newlen-oldlen)/self.n)
 
             # --half-max: Only maximize if we're SAT and seeking MUSes or UNSAT and seeking MCSes
             if self.config['maxseed'] == 'half' and (seed_is_sat == self.aim_high):
@@ -53,21 +59,30 @@ class MarcoPolo:
                     oldlen = len(seed)
                     seed = self.map.maximize_seed(seed, direction=self.aim_high)
                     newlen = len(seed)
-                    self.stats.add_stat("improvement", float(newlen-oldlen)/self.n)
+                    self.stats.add_stat("delta.max", float(newlen-oldlen)/self.n)
                 if oldlen != newlen:
                     # only need to re-check if maximization produced a different seed
                     with self.stats.time('check'):
                         # improve_seed set to True in case maximized seed needs to go in opposite
                         # direction of the maximization (i.e., UNSAT seed w/ MUS aim, SAT w/ MCS aim)
                         # (otherwise, no improvement is possible as we maximized it already)
+                        oldlen = len(seed)
                         seed_is_sat, seed = self.subs.check_subset(seed, improve_seed=True)
+                        newlen = len(seed)
+                        if seed_is_sat:
+                            self.stats.add_stat("delta.checkB.up", float(newlen-oldlen)/self.n)
+                        else:
+                            self.stats.add_stat("delta.checkB.down", float(newlen-oldlen)/self.n)
 
             if seed_is_sat:
                 if self.aim_high and (self.config['nogrow'] or self.config['maxseed']):
                     MSS = seed
                 else:
                     with self.stats.time('grow'):
+                        oldlen = len(seed)
                         MSS = self.subs.grow(seed, inplace=True)
+                        newlen = len(MSS)
+                        self.stats.add_stat("delta.grow", float(newlen-oldlen)/self.n)
 
                 yield ("S", MSS)
                 self.map.block_down(MSS)
@@ -93,7 +108,10 @@ class MarcoPolo:
                     MUS = seed
                 else:
                     with self.stats.time('shrink'):
+                        oldlen = len(seed)
                         MUS = self.subs.shrink(seed, hard=self.singleton_MCSes)
+                        newlen = len(MUS)
+                        self.stats.add_stat("delta.shrink", float(newlen-oldlen)/self.n)
 
                 yield ("U", MUS)
                 self.map.block_up(MUS)
