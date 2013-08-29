@@ -27,23 +27,34 @@ class Statistics:
     #    # do second thing
     def time(self, category):
         self._category = category
-        return self
+        return self.Timer(self)
 
-    def __enter__(self):
+    # Context manager class for time() method
+    class Timer:
+        def __init__(self, stats):
+            self._stats = stats
+
+        def __enter__(self):
+            self._stats.start_time()
+
+        def __exit__(self, ex_type, ex_value, traceback):
+            self._stats.end_time()
+            return False  # doesn't handle any exceptions itself
+
+    def start_time(self):
         self._counts[self._category] += 1
         self._curr = get_time()
 
-    def __exit__(self, ex_type, ex_value, traceback):
+    def end_time(self):
         self._times[self._category] += get_time() - self._curr
         self._category = None
-        return False  # doesn't handle any exceptions itself
 
     def get_times(self):
         self._times['total'] = get_time() - self._start
         if self._category:
             # If we're in a category currently,
             # give it the time up to this point.
-            self._times[self._category] += get_time() - self._curr
+            self._times[self._stats._category] += get_time() - self._curr
 
         return self._times
 
