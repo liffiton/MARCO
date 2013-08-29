@@ -27,6 +27,7 @@ verbose = False
 try: input = raw_input
 except NameError: pass
 
+
 # Build all tests to be run
 def makeTests(testexe):
     tests = []
@@ -51,7 +52,7 @@ def makeTests(testexe):
 
         for flag in flags:
             cmdarray = [cmd] + flags_all + flag.split()
-    
+
             for infile in testconfig.files:
                 if infile in exclude:
                     continue
@@ -59,9 +60,10 @@ def makeTests(testexe):
                 outfile = outdir + infile + ".out"
                 errfile = outdir + infile + ".err"
 
-                tests.append( {'cmdarray': cmdarray + [infile] , 'outfile': outfile , 'errfile': errfile } )
+                tests.append( {'cmdarray': cmdarray + [infile], 'outfile': outfile, 'errfile': errfile } )
 
     return tests
+
 
 def runTests(jobq, msgq, pid):
     while True:
@@ -71,13 +73,14 @@ def runTests(jobq, msgq, pid):
             job = jobq.get(True, 0.1)
         except Empty:
             break
-        msgq.put((job['id'],'start',None))
+        msgq.put((job['id'], 'start', None))
         result, runtime = runTest(job['cmdarray'], job['outfile'], job['errfile'], pid)
         if result == 'interrupted':
-            msgq.put((None,'done',None))
+            msgq.put((None, 'done', None))
             return
-        msgq.put((job['id'],result,runtime))
-    msgq.put((None,'done',None))
+        msgq.put((job['id'], result, runtime))
+    msgq.put((None, 'done', None))
+
 
 # pid is so different processes don't overwrite each other's tmp files
 def runTest(cmd, outfile, errfile, pid):
@@ -103,7 +106,7 @@ def runTest(cmd, outfile, errfile, pid):
     with open(tmpout, 'w') as f_out, open(tmperr, 'w') as f_err:
         try:
             start_time = time.time()  # time() for wall-clock time
-            ret = subprocess.call(cmd, stdout = f_out, stderr = f_err)
+            ret = subprocess.call(cmd, stdout=f_out, stderr=f_err)
             runtime = time.time() - start_time
         except KeyboardInterrupt:
             os.remove(tmpout)
@@ -149,6 +152,7 @@ def runTest(cmd, outfile, errfile, pid):
         pass
     return result, runtime
 
+
 def checkFiles(file1, file2):
     global verbose
 
@@ -173,18 +177,20 @@ def checkFiles(file1, file2):
         else:
             # outputs not equivalent, but sort to same contents
             return 'sortsame'
-    
+
     # everything checks out
     return 'pass'
+
 
 # TODO: read single keypress, like "read -n 1" in old bash script, for viewdiff and updateout
 #       http://stackoverflow.com/questions/510357/
 def viewdiff(f1, f2):
     choice = input("  View diff? (T for terminal, V for vimdiff, other for no) ")
     if choice.lower() == 'v':
-        subprocess.call(["vimdiff",f1,f2])
+        subprocess.call(["vimdiff", f1, f2])
     elif choice.lower() == 't':
-        subprocess.call(["diff",f1,f2])
+        subprocess.call(["diff", f1, f2])
+
 
 def updateout(outfile, newoutput):
     choice = input("  Store new output as correct? ")
@@ -192,12 +198,13 @@ def updateout(outfile, newoutput):
         print "  [33mmv %s %s[0m" % (newoutput, outfile)
         os.rename(newoutput, outfile)
 
+
 class Progress:
     # indicator characters
-    chr_Pass="[32m*[0m"
-    chr_Sort="[33m^[0m"
-    chr_StdErr="[34mo[0m"
-    chr_Fail="[37;41mx[0m"
+    chr_Pass = "[32m*[0m"
+    chr_Sort = "[33m^[0m"
+    chr_StdErr = "[34mo[0m"
+    chr_Fail = "[37;41mx[0m"
 
     def __init__(self, numTests, do_print):
         # maintain test stats
@@ -261,26 +268,26 @@ class Progress:
         if self.stats['incomplete'] > 0:
             # red text
             sys.stdout.write("[31m")
-            print("     %3d / %d  Incomplete" % \
-                (self.stats['incomplete'], self.stats['total']))
+            print("     %3d / %d  Incomplete" %
+                  (self.stats['incomplete'], self.stats['total']))
             sys.stdout.write("[0m")
-        print(" %s : %3d / %d  Passed" % \
-                (self.chr_Pass, self.stats['passed'], self.stats['total']))
+        print(" %s : %3d / %d  Passed" %
+              (self.chr_Pass, self.stats['passed'], self.stats['total']))
         if self.stats['sortsame'] > 0:
-            print(" %s : %3d   Different order, same contents" % \
-                    (self.chr_Sort, self.stats['sortsame']))
+            print(" %s : %3d   Different order, same contents" %
+                  (self.chr_Sort, self.stats['sortsame']))
         if self.stats['stderr'] > 0:
-            print(" %s : %3d   Produced output to STDERR" % \
-                    (self.chr_StdErr, self.stats['stderr']))
+            print(" %s : %3d   Produced output to STDERR" %
+                  (self.chr_StdErr, self.stats['stderr']))
         if self.stats['fail'] > 0:
-            print(" %s : %3d   Failed" % \
-                    (self.chr_Fail, self.stats['fail']))
+            print(" %s : %3d   Failed" %
+                  (self.chr_Fail, self.stats['fail']))
             if self.do_print:
                 print("     Re-run in 'runverbose' mode to see failure details.")
 
     # x is 1-based
     # y is 0-based, with 0 = lowest row, 1 above that, etc.
-    def print_at(self, x,y, string):
+    def print_at(self, x, y, string):
         # move to correct position
         sys.stdout.write("[%dF" % y)  # y (moves to start of row)
         sys.stdout.write("[%dG" % x)         # x
@@ -293,6 +300,7 @@ class Progress:
         # move cursor to side and flush anything pending
         sys.stdout.write("[999G")
         sys.stdout.flush()
+
 
 class TimeData:
     def __init__(self, filename="runtimes.json"):
@@ -308,7 +316,7 @@ class TimeData:
             self.have_times = False
 
     def sort_by_time(self, jobs):
-        return sorted(jobs, key = lambda x: self.times[" ".join(x['cmdarray'])])
+        return sorted(jobs, key=lambda x: self.times[" ".join(x['cmdarray'])])
 
     def get_time(self, cmdarray):
         return self.times[" ".join(cmdarray)]
@@ -319,6 +327,7 @@ class TimeData:
     def save_data(self):
         with open(self.filename, 'w') as f:
             f.write(json.dumps(self.times))
+
 
 def main():
     global mode, verbose
@@ -333,14 +342,14 @@ def main():
 
     td = TimeData()
 
-    validmodes = ('run','runp','runverbose','nocheck','regenerate')
+    validmodes = ('run', 'runp', 'runverbose', 'nocheck', 'regenerate')
 
     if mode not in validmodes:
         print("Invalid mode: %s" % mode)
         print("Options: %s" % ", ".join(validmodes))
         return 1
 
-    if mode =='runverbose':
+    if mode == 'runverbose':
         verbose = True
         mode = 'run'
     elif mode == 'regenerate':
@@ -387,16 +396,16 @@ def main():
     msgq = Queue()  # messages *from* each process
 
     # wait for completion, printing progress/stats as needed
-    prog = Progress(numTests, do_print = (not verbose))
+    prog = Progress(numTests, do_print=(not verbose))
                               # if verbose is on, printing the progress bar is not needed/wanted
 
     try:
         if verbose:
             # run in same process so viewdiff, etc. can get stdin
-            runTests(jobq,msgq,1)
+            runTests(jobq, msgq, 1)
         else:
             for pid in range(num_procs):
-                p = Process(target=runTests, args=(jobq,msgq,pid,))
+                p = Process(target=runTests, args=(jobq, msgq, pid,))
                 p.daemon = True
                 p.start()
 
@@ -406,7 +415,8 @@ def main():
             if result == 'done':
                 procs_done += 1
             else:
-                if runtime: td.store_time(jobs[testid]['cmdarray'], runtime)
+                if runtime:
+                    td.store_time(jobs[testid]['cmdarray'], runtime)
                 prog.update(testid, result)
 
     except KeyboardInterrupt:
@@ -419,6 +429,5 @@ def main():
     # save any time data to disk
     td.save_data()
 
-if __name__=='__main__':
+if __name__ == '__main__':
     main()
-

@@ -10,6 +10,7 @@ get_time = lambda: sum(os.times()[:4])  # combined user/sys time for this proces
 get_time = time.time   # wall-time
 #get_time = time.clock   # user-time
 
+
 class Statistics:
     def __init__(self):
         self._start = get_time()
@@ -36,7 +37,7 @@ class Statistics:
         self._times[self._category] += get_time() - self._curr
         self._category = None
         return False  # doesn't handle any exceptions itself
-    
+
     def get_times(self):
         self._times['total'] = get_time() - self._start
         if self._category:
@@ -54,4 +55,3 @@ class Statistics:
 
     def get_stats(self):
         return self._stats
-

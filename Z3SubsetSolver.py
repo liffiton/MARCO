@@ -1,5 +1,6 @@
 from z3 import *
 
+
 def dimacs_var(i):
     if i not in dimacs_var.cache:
         if i > 0:
@@ -9,6 +10,7 @@ def dimacs_var(i):
     return dimacs_var.cache[i]
 dimacs_var.cache = {}
 
+
 def read_dimacs(filename):
     formula = []
     with open(filename) as f:
@@ -16,15 +18,17 @@ def read_dimacs(filename):
             if line.startswith('c') or line.startswith('p'):
                 continue
             clause = [int(x) for x in line.split()[:-1]]
-            formula.append( Or( [dimacs_var(i) for i in clause] ) )
+            formula.append( Or(dimacs_var(i) for i in clause) )
     return formula
-            
+
+
 def read_smt2(filename):
     formula = parse_smt2_file(filename)
     if is_and(formula):
         return formula.children()
     else:
         return [formula]
+
 
 class Z3SubsetSolver:
     c_prefix = "!marco"  # to differentiate our vars from instance vars
@@ -72,7 +76,7 @@ class Z3SubsetSolver:
             return is_sat, seed
         else:
             return is_sat
-        
+
     def to_c_lits(self, seed):
         return [self.c_var(i) for i in seed]
 
@@ -120,4 +124,3 @@ class Z3SubsetSolver:
                 current.pop()
 
         return current
-

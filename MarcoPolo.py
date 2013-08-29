@@ -3,6 +3,7 @@ try:
 except ImportError:
     import Queue as queue
 
+
 class MarcoPolo:
     def __init__(self, csolver, msolver, stats, config):
         self.subs = csolver
@@ -11,8 +12,8 @@ class MarcoPolo:
         self.stats = stats
         self.config = config
         self.aim_high = self.config['aim'] == 'MUSes'  # used frequently
-        self.n = self.map.n  # number of constraints
-        self.got_top = False # track whether we've explored the complete set (top of the lattice)
+        self.n = self.map.n   # number of constraints
+        self.got_top = False  # track whether we've explored the complete set (top of the lattice)
         self.singleton_MCSes = set()  # store singleton MCSes to pass as hard clauses to shrink()
 
     def enumerate_basic(self):
@@ -40,17 +41,17 @@ class MarcoPolo:
                     oldlen = len(seed)
                     seed = self.map.maximize_seed(seed, direction=self.aim_high)
                     newlen = len(seed)
-                    self.stats.add_stat("delta.max", float(newlen-oldlen)/self.n)
-            
+                    self.stats.add_stat("delta.max", float(newlen - oldlen) / self.n)
+
             with self.stats.time('check'):
                 # subset check may improve upon seed w/ unsat_core or sat_subset
                 oldlen = len(seed)
                 seed_is_sat, seed = self.subs.check_subset(seed, improve_seed=True)
                 newlen = len(seed)
                 if seed_is_sat:
-                    self.stats.add_stat("delta.checkA.up", float(newlen-oldlen)/self.n)
+                    self.stats.add_stat("delta.checkA.up", float(newlen - oldlen) / self.n)
                 else:
-                    self.stats.add_stat("delta.checkA.down", float(newlen-oldlen)/self.n)
+                    self.stats.add_stat("delta.checkA.down", float(newlen - oldlen) / self.n)
 
             # --half-max: Only maximize if we're SAT and seeking MUSes or UNSAT and seeking MCSes
             if self.config['maxseed'] == 'half' and (seed_is_sat == self.aim_high):
@@ -59,7 +60,7 @@ class MarcoPolo:
                     oldlen = len(seed)
                     seed = self.map.maximize_seed(seed, direction=self.aim_high)
                     newlen = len(seed)
-                    self.stats.add_stat("delta.max", float(newlen-oldlen)/self.n)
+                    self.stats.add_stat("delta.max", float(newlen - oldlen) / self.n)
                 if oldlen != newlen:
                     # only need to re-check if maximization produced a different seed
                     with self.stats.time('check'):
@@ -70,9 +71,9 @@ class MarcoPolo:
                         seed_is_sat, seed = self.subs.check_subset(seed, improve_seed=True)
                         newlen = len(seed)
                         if seed_is_sat:
-                            self.stats.add_stat("delta.checkB.up", float(newlen-oldlen)/self.n)
+                            self.stats.add_stat("delta.checkB.up", float(newlen - oldlen) / self.n)
                         else:
-                            self.stats.add_stat("delta.checkB.down", float(newlen-oldlen)/self.n)
+                            self.stats.add_stat("delta.checkB.down", float(newlen - oldlen) / self.n)
 
             if seed_is_sat:
                 if self.aim_high and (self.config['nogrow'] or self.config['maxseed']):
@@ -82,13 +83,13 @@ class MarcoPolo:
                         oldlen = len(seed)
                         MSS = self.subs.grow(seed, inplace=True)
                         newlen = len(MSS)
-                        self.stats.add_stat("delta.grow", float(newlen-oldlen)/self.n)
+                        self.stats.add_stat("delta.grow", float(newlen - oldlen) / self.n)
 
                 yield ("S", MSS)
                 self.map.block_down(MSS)
 
                 if self.config['use_singletons']:
-                    if len(MSS) == self.n-1:
+                    if len(MSS) == self.n - 1:
                         # singleton MCS, record to pass as hard clause to shrink()
                         singleton = self.subs.complement(MSS).pop()  # TODO: more efficient...
                         self.singleton_MCSes.add(singleton)
@@ -96,7 +97,7 @@ class MarcoPolo:
                 if self.config['mssguided']:
                     with self.stats.time('mssguided'):
                         # don't check parents if parent is top and we've already seen it (common)
-                        if len(MSS) < self.n-1 or not self.got_top:
+                        if len(MSS) < self.n - 1 or not self.got_top:
                             # add any unexplored superset to the queue
                             newseed = self.map.find_above(MSS)
                             if newseed:
@@ -111,13 +112,13 @@ class MarcoPolo:
                         oldlen = len(seed)
                         MUS = self.subs.shrink(seed, hard=self.singleton_MCSes)
                         newlen = len(MUS)
-                        self.stats.add_stat("delta.shrink", float(newlen-oldlen)/self.n)
+                        self.stats.add_stat("delta.shrink", float(newlen - oldlen) / self.n)
 
                 yield ("U", MUS)
                 self.map.block_up(MUS)
                 if self.config['smus']:
                     self.map.block_down(MUS)
-                    self.map.block_above_size(len(MUS)-1)
+                    self.map.block_above_size(len(MUS) - 1)
 
 
 class SeedManager:

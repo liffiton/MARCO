@@ -1,8 +1,8 @@
 import collections
 import gzip
-import re
 import bisect
 from pyminisolvers import minisolvers
+
 
 class MinisatSubsetSolver:
     def __init__(self, infile, store_dimacs=False):
@@ -112,7 +112,7 @@ class MinisatSubsetSolver:
             else:
                 current.add(i)
         return current
-        
+
     def to_c_lits(self, seed):
         # this is slow...
         nv = self.nvars+1

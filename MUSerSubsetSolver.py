@@ -6,8 +6,10 @@ import array
 import atexit
 from MinisatSubsetSolver import MinisatSubsetSolver
 
+
 class MUSerException(Exception):
     pass
+
 
 class MUSerSubsetSolver(MinisatSubsetSolver):
     def __init__(self, filename):
@@ -19,9 +21,10 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
         try:
             # a bit of a hack to check whether we can really run it
             DEVNULL = open(os.devnull, 'wb')
-            p = subprocess.Popen([self.muser_path], stdout=DEVNULL, stderr=DEVNULL)
+            subprocess.Popen([self.muser_path], stdout=DEVNULL, stderr=DEVNULL)
         except:
-            raise MUSerException("MUSer2 binary %s is not executable.\nIt may be compiled for a different platform." % self.muser_path)
+            raise MUSerException("MUSer2 binary %s is not executable.\n"
+                                 "It may be compiled for a different platform." % self.muser_path)
 
         self._proc = None  # track the MUSer process
         atexit.register(self.cleanup)
@@ -62,7 +65,7 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
             # Run MUSer
             self._proc = subprocess.Popen([self.muser_path, '-comp', '-grp', '-v', '-1', cnf.name],
                                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            out,err = self._proc.communicate()
+            out, err = self._proc.communicate()
             self._proc = None  # clear it when we're done (so cleanup won't try to kill it)
             out = out.decode()
 
@@ -74,4 +77,3 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
         ret.extend(hard)
 
         return ret
-
