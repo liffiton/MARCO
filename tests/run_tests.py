@@ -29,15 +29,18 @@ except NameError: pass
 
 
 # Build all tests to be run
-def makeTests(testexe):
+def makeTests(testname):
     tests = []
 
     for job in testconfig.jobs:
-        if testexe is not None and job['name'] != testexe:
+        if testname is None and job['default'] is False:
+            continue
+        if testname is not None and job['name'] != testname:
             continue
 
         name = job['name']
         cmd = job['cmd']
+        files = job['files']
         flags = job.get('flags', [''])
         flags_all = job.get('flags_all', [])
         exclude = job.get('exclude', [])
@@ -53,9 +56,12 @@ def makeTests(testexe):
         for flag in flags:
             cmdarray = [cmd] + flags_all + flag.split()
 
-            for infile in testconfig.files:
+            for infile in files:
                 if infile in exclude:
                     continue
+
+                if not os.path.exists(outdir + os.path.dirname(infile)):
+                    os.makedirs(outdir + os.path.dirname(infile))
 
                 outfile = outdir + infile + ".out"
                 errfile = outdir + infile + ".err"
@@ -336,9 +342,9 @@ def main():
         mode = sys.argv[1]
 
     if len(sys.argv) >= 3:
-        testexe = sys.argv[2]
+        testname = sys.argv[2]
     else:
-        testexe = None
+        testname = None
 
     td = TimeData()
 
@@ -367,10 +373,21 @@ def main():
         #  can have issues with output file clashes.)
         num_procs = 1
 
+    # build the tests
+    jobs = makeTests(testname)
+    numTests = len(jobs)
+    # sort by times, if we have them
+    jobs = td.sort_by_time(jobs)
+    # give each an increasing 'id'
+    for idx, job in enumerate(jobs):
+        job['id'] = idx
+
     # say what we are about to do
-    report = "Running all tests on %d cores" % num_procs
-    if testexe:
-        report += " for " + testexe
+    if testname is None:
+        testname = "default"
+    else:
+        testname = "'%s'" % testname
+    report = "Running all %d %s tests on %d cores" % (numTests, testname, num_procs)
     if mode == 'nocheck':
         report += " (skipping results checks)"
     if mode == 'regenerate':
@@ -379,15 +396,6 @@ def main():
         report += " (sorted by previously recorded runtimes)"
     report += "."
     print(report)
-
-    # build the tests
-    jobs = makeTests(testexe)
-    numTests = len(jobs)
-    # sort by times, if we have them
-    jobs = td.sort_by_time(jobs)
-    # give each an increasing 'id'
-    for idx, job in enumerate(jobs):
-        job['id'] = idx
 
     # run the tests
     jobq = Queue()  # jobs *to* each process
