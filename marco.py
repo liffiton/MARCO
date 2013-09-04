@@ -11,6 +11,9 @@ from MarcoPolo import MarcoPolo
 
 def parse_args():
     parser = argparse.ArgumentParser()
+    parser.add_argument('infile', nargs='?', type=argparse.FileType('rb'),
+                        default=sys.stdin,
+                        help="name of file to process (STDIN if omitted)")
     parser.add_argument('-v', '--verbose', action='store_true',
                         help="print more verbose output (constraint indexes)")
     parser.add_argument('-s', '--stats', action='store_true',
@@ -19,35 +22,38 @@ def parse_args():
                         help="limit the runtime to TIMEOUT seconds")
     parser.add_argument('-l', '--limit', type=int, default=None,
                         help="limit number of subsets output (counting both MCSes and MUSes)")
-    parser.add_argument('-a', '--aim', type=str, choices=['MUSes', 'MCSes'], default='MUSes',
+
+    type_group = parser.add_mutually_exclusive_group()
+    type_group.add_argument('--cnf', action='store_true',
+                            help="assume input is in DIMACS CNF or Group CNF format (autodetected if filename is *.[g]cnf or *.[g]cnf.gz).")
+    type_group.add_argument('--smt', action='store_true',
+                            help="assume input is in SMT2 format (autodetected if filename is *.smt2).")
+
+    exp_group = parser.add_argument_group('experimental / research options')
+    exp_group.add_argument('-a', '--aim', type=str, choices=['MUSes', 'MCSes'], default='MUSes',
                         help="aim for MUSes or MCSes early in the execution (default: MUSes) -- all will be enumerated eventually; this just uses heuristics to find more of one or the other early in the enumeration.")
-    parser.add_argument('-b', '--bias', type=str, choices=['high', 'low', 'none'], default=None,
+    exp_group.add_argument('-b', '--bias', type=str, choices=['high', 'low', 'none'], default=None,
                         help="bias the Map solver toward True assignments / unsatisfiable seeds (high) or False assignments / satisfiable seeds (low) or have it make random decisions (none) (default: high if --aim is MUSes, low if --aim is MCSes)")
-    max_group = parser.add_mutually_exclusive_group()
+    max_group = exp_group.add_mutually_exclusive_group()
     max_group.add_argument('--half-max', action='store_true',
                            help="only compute a maximal model if the initial seed is SAT / bias is high or seed is UNSAT / bias is low")
     max_group.add_argument('-m', '--max-seed', action='store_true',
                            help="always find a maximal/minimal seed (local optimum), controlled by bias setting (high=maximal, low=minimal)")
     max_group.add_argument('-M', '--maximum-seed', action='store_true',
                            help="always find a maximum/minimum seed (largest/smallest cardinality), controlled by bias setting (high=maximum, low=minimum) (uses MiniCard as Map solver)")
-    parser.add_argument('--smus', action='store_true',
+    exp_group.add_argument('--smus', action='store_true',
                         help="calculate an SMUS (smallest MUS)")
-    parser.add_argument('--mssguided', action='store_true',
+    exp_group.add_argument('--mssguided', action='store_true',
                         help="check for unexplored subsets in immediate supersets of any MSS found")
-    parser.add_argument('--nogrow', action='store_true',
+    exp_group.add_argument('--nogrow', action='store_true',
                         help="do not grow any satisfiable subsets found, just block as-is")
-    parser.add_argument('--ignore-singletons', action='store_true',
+    exp_group.add_argument('--ignore-singletons', action='store_true',
                         help="do not store singleton MCSes as hard constraints")
-    type_group = parser.add_mutually_exclusive_group()
-    type_group.add_argument('--cnf', action='store_true',
-                            help="assume input is in DIMACS CNF or Group CNF format (autodetected if filename is *.[g]cnf or *.[g]cnf.gz).")
-    type_group.add_argument('--smt', action='store_true',
-                            help="assume input is in SMT2 format (autodetected if filename is *.smt2).")
-    parser.add_argument('--force-minisat', action='store_true',
+    exp_group.add_argument('--force-minisat', action='store_true',
                         help="use Minisat in place of MUSer2 for CNF (NOTE: much slower and usually not worth doing!)")
-    parser.add_argument('infile', nargs='?', type=argparse.FileType('rb'),
-                        default=sys.stdin,
-                        help="name of file to process (STDIN if omitted)")
+    exp_group.add_argument('--dump-map', nargs='?', type=argparse.FileType('w'),
+                        help="dump clauses added to the Map formula to the given file.")
+
     args = parser.parse_args()
 
     if len(sys.argv) == 1:
@@ -157,7 +163,7 @@ def setup_solvers(args):
         msolver = MinicardMapSolver(n=csolver.n, bias=varbias)
     else:
         from mapsolvers import MinisatMapSolver
-        msolver = MinisatMapSolver(n=csolver.n, bias=varbias)
+        msolver = MinisatMapSolver(n=csolver.n, bias=varbias, dump=args.dump_map)
 
     return (csolver, msolver)
 

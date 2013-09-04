@@ -3,7 +3,7 @@ from pyminisolvers import minisolvers
 
 class MapSolver:
     """The base class for any MapSolver, implementing common utility functions."""
-    def __init__(self, n, bias=True):
+    def __init__(self, n, bias=True, dump=None):
         """Common initialization.
 
         Args:
@@ -15,6 +15,7 @@ class MapSolver:
         self.n = n
         self.bias = bias
         self.all_n = set(range(n))  # used in complement fairly frequently
+        self.dump = dump
 
     def check_seed(self, seed):
         """Check whether a given seed is still unexplored.
@@ -91,14 +92,22 @@ class MapSolver:
         """Return the complement of a given set w.r.t. the set of mapped constraints."""
         return self.all_n.difference(aset)
 
+    def add_clause(self, clause):
+        """Add a given clause to the Map solver."""
+        self.solver.add_clause(clause)
+        if self.dump is not None:
+            self.dump.write(" ".join(map(str, clause)) + " 0\n")
+
     def block_down(self, frompoint):
         """Block down from a given set."""
         comp = self.complement(frompoint)
-        self.solver.add_clause( [(i+1) for i in comp] )
+        clause = [(i+1) for i in comp]
+        self.add_clause(clause)
 
     def block_up(self, frompoint):
         """Block up from a given set."""
-        self.solver.add_clause( [-(i+1) for i in frompoint] )
+        clause = [-(i+1) for i in frompoint]
+        self.add_clause(clause)
 
 
 class MinicardMapSolver(MapSolver):
@@ -176,8 +185,8 @@ class MinicardMapSolver(MapSolver):
 
 
 class MinisatMapSolver(MapSolver):
-    def __init__(self, n, bias=True):   # bias=True is a high/inclusion/MUS bias; False is a low/exclusion/MSS bias; None is no bias.
-        MapSolver.__init__(self, n, bias)
+    def __init__(self, n, bias=True, dump=None):   # bias=True is a high/inclusion/MUS bias; False is a low/exclusion/MSS bias; None is no bias.
+        MapSolver.__init__(self, n, bias, dump)
 
         self.solver = minisolvers.MinisatSolver()
         while self.solver.nvars() < self.n:
