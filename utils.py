@@ -3,10 +3,10 @@
 # time.clock() is not portable - behaves differently per OS
 # TODO: Consider using time.process_time() (only in 3.3, though)
 import time
-import os
+#import os
 from collections import Counter, defaultdict
 
-get_time = lambda: sum(os.times()[:4])  # combined user/sys time for this process and its children
+#get_time = lambda: sum(os.times()[:4])  # combined user/sys time for this process and its children
 get_time = time.time   # wall-time
 #get_time = time.clock   # user-time
 
