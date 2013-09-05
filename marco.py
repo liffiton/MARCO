@@ -31,7 +31,17 @@ def parse_args():
     parser.add_argument('-a', '--aim', type=str, choices=['MUSes', 'MCSes'], default='MUSes',
                         help="aim for MUSes or MCSes early in the execution [default: MUSes] -- all will be enumerated eventually; this just uses heuristics to find more of one or the other early in the enumeration.")
 
-    max_group_outer = parser.add_argument_group('Maximal/minimal models options', "By default, the Map solver will efficiently produce maximal/minimal models itself by giving each variable a default polarity.  These options override that (--nomax, -m) or extend it (-M, --smus) in various ways.")
+    exp_group = parser.add_argument_group('Experimental / research options', "These can typically be ignored; the defaults will give the best performance.")
+    exp_group.add_argument('--mssguided', action='store_true',
+                           help="check for unexplored subsets in immediate supersets of any MSS found")
+    exp_group.add_argument('--ignore-singletons', action='store_true',
+                           help="do not store singleton MCSes as hard constraints")
+    exp_group.add_argument('--force-minisat', action='store_true',
+                           help="use Minisat in place of MUSer2 for CNF (NOTE: much slower and usually not worth doing!)")
+    exp_group.add_argument('--dump-map', nargs='?', type=argparse.FileType('w'),
+                           help="dump clauses added to the Map formula to the given file.")
+
+    max_group_outer = parser.add_argument_group('  Maximal/minimal models options', "By default, the Map solver will efficiently produce maximal/minimal models itself by giving each variable a default polarity.  These options override that (--nomax, -m) or extend it (-M, --smus) in various ways.")
     max_group = max_group_outer.add_mutually_exclusive_group()
     max_group.add_argument('--nomax', action='store_true',
                            help="perform no model maximization whatsoever (applies either shrink() or grow() to all seeds)")
@@ -40,17 +50,7 @@ def parse_args():
     max_group.add_argument('-M', '--MAX', action='store_true', default=None,
                            help="computes a maximum/minimum model (of largest/smallest cardinality) (uses MiniCard as Map solver)")
     max_group.add_argument('--smus', action='store_true',
-                        help="calculate an SMUS (smallest MUS) (uses MiniCard as Map solver)")
-
-    exp_group = parser.add_argument_group('Experimental / research options', "These can typically be ignored; the defaults will give the best performance.")
-    exp_group.add_argument('--mssguided', action='store_true',
-                        help="check for unexplored subsets in immediate supersets of any MSS found")
-    exp_group.add_argument('--ignore-singletons', action='store_true',
-                        help="do not store singleton MCSes as hard constraints")
-    exp_group.add_argument('--force-minisat', action='store_true',
-                        help="use Minisat in place of MUSer2 for CNF (NOTE: much slower and usually not worth doing!)")
-    exp_group.add_argument('--dump-map', nargs='?', type=argparse.FileType('w'),
-                        help="dump clauses added to the Map formula to the given file.")
+                           help="calculate an SMUS (smallest MUS) (uses MiniCard as Map solver)")
 
     args = parser.parse_args()
 
