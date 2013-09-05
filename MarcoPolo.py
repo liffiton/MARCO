@@ -40,9 +40,10 @@ class MarcoPolo:
 
     def enumerate(self):
         '''MUS/MCS enumeration with all the bells and whistles...'''
-        for seed in self.seeds:
+        for seed, known_max in self.seeds:
 
-            if self.config['maxseed'] == 'always':
+            if self.config['maximize'] == 'always':
+                assert not known_max
                 with self.stats.time('maximize'):
                     oldlen = len(seed)
                     seed = self.map.maximize_seed(seed, direction=self.aim_high)
@@ -53,14 +54,17 @@ class MarcoPolo:
                 oldlen = len(seed)
                 seed_is_sat, seed = self.subs.check_subset(seed, improve_seed=True)
                 self.record_delta('checkA', oldlen, len(seed))
+                known_max = (known_max and (seed_is_sat == self.aim_high))
 
-            # --half-max: Only maximize if we're SAT and seeking MUSes or UNSAT and seeking MCSes
-            if self.config['maxseed'] == 'half' and (seed_is_sat == self.aim_high):
+            # -m half: Only maximize if we're SAT and seeking MUSes or UNSAT and seeking MCSes
+            if self.config['maximize'] == 'half' and (seed_is_sat == self.aim_high):
+                assert not known_max
                 # Maximize within Map and re-check satisfiability if needed
                 with self.stats.time('maximize'):
                     oldlen = len(seed)
                     seed = self.map.maximize_seed(seed, direction=self.aim_high)
                     self.record_delta('max', oldlen, len(seed))
+                    known_max = True
                 if len(seed) != oldlen:
                     # only need to re-check if maximization produced a different seed
                     with self.stats.time('check'):
@@ -70,9 +74,10 @@ class MarcoPolo:
                         oldlen = len(seed)
                         seed_is_sat, seed = self.subs.check_subset(seed, improve_seed=True)
                         self.record_delta('checkB', oldlen, len(seed))
+                        known_max = (len(seed) == oldlen)
 
             if seed_is_sat:
-                if self.aim_high and (self.config['nogrow'] or self.config['maxseed']):
+                if known_max:
                     MSS = seed
                 else:
                     with self.stats.time('grow'):
@@ -96,11 +101,11 @@ class MarcoPolo:
                             # add any unexplored superset to the queue
                             newseed = self.map.find_above(MSS)
                             if newseed:
-                                self.seeds.add_seed(newseed)
+                                self.seeds.add_seed(newseed, False)
 
             else:
                 self.got_top = True  # any unsat set covers the top of the lattice
-                if self.config['maxseed'] and not self.aim_high:
+                if known_max:
                     MUS = seed
                 else:
                     with self.stats.time('shrink'):
@@ -130,16 +135,17 @@ class SeedManager:
             if not self.queue.empty():
                 return self.queue.get()
             else:
-                seed = self.seed_from_solver()
+                seed, known_max = self.seed_from_solver()
                 if seed is None:
                     raise StopIteration
-                return seed
+                return seed, known_max
 
-    def add_seed(self, seed):
-        self.queue.put(seed)
+    def add_seed(self, seed, known_max):
+        self.queue.put((seed, known_max))
 
     def seed_from_solver(self):
-        return self.map.next_seed()
+        known_max = (self.config['maximize'] == 'solver')
+        return self.map.next_seed(), known_max
 
     # for python 2 compatibility
     next = __next__

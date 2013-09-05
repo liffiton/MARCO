@@ -12,13 +12,15 @@ reg_files.extend(glob.glob('*.gz'))
 rnd3sat_files = glob.glob('3sat_n10/*.cnf')
 
 common_flags = ['-v']
+# for systems on which MUSer cannot run
+#common_flags.append('--force-minisat')
 
 jobs = [
     {
       'name':    '3sat',
       'cmd':     '../marco.py',
       'files':   rnd3sat_files,
-      'flags':   ['', '-m', '-M', '--mssguided', '--nogrow', '--half-max'],
+      'flags':   ['-a MUSes', '-a MCSes', '--nomax', '-m always', '-M always', '-m half', '-M half', '--mssguided', '--ignore-singletons'],
       'flags_all': common_flags,
       'default': False,
     },
@@ -35,7 +37,7 @@ jobs = [
       'name':    'marco_py',
       'cmd':     '../marco.py',
       'files':   reg_files,
-      'flags':   ['', '-m', '-M', '--mssguided', '--nogrow', '--half-max'],
+      'flags':   ['', '--nomax', '-m always', '-M always', '-m half', '-M half', '--mssguided', '--ignore-singletons'],
       'flags_all': common_flags,
       'default': True,
     },
@@ -43,27 +45,18 @@ jobs = [
       'name':    'marco_py',
       'cmd':     '../marco.py',
       'files':   reg_files,
-      'flags':   ['', '-m', '-M', '--mssguided', '--nogrow', '--half-max', '--ignore-singletons'],
+      'flags':   ['', '--nomax', '-m always', '-M always', '-m half', '-M half', '--mssguided', '--ignore-singletons'],
+      'flags_all': common_flags + ['-a','MCSes'],
+      'exclude': ['dlx2_aa.cnf'],
+      'default': True,
+    },
+    {
+      'name':    'marco_py',
+      'cmd':     '../marco.py',
+      'files':   reg_files,
+      'flags':   ['', '--mssguided', '--ignore-singletons'],
       'flags_all': common_flags + ['--force-minisat'],
       'exclude': ['c10.cnf', 'dlx2_aa.cnf'],
-      'default': True,
-    },
-    {
-      'name':    'marco_py',
-      'cmd':     '../marco.py',
-      'files':   reg_files,
-      'flags':   ['', '-m', '-M', '--mssguided', '-m --mssguided', '--half-max', '--ignore-singletons'],
-      'flags_all': common_flags + ['-b','low','-a','MCSes'],
-      'exclude': ['dlx2_aa.cnf'],
-      'default': True,
-    },
-    {
-      'name':    'marco_py',
-      'cmd':     '../marco.py',
-      'files':   reg_files,
-      'flags':   ['', '-m', '--mssguided', '-m --mssguided', '--half-max', '--ignore-singletons'],
-      'flags_all': common_flags + ['-b','none','-a','MUSes'],
-      'exclude': ['dlx2_aa.cnf'],
       'default': True,
     },
 ]

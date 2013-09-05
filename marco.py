@@ -28,25 +28,23 @@ def parse_args():
                             help="assume input is in DIMACS CNF or Group CNF format (autodetected if filename is *.[g]cnf or *.[g]cnf.gz).")
     type_group.add_argument('--smt', action='store_true',
                             help="assume input is in SMT2 format (autodetected if filename is *.smt2).")
+    parser.add_argument('-a', '--aim', type=str, choices=['MUSes', 'MCSes'], default='MUSes',
+                        help="aim for MUSes or MCSes early in the execution [default: MUSes] -- all will be enumerated eventually; this just uses heuristics to find more of one or the other early in the enumeration.")
 
-    exp_group = parser.add_argument_group('experimental / research options')
-    exp_group.add_argument('-a', '--aim', type=str, choices=['MUSes', 'MCSes'], default='MUSes',
-                        help="aim for MUSes or MCSes early in the execution (default: MUSes) -- all will be enumerated eventually; this just uses heuristics to find more of one or the other early in the enumeration.")
-    exp_group.add_argument('-b', '--bias', type=str, choices=['high', 'low', 'none'], default=None,
-                        help="bias the Map solver toward True assignments / unsatisfiable seeds (high) or False assignments / satisfiable seeds (low) or have it make random decisions (none) (default: high if --aim is MUSes, low if --aim is MCSes)")
-    max_group = exp_group.add_mutually_exclusive_group()
-    max_group.add_argument('--half-max', action='store_true',
-                           help="only compute a maximal model if the initial seed is SAT / bias is high or seed is UNSAT / bias is low")
-    max_group.add_argument('-m', '--max-seed', action='store_true',
-                           help="always find a maximal/minimal seed (local optimum), controlled by bias setting (high=maximal, low=minimal)")
-    max_group.add_argument('-M', '--maximum-seed', action='store_true',
-                           help="always find a maximum/minimum seed (largest/smallest cardinality), controlled by bias setting (high=maximum, low=minimum) (uses MiniCard as Map solver)")
-    exp_group.add_argument('--smus', action='store_true',
-                        help="calculate an SMUS (smallest MUS)")
+    max_group_outer = parser.add_argument_group('Maximal/minimal models options', "By default, the Map solver will efficiently produce maximal/minimal models itself by giving each variable a default polarity.  These options override that (--nomax, -m) or extend it (-M, --smus) in various ways.")
+    max_group = max_group_outer.add_mutually_exclusive_group()
+    max_group.add_argument('--nomax', action='store_true',
+                           help="perform no model maximization whatsoever (applies either shrink() or grow() to all seeds)")
+    max_group.add_argument('-m', '--max', type=str, choices=['always', 'half'], default=None,
+                           help="get a random seed from the Map solver initially, then compute a maximal/minimal model (for aim of MUSes/MCSes, resp.) for all seeds ['always'] or only when initial seed doesn't match the --aim ['half'] (i.e., seed is SAT and aim is MUSes)")
+    max_group.add_argument('-M', '--MAX', type=str, choices=['always', 'half'], default=None,
+                           help="like -m/--max, but *does* let the solver produce a maximal/minimal model, then computes a maximum/minimum model (of largest/smallest cardinality) (uses MiniCard as Map solver)")
+    max_group.add_argument('--smus', action='store_true',
+                        help="calculate an SMUS (smallest MUS) (sets --MAX always)")
+
+    exp_group = parser.add_argument_group('Experimental / research options', "These can typically be ignored; the defaults will give the best performance.")
     exp_group.add_argument('--mssguided', action='store_true',
                         help="check for unexplored subsets in immediate supersets of any MSS found")
-    exp_group.add_argument('--nogrow', action='store_true',
-                        help="do not grow any satisfiable subsets found, just block as-is")
     exp_group.add_argument('--ignore-singletons', action='store_true',
                         help="do not store singleton MCSes as hard constraints")
     exp_group.add_argument('--force-minisat', action='store_true',
@@ -151,14 +149,12 @@ def setup_solvers(args):
         sys.exit(1)
 
     # create appropriate map solver
-    varbias = {'high': True, 'low': False, 'none': None}[args.bias]
-    if args.maximum_seed or args.smus:
-        if varbias is None:
-            sys.stderr.write("Bias must be either high or low to use MiniCard map solver (for maximum seed or SMUS computation)\n")
-            sys.exit(1)
-        if varbias != (args.aim == 'MUSes'):
-            sys.stderr.write("Bias must match aim (high/MUSes or low/MCSes) to use MiniCard map solver (for maximum seed or SMUS computation)\n")
-            sys.exit(1)
+    if args.nomax or args.max:
+        varbias = None  # will get a "random" seed from the Map solver
+    else:
+        varbias = (args.aim == 'MUSes')  # High bias for MUSes, low for MCSes
+    
+    if args.MAX or args.smus:
         from mapsolvers import MinicardMapSolver
         msolver = MinicardMapSolver(n=csolver.n, bias=varbias)
     else:
@@ -176,28 +172,23 @@ def main():
 
         setup_execution(args, stats)
 
-        if args.bias is None:
-            if args.aim == 'MUSes':
-                args.bias = 'high'
-            else:
-                args.bias = 'low'
-
         (csolver, msolver) = setup_solvers(args)
 
         config = {}
-        config['smus'] = args.smus
         config['aim'] = args.aim
-        if args.max_seed:
-            config['maxseed'] = 'always'
-        elif args.maximum_seed:
-            config['maxseed'] = 'optimum'
-        elif args.half_max:
-            config['maxseed'] = 'half'
+        config['smus'] = args.smus
+        if args.smus:
+            config['maximize'] = 'always'
+        elif args.max:
+            config['maximize'] = args.max
+        elif args.MAX:
+            config['maximize'] = args.MAX
+        elif args.nomax:
+            config['maximize'] = 'none'
         else:
-            config['maxseed'] = None
+            config['maximize'] = 'solver'
         config['use_singletons'] = not args.ignore_singletons  # default is to use them
         config['mssguided'] = args.mssguided
-        config['nogrow'] = args.nogrow
 
         mp = MarcoPolo(csolver, msolver, stats, config)
 
