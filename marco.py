@@ -37,10 +37,10 @@ def parse_args():
                            help="perform no model maximization whatsoever (applies either shrink() or grow() to all seeds)")
     max_group.add_argument('-m', '--max', type=str, choices=['always', 'half'], default=None,
                            help="get a random seed from the Map solver initially, then compute a maximal/minimal model (for aim of MUSes/MCSes, resp.) for all seeds ['always'] or only when initial seed doesn't match the --aim ['half'] (i.e., seed is SAT and aim is MUSes)")
-    max_group.add_argument('-M', '--MAX', type=str, choices=['always', 'half'], default=None,
-                           help="like -m/--max, but *does* let the solver produce a maximal/minimal model, then computes a maximum/minimum model (of largest/smallest cardinality) (uses MiniCard as Map solver)")
+    max_group.add_argument('-M', '--MAX', action='store_true', default=None,
+                           help="computes a maximum/minimum model (of largest/smallest cardinality) (uses MiniCard as Map solver)")
     max_group.add_argument('--smus', action='store_true',
-                        help="calculate an SMUS (smallest MUS) (sets --MAX always)")
+                        help="calculate an SMUS (smallest MUS) (uses MiniCard as Map solver)")
 
     exp_group = parser.add_argument_group('Experimental / research options', "These can typically be ignored; the defaults will give the best performance.")
     exp_group.add_argument('--mssguided', action='store_true',
@@ -153,7 +153,7 @@ def setup_solvers(args):
         varbias = None  # will get a "random" seed from the Map solver
     else:
         varbias = (args.aim == 'MUSes')  # High bias for MUSes, low for MCSes
-    
+
     if args.MAX or args.smus:
         from mapsolvers import MinicardMapSolver
         msolver = MinicardMapSolver(n=csolver.n, bias=varbias)
@@ -177,14 +177,14 @@ def main():
         config = {}
         config['aim'] = args.aim
         config['smus'] = args.smus
-        if args.smus:
+        if args.nomax:
+            config['maximize'] = 'none'
+        elif args.smus:
             config['maximize'] = 'always'
         elif args.max:
             config['maximize'] = args.max
         elif args.MAX:
-            config['maximize'] = args.MAX
-        elif args.nomax:
-            config['maximize'] = 'none'
+            config['maximize'] = 'solver'
         else:
             config['maximize'] = 'solver'
         config['use_singletons'] = not args.ignore_singletons  # default is to use them

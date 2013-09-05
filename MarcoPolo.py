@@ -74,7 +74,7 @@ class MarcoPolo:
                         oldlen = len(seed)
                         seed_is_sat, seed = self.subs.check_subset(seed, improve_seed=True)
                         self.record_delta('checkB', oldlen, len(seed))
-                        known_max = (len(seed) == oldlen)
+                        known_max = (len(seed) == oldlen and seed_is_sat == self.aim_high)
 
             if seed_is_sat:
                 if known_max:
