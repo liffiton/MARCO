@@ -33,10 +33,12 @@ def makeTests(testname):
     tests = []
 
     for job in testconfig.jobs:
-        if testname is None and job['default'] is False:
-            continue
-        if testname is not None and job['name'] != testname:
-            continue
+        if testname is None:
+            if job['default'] is False:
+                continue
+        else:
+            if testname != 'all' and job['name'] != testname:
+                continue
 
         name = job['name']
         cmd = job['cmd']
