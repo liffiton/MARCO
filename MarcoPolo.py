@@ -32,6 +32,12 @@ class MarcoPolo:
                 yield ("U", MUS)
                 self.map.block_up(MUS)
 
+    def record_delta(self, name, oldlen, newlen):
+        if newlen > oldlen:
+            self.stats.add_stat("delta.%s.up" % name, float(newlen - oldlen) / self.n)
+        else:
+            self.stats.add_stat("delta.%s.down" % name, float(oldlen - newlen) / self.n)
+
     def enumerate(self):
         '''MUS/MCS enumeration with all the bells and whistles...'''
         for seed in self.seeds:
@@ -40,18 +46,13 @@ class MarcoPolo:
                 with self.stats.time('maximize'):
                     oldlen = len(seed)
                     seed = self.map.maximize_seed(seed, direction=self.aim_high)
-                    newlen = len(seed)
-                    self.stats.add_stat("delta.max", float(newlen - oldlen) / self.n)
+                    self.record_delta('max', oldlen, len(seed))
 
             with self.stats.time('check'):
                 # subset check may improve upon seed w/ unsat_core or sat_subset
                 oldlen = len(seed)
                 seed_is_sat, seed = self.subs.check_subset(seed, improve_seed=True)
-                newlen = len(seed)
-                if seed_is_sat:
-                    self.stats.add_stat("delta.checkA.up", float(newlen - oldlen) / self.n)
-                else:
-                    self.stats.add_stat("delta.checkA.down", float(newlen - oldlen) / self.n)
+                self.record_delta('checkA', oldlen, len(seed))
 
             # --half-max: Only maximize if we're SAT and seeking MUSes or UNSAT and seeking MCSes
             if self.config['maxseed'] == 'half' and (seed_is_sat == self.aim_high):
@@ -59,9 +60,8 @@ class MarcoPolo:
                 with self.stats.time('maximize'):
                     oldlen = len(seed)
                     seed = self.map.maximize_seed(seed, direction=self.aim_high)
-                    newlen = len(seed)
-                    self.stats.add_stat("delta.max", float(newlen - oldlen) / self.n)
-                if oldlen != newlen:
+                    self.record_delta('max', oldlen, len(seed))
+                if len(seed) != oldlen:
                     # only need to re-check if maximization produced a different seed
                     with self.stats.time('check'):
                         # improve_seed set to True in case maximized seed needs to go in opposite
@@ -69,11 +69,7 @@ class MarcoPolo:
                         # (otherwise, no improvement is possible as we maximized it already)
                         oldlen = len(seed)
                         seed_is_sat, seed = self.subs.check_subset(seed, improve_seed=True)
-                        newlen = len(seed)
-                        if seed_is_sat:
-                            self.stats.add_stat("delta.checkB.up", float(newlen - oldlen) / self.n)
-                        else:
-                            self.stats.add_stat("delta.checkB.down", float(newlen - oldlen) / self.n)
+                        self.record_delta('checkB', oldlen, len(seed))
 
             if seed_is_sat:
                 if self.aim_high and (self.config['nogrow'] or self.config['maxseed']):
@@ -82,8 +78,7 @@ class MarcoPolo:
                     with self.stats.time('grow'):
                         oldlen = len(seed)
                         MSS = self.subs.grow(seed, inplace=True)
-                        newlen = len(MSS)
-                        self.stats.add_stat("delta.grow", float(newlen - oldlen) / self.n)
+                        self.record_delta('grow', oldlen, len(MSS))
 
                 yield ("S", MSS)
                 self.map.block_down(MSS)
@@ -111,8 +106,7 @@ class MarcoPolo:
                     with self.stats.time('shrink'):
                         oldlen = len(seed)
                         MUS = self.subs.shrink(seed, hard=self.singleton_MCSes)
-                        newlen = len(MUS)
-                        self.stats.add_stat("delta.shrink", float(newlen - oldlen) / self.n)
+                        self.record_delta('shrink', oldlen, len(MUS))
 
                 yield ("U", MUS)
                 self.map.block_up(MUS)
