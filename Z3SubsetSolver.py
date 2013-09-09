@@ -37,6 +37,7 @@ class Z3SubsetSolver:
     n = 0
     s = None
     varcache = {}
+    idcache = {}
 
     def __init__(self, filename):
         self.read_constraints(filename)
@@ -55,12 +56,18 @@ class Z3SubsetSolver:
             v = self.c_var(i)
             self.s.add(Implies(v, self.constraints[i]))
 
+    @staticmethod
+    def get_id(x):
+        return Z3_get_ast_id(x.ctx.ref(),x.as_ast())
+
     def c_var(self, i):
         if i not in self.varcache:
+            v = Bool(self.c_prefix + str(abs(i)))
+            self.idcache[self.get_id(v)] = abs(i)
             if i >= 0:
-                self.varcache[i] = Bool(self.c_prefix+str(i))
+                self.varcache[i] = v
             else:
-                self.varcache[i] = Not(Bool(self.c_prefix+str(-i)))
+                self.varcache[i] = Not(v)
         return self.varcache[i]
 
     def check_subset(self, seed, improve_seed=False):
@@ -83,12 +90,9 @@ class Z3SubsetSolver:
     def complement(self, aset):
         return set(range(self.n)).difference(aset)
 
-    def cname_to_int(self, name):
-        return int(name[len(self.c_prefix):])
-
     def seed_from_core(self):
         core = self.s.unsat_core()
-        return [self.cname_to_int(x.decl().name()) for x in core]
+        return [self.idcache[self.get_id(x)] for x in core]
 
     def shrink(self, seed, hard=[]):
         current = set(seed)
