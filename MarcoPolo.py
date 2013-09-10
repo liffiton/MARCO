@@ -85,13 +85,16 @@ class MarcoPolo:
                         MSS = self.subs.grow(seed, inplace=True)
                         self.record_delta('grow', oldlen, len(MSS))
 
-                yield ("S", MSS)
-                self.map.block_down(MSS)
+                with self.stats.time('block'):
+                    yield ("S", MSS)
+                    self.map.block_down(MSS)
+                    if self.config['block_both'] and not self.aim_high:
+                        self.map.block_up(MSS)
 
                 if self.config['use_singletons']:
                     if len(MSS) == self.n - 1:
                         # singleton MCS, record to pass as hard clause to shrink()
-                        singleton = self.subs.complement(MSS).pop()  # TODO: more efficient...
+                        singleton = self.map.complement(MSS).pop()  # TODO: more efficient...
                         self.singleton_MCSes.add(singleton)
 
                 if self.config['mssguided']:
@@ -113,11 +116,14 @@ class MarcoPolo:
                         MUS = self.subs.shrink(seed, hard=self.singleton_MCSes)
                         self.record_delta('shrink', oldlen, len(MUS))
 
-                yield ("U", MUS)
-                self.map.block_up(MUS)
-                if self.config['smus']:
-                    self.map.block_down(MUS)
-                    self.map.block_above_size(len(MUS) - 1)
+                with self.stats.time('block'):
+                    yield ("U", MUS)
+                    self.map.block_up(MUS)
+                    if self.config['block_both'] and self.aim_high:
+                        self.map.block_down(MUS)
+                    if self.config['smus']:
+                        self.map.block_down(MUS)
+                        self.map.block_above_size(len(MUS) - 1)
 
 
 class SeedManager:

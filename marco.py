@@ -11,6 +11,8 @@ from MarcoPolo import MarcoPolo
 
 def parse_args():
     parser = argparse.ArgumentParser()
+
+    # Standard arguments
     parser.add_argument('infile', nargs='?', type=argparse.FileType('rb'),
                         default=sys.stdin,
                         help="name of file to process (STDIN if omitted)")
@@ -22,7 +24,6 @@ def parse_args():
                         help="limit the runtime to TIMEOUT seconds")
     parser.add_argument('-l', '--limit', type=int, default=None,
                         help="limit number of subsets output (counting both MCSes and MUSes)")
-
     type_group = parser.add_mutually_exclusive_group()
     type_group.add_argument('--cnf', action='store_true',
                             help="assume input is in DIMACS CNF or Group CNF format (autodetected if filename is *.[g]cnf or *.[g]cnf.gz).")
@@ -31,16 +32,20 @@ def parse_args():
     parser.add_argument('-a', '--aim', type=str, choices=['MUSes', 'MCSes'], default='MUSes',
                         help="aim for MUSes or MCSes early in the execution [default: MUSes] -- all will be enumerated eventually; this just uses heuristics to find more of one or the other early in the enumeration.")
 
+    # Experimental / Research arguments
     exp_group = parser.add_argument_group('Experimental / research options', "These can typically be ignored; the defaults will give the best performance.")
     exp_group.add_argument('--mssguided', action='store_true',
                            help="check for unexplored subsets in immediate supersets of any MSS found")
     exp_group.add_argument('--ignore-singletons', action='store_true',
                            help="do not store singleton MCSes as hard constraints")
-    exp_group.add_argument('--force-minisat', action='store_true',
-                           help="use Minisat in place of MUSer2 for CNF (NOTE: much slower and usually not worth doing!)")
     exp_group.add_argument('--dump-map', nargs='?', type=argparse.FileType('w'),
                            help="dump clauses added to the Map formula to the given file.")
+    exp_group.add_argument('--block-both', action='store_true',
+                           help="block both directions from the result type of interest (i.e., block subsets of MUSes for --aim high, etc.)")
+    exp_group.add_argument('--force-minisat', action='store_true',
+                           help="use Minisat in place of MUSer2 for CNF (NOTE: much slower and usually not worth doing!)")
 
+    # Max/min-models arguments
     max_group_outer = parser.add_argument_group('  Maximal/minimal models options', "By default, the Map solver will efficiently produce maximal/minimal models itself by giving each variable a default polarity.  These options override that (--nomax, -m) or extend it (-M, --smus) in various ways.")
     max_group = max_group_outer.add_mutually_exclusive_group()
     max_group.add_argument('--nomax', action='store_true',
@@ -189,6 +194,7 @@ def main():
             config['maximize'] = 'solver'
         config['use_singletons'] = not args.ignore_singletons  # default is to use them
         config['mssguided'] = args.mssguided
+        config['block_both'] = args.block_both
 
         mp = MarcoPolo(csolver, msolver, stats, config)
 
