@@ -9,6 +9,7 @@
 import json
 import math
 import os
+import re
 import sys
 import subprocess
 import time
@@ -46,6 +47,7 @@ def makeTests(testname):
         flags = job.get('flags', [''])
         flags_all = job.get('flags_all', [])
         exclude = job.get('exclude', [])
+        out_filter = job.get('out_filter', None)
 
         if not os.access(cmd, os.X_OK):
             print("ERROR: %s is not an executable file.  Do you need to run make?" % cmd)
@@ -68,7 +70,7 @@ def makeTests(testname):
                 outfile = outdir + infile + ".out"
                 errfile = outdir + infile + ".err"
 
-                tests.append( {'cmdarray': cmdarray + [infile], 'outfile': outfile, 'errfile': errfile } )
+                tests.append( {'cmdarray': cmdarray + [infile], 'outfile': outfile, 'errfile': errfile, 'out_filter': out_filter } )
 
     return tests
 
@@ -82,7 +84,7 @@ def runTests(jobq, msgq, pid):
         except Empty:
             break
         msgq.put((job['id'], 'start', None))
-        result, runtime = runTest(job['cmdarray'], job['outfile'], job['errfile'], pid)
+        result, runtime = runTest(job['cmdarray'], job['outfile'], job['errfile'], pid, job['out_filter'])
         if result == 'interrupted':
             msgq.put((None, 'done', None))
             return
@@ -91,7 +93,7 @@ def runTests(jobq, msgq, pid):
 
 
 # pid is so different processes don't overwrite each other's tmp files
-def runTest(cmd, outfile, errfile, pid):
+def runTest(cmd, outfile, errfile, pid, out_filter=None):
     global mode, verbose
 
     if mode == "nocheck":
@@ -127,7 +129,7 @@ def runTest(cmd, outfile, errfile, pid):
     if mode == "nocheck" or mode == "regenerate":
         return 'pass', runtime
 
-    result = checkFiles(outfile, tmpout)
+    result = checkFiles(outfile, tmpout, out_filter)
     if result != 'pass' and result != 'sortsame':
         # don't report/store a runtime for failures
         runtime = None
@@ -161,13 +163,17 @@ def runTest(cmd, outfile, errfile, pid):
     return result, runtime
 
 
-def checkFiles(file1, file2):
+def checkFiles(file1, file2, out_filter=None):
     global verbose
 
     with open(file1) as f1:
         data1 = f1.read()
+        if out_filter is not None:
+            data1 = re.sub("^.*%s.*\n" % out_filter, '', data1, flags=re.MULTILINE)
     with open(file2) as f2:
         data2 = f2.read()
+        if out_filter is not None:
+            data2 = re.sub("^.*%s.*\n" % out_filter, '', data2, flags=re.MULTILINE)
 
     if len(data1) != len(data2):
         if verbose:

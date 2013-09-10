@@ -16,14 +16,24 @@ common_flags = ['-v']
 #common_flags.append('--force-minisat')
 
 jobs = [
+    # Random 3SAT
     {
       'name':    '3sat',
       'cmd':     '../marco.py',
       'files':   rnd3sat_files,
-      'flags':   ['-a MUSes', '-a MCSes', '--nomax', '-m always', '-m half', '-M', '--mssguided', '--ignore-singletons'],
+      'flags':   ['--nomax', '-m always', '-m half', '-M', '--mssguided', '--ignore-singletons'],
       'flags_all': common_flags,
       'default': False,
     },
+    {
+      'name':    '3sat',
+      'cmd':     '../marco.py',
+      'files':   rnd3sat_files,
+      'flags':   ['--nomax', '-m always', '-m half', '-M', '--mssguided', '--ignore-singletons'],
+      'flags_all': common_flags + ['-a', 'MCSes'],
+      'default': False,
+    },
+    # SMUS
     {
       'name':    'smus',
       'cmd':     '../marco.py',
@@ -31,8 +41,10 @@ jobs = [
       'flags':   ['--smus'],
       'flags_all': common_flags,
       'exclude': ['dlx2_aa.cnf'],
+      'out_filter': 'S',
       'default': False,
     },
+    # "Normal" tests
     {
       'name':    'marco_py',
       'cmd':     '../marco.py',
@@ -50,6 +62,26 @@ jobs = [
       #'exclude': ['dlx2_aa.cnf'],
       'default': True,
     },
+    # --block-both requires output filters
+    {
+      'name':    'marco_py',
+      'cmd':     '../marco.py',
+      'files':   reg_files,
+      'flags':   ['--block-both'],
+      'flags_all': common_flags,
+      'out_filter': 'S',
+      'default': True,
+    },
+    {
+      'name':    'marco_py',
+      'cmd':     '../marco.py',
+      'files':   reg_files,
+      'flags':   ['-a MCSes --block-both'],
+      'flags_all': common_flags,
+      'out_filter': 'U',
+      'default': True,
+    },
+    # --force-minisat
     {
       'name':    'marco_py',
       'cmd':     '../marco.py',
