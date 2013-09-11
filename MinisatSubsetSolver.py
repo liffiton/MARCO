@@ -46,7 +46,7 @@ class MinisatSubsetSolver:
             # anything else is a clause
             assert self.n > 0
             vals = line.split()
-            assert vals[-1] == '0'
+            assert vals[-1] == b'0'
 
             if gcnf_in:
                 groupid = int(vals[0][1:-1])  # "parse" the '{x}' group ID
