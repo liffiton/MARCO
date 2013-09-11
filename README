@@ -6,7 +6,7 @@ MUSes and MCSes of infeasible constraint systems (currently: SAT and SMT).
 This implementation makes use of MUSer2 [2] for MUS extraction and MiniSAT 2.2
 [3] for satisfiability testing and the generation of SAT models.
 
-  Web: http://www.iwu.edu/~mliffito/marco/
+   Web: http://www.iwu.edu/~mliffito/marco/
 
 Please contact Mark Liffiton (mliffito@iwu.edu) in case of any errors or
 questions.
@@ -30,27 +30,36 @@ Setup:
 This implementation makes use of Python bindings for MiniSAT that must be
 built before running MARCO.
 
+Tested Platforms:
+ - Linux
+ - Cygwin
+ - OS X
+
 Requirements:
- - Python 2.7+
+ - Python 2.7 or above (compatible with Python 3)
  - A standard build environment (make, gcc, etc.)
 
-To build the Python bindings:
+To build and test the Python bindings:
 
   $ cd pyminisolvers
   $ make
+  $ python test_minisolvers.py
 
 Additionally, the following are recommended, depending on your needs:
 
- - Z3Py for analyzing SMT instances.
-     Available as part of the Z3 distribution: https://z3.codeplex.com/
+  - Z3Py for analyzing SMT instances.
+
+      Available as part of the Z3 distribution: https://z3.codeplex.com/
+
  - A MUSer2 binary.  Included is a binary (distributed from the MUSer2 site)
    compiled for 64-bit Linux.  For other platforms, download the appropriate
    binary or compile from the source.
-     Available from: http://logos.ucd.ie/wiki/doku.php?id=muser
 
-Without a working MUSer2 binary, you can still run MARCO in a fall-back mode
-that uses a basic, **much less efficient** deletion-based MUS extractor using
-Minisat directly (see the --force-minisat option).
+      Available from: http://logos.ucd.ie/wiki/doku.php?id=muser
+
+   Without a working MUSer2 binary, you can still run MARCO in a fall-back mode
+   that uses a basic, **much less efficient** deletion-based MUS extractor
+   using Minisat directly (see the --force-minisat option).
 
 ********************************************************************************
 Usage:
