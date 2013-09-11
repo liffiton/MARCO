@@ -32,10 +32,12 @@ class MarcoPolo:
                 yield ("U", MUS)
                 self.map.block_up(MUS)
 
-    def record_delta(self, name, oldlen, newlen):
-        if newlen > oldlen:
+    def record_delta(self, name, oldlen, newlen, up):
+        if up:
+            assert newlen >= oldlen
             self.stats.add_stat("delta.%s.up" % name, float(newlen - oldlen) / self.n)
         else:
+            assert newlen <= oldlen
             self.stats.add_stat("delta.%s.down" % name, float(oldlen - newlen) / self.n)
 
     def enumerate(self):
@@ -47,13 +49,13 @@ class MarcoPolo:
                 with self.stats.time('maximize'):
                     oldlen = len(seed)
                     seed = self.map.maximize_seed(seed, direction=self.aim_high)
-                    self.record_delta('max', oldlen, len(seed))
+                    self.record_delta('max', oldlen, len(seed), self.aim_high)
 
             with self.stats.time('check'):
                 # subset check may improve upon seed w/ unsat_core or sat_subset
                 oldlen = len(seed)
                 seed_is_sat, seed = self.subs.check_subset(seed, improve_seed=True)
-                self.record_delta('checkA', oldlen, len(seed))
+                self.record_delta('checkA', oldlen, len(seed), seed_is_sat)
                 known_max = (known_max and (seed_is_sat == self.aim_high))
 
             # -m half: Only maximize if we're SAT and seeking MUSes or UNSAT and seeking MCSes
@@ -63,7 +65,7 @@ class MarcoPolo:
                 with self.stats.time('maximize'):
                     oldlen = len(seed)
                     seed = self.map.maximize_seed(seed, direction=self.aim_high)
-                    self.record_delta('max', oldlen, len(seed))
+                    self.record_delta('max', oldlen, len(seed), self.aim_high)
                     known_max = True
                 if len(seed) != oldlen:
                     # only need to re-check if maximization produced a different seed
@@ -73,7 +75,7 @@ class MarcoPolo:
                         # (otherwise, no improvement is possible as we maximized it already)
                         oldlen = len(seed)
                         seed_is_sat, seed = self.subs.check_subset(seed, improve_seed=True)
-                        self.record_delta('checkB', oldlen, len(seed))
+                        self.record_delta('checkB', oldlen, len(seed), seed_is_sat)
                         known_max = (len(seed) == oldlen and seed_is_sat == self.aim_high)
 
             if seed_is_sat:
@@ -83,7 +85,7 @@ class MarcoPolo:
                     with self.stats.time('grow'):
                         oldlen = len(seed)
                         MSS = self.subs.grow(seed, inplace=True)
-                        self.record_delta('grow', oldlen, len(MSS))
+                        self.record_delta('grow', oldlen, len(MSS), True)
 
                 with self.stats.time('block'):
                     yield ("S", MSS)
@@ -114,7 +116,7 @@ class MarcoPolo:
                     with self.stats.time('shrink'):
                         oldlen = len(seed)
                         MUS = self.subs.shrink(seed, hard=self.singleton_MCSes)
-                        self.record_delta('shrink', oldlen, len(MUS))
+                        self.record_delta('shrink', oldlen, len(MUS), False)
 
                 with self.stats.time('block'):
                     yield ("U", MUS)
