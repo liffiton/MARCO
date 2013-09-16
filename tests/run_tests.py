@@ -12,6 +12,7 @@ import os
 import re
 import sys
 import subprocess
+import tempfile
 import time
 from collections import defaultdict
 from Queue import Empty
@@ -199,11 +200,16 @@ def checkFiles(file1, file2, out_filter=None):
 # TODO: read single keypress, like "read -n 1" in old bash script, for viewdiff and updateout
 #       http://stackoverflow.com/questions/510357/
 def viewdiff(f1, f2):
-    choice = input("  View diff? (T for terminal, V for vimdiff, other for no) ")
+    choice = input("  View diff? (T for terminal, V for vimdiff, S for sorted vimdiff, other for no) ")
     if choice.lower() == 'v':
         subprocess.call(["vimdiff", f1, f2])
     elif choice.lower() == 't':
         subprocess.call(["diff", f1, f2])
+    elif choice.lower() == 's':
+        with tempfile.NamedTemporaryFile('wb') as tmp1, tempfile.NamedTemporaryFile('wb') as tmp2:
+            subprocess.call(["sort", f1], stdout=tmp1)
+            subprocess.call(["sort", f2], stdout=tmp2)
+            subprocess.call(["vimdiff", tmp1.name, tmp2.name])
 
 
 def updateout(outfile, newoutput):
