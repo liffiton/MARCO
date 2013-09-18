@@ -18,7 +18,7 @@ class MinisatSubsetSolver:
         for line in f:
             if line.startswith(b'p'):
                 tokens = line.split()
-                gcnf_in = (tokens[1] == "gcnf")
+                gcnf_in = (tokens[1] == b"gcnf")
                 self.nvars = int(tokens[2])
                 self.nclauses = int(tokens[3])
 
@@ -65,7 +65,7 @@ class MinisatSubsetSolver:
             if self.store_dimacs:
                 if gcnf_in:
                     # need to reform clause without '{x}' group index
-                    self.dimacs.append(" ".join(str(x) for x in clause) + " 0\n")
+                    self.dimacs.append(b" ".join(str(x).encode() for x in clause) + b" 0\n")
                     self.groups[groupid].append(i)
                 else:
                     self.dimacs.append(line)

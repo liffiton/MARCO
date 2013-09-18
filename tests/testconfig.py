@@ -15,11 +15,13 @@ common_flags = ['-v']
 # for systems on which MUSer cannot run
 #common_flags.append('--force-minisat')
 
+cmd = '../marco.py'
+
 jobs = [
     # Random 3SAT
     {
       'name':    '3sat',
-      'cmd':     '../marco.py',
+      'cmd':     cmd,
       'files':   rnd3sat_files,
       'flags':   ['--nomax', '-m always', '-m half', '-M', '--mssguided', '--ignore-singletons'],
       'flags_all': common_flags,
@@ -27,7 +29,7 @@ jobs = [
     },
     {
       'name':    '3sat',
-      'cmd':     '../marco.py',
+      'cmd':     cmd,
       'files':   rnd3sat_files,
       'flags':   ['--nomax', '-m always', '-m half', '-M', '--mssguided', '--ignore-singletons'],
       'flags_all': common_flags + ['-a', 'MCSes'],
@@ -36,7 +38,7 @@ jobs = [
     # SMUS
     {
       'name':    'smus',
-      'cmd':     '../marco.py',
+      'cmd':     cmd,
       'files':   reg_files,
       'flags':   ['--smus'],
       'flags_all': common_flags,
@@ -47,7 +49,7 @@ jobs = [
     # "Normal" tests
     {
       'name':    'marco_py',
-      'cmd':     '../marco.py',
+      'cmd':     cmd,
       'files':   reg_files,
       'flags':   ['', '--nomax', '-m always', '-m half', '-M', '--mssguided', '--ignore-singletons'],
       'flags_all': common_flags,
@@ -55,7 +57,7 @@ jobs = [
     },
     {
       'name':    'marco_py',
-      'cmd':     '../marco.py',
+      'cmd':     cmd,
       'files':   reg_files,
       'flags':   ['', '--nomax', '-m always', '-m half', '-M', '--mssguided', '--ignore-singletons'],
       'flags_all': common_flags + ['-a','MCSes'],
@@ -65,7 +67,7 @@ jobs = [
     # --block-both requires output filters
     {
       'name':    'marco_py',
-      'cmd':     '../marco.py',
+      'cmd':     cmd,
       'files':   reg_files,
       'flags':   ['--block-both'],
       'flags_all': common_flags,
@@ -74,7 +76,7 @@ jobs = [
     },
     {
       'name':    'marco_py',
-      'cmd':     '../marco.py',
+      'cmd':     cmd,
       'files':   reg_files,
       'flags':   ['-a MCSes --block-both'],
       'flags_all': common_flags,
@@ -84,7 +86,7 @@ jobs = [
     # --force-minisat
     {
       'name':    'marco_py',
-      'cmd':     '../marco.py',
+      'cmd':     cmd,
       'files':   reg_files,
       'flags':   ['', '--mssguided', '--ignore-singletons'],
       'flags_all': common_flags + ['--force-minisat'],

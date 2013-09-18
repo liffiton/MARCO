@@ -47,18 +47,21 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
 
             # existing "Don't care" group
             for j in self.groups[0]:
-                cnf.write("{0} " + self.dimacs[j])  # {0} = "Don't care" group
+                cnf.write(b"{0} ")  # {0} = "Don't care" group
+                cnf.write(self.dimacs[j])
             # also include hard clauses in "Don't care" group
             for i in hard:
                 for j in self.groups[i+1]:
-                    cnf.write("{0} " + self.dimacs[j])
+                    cnf.write(b"{0} ")
+                    cnf.write(self.dimacs[j])
 
             for g, i in enumerate(seed):
                 if i in hard:
                     # skip hard clauses
                     continue
                 for j in self.groups[i+1]:
-                    cnf.write(("{%d} " % (g+1)) + self.dimacs[j])
+                    cnf.write(("{%d} " % (g+1)).encode())
+                    cnf.write(self.dimacs[j])
 
             cnf.flush()
 
