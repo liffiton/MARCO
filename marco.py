@@ -37,7 +37,9 @@ def parse_args():
     exp_group.add_argument('--mssguided', action='store_true',
                            help="check for unexplored subsets in immediate supersets of any MSS found")
     exp_group.add_argument('--ignore-singletons', action='store_true',
-                           help="do not store singleton MCSes as hard constraints")
+                           help="do not use singleton MCSes as hard constraints")
+    exp_group.add_argument('--ignore-implies', action='store_true',
+                           help="do not use implied literals from Map as hard constraints")
     exp_group.add_argument('--dump-map', nargs='?', type=argparse.FileType('w'),
                            help="dump clauses added to the Map formula to the given file.")
     exp_group.add_argument('--block-both', action='store_true',
@@ -193,6 +195,7 @@ def main():
         else:
             config['maximize'] = 'solver'
         config['use_singletons'] = not args.ignore_singletons  # default is to use them
+        config['use_implies'] = not args.ignore_implies  # default is to use them
         config['mssguided'] = args.mssguided
         config['block_both'] = args.block_both
 

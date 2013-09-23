@@ -14,7 +14,7 @@ class MarcoPolo:
         self.aim_high = self.config['aim'] == 'MUSes'  # used frequently
         self.n = self.map.n   # number of constraints
         self.got_top = False  # track whether we've explored the complete set (top of the lattice)
-        self.singleton_MCSes = set()  # store singleton MCSes to pass as hard clauses to shrink()
+        self.hard_constraints = set()  # store hard clauses to be passed to shrink()
 
     def enumerate_basic(self):
         '''Basic MUS/MCS enumeration, as a simple example.'''
@@ -96,8 +96,8 @@ class MarcoPolo:
                 if self.config['use_singletons']:
                     if len(MSS) == self.n - 1:
                         # singleton MCS, record to pass as hard clause to shrink()
-                        singleton = self.map.complement(MSS).pop()  # TODO: more efficient...
-                        self.singleton_MCSes.add(singleton)
+                        singleton = self.map.complement(MSS)
+                        self.hard_constraints.update(singleton)
 
                 if self.config['mssguided']:
                     with self.stats.time('mssguided'):
@@ -113,9 +113,17 @@ class MarcoPolo:
                 if known_max:
                     MUS = seed
                 else:
+                    if self.config['use_implies']:
+                        # This might change after every blocking clause,
+                        # but we only need to check right before we're going to use them.
+                        implies = self.map.solver.implies()
+                        assert self.hard_constraints <= set(x-1 for x in implies if x > 0)
+                        self.hard_constraints.update(x-1 for x in implies if x > 0)
+
                     with self.stats.time('shrink'):
                         oldlen = len(seed)
-                        MUS = self.subs.shrink(seed, hard=self.singleton_MCSes)
+                        self.stats.add_stat("hard_constraints", len(self.hard_constraints))
+                        MUS = self.subs.shrink(seed, hard=self.hard_constraints)
                         self.record_delta('shrink', oldlen, len(MUS), False)
 
                 with self.stats.time('block'):
