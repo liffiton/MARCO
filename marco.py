@@ -36,8 +36,6 @@ def parse_args():
     exp_group = parser.add_argument_group('Experimental / research options', "These can typically be ignored; the defaults will give the best performance.")
     exp_group.add_argument('--mssguided', action='store_true',
                            help="check for unexplored subsets in immediate supersets of any MSS found")
-    exp_group.add_argument('--ignore-singletons', action='store_true',
-                           help="do not use singleton MCSes as hard constraints")
     exp_group.add_argument('--ignore-implies', action='store_true',
                            help="do not use implied literals from Map as hard constraints")
     exp_group.add_argument('--dump-map', nargs='?', type=argparse.FileType('w'),
@@ -194,7 +192,6 @@ def main():
             config['maximize'] = 'solver'
         else:
             config['maximize'] = 'solver'
-        config['use_singletons'] = not args.ignore_singletons  # default is to use them
         config['use_implies'] = not args.ignore_implies  # default is to use them
         config['mssguided'] = args.mssguided
         config['block_both'] = args.block_both

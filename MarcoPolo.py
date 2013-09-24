@@ -14,7 +14,7 @@ class MarcoPolo:
         self.aim_high = self.config['aim'] == 'MUSes'  # used frequently
         self.n = self.map.n   # number of constraints
         self.got_top = False  # track whether we've explored the complete set (top of the lattice)
-        self.hard_constraints = set()  # store hard clauses to be passed to shrink()
+        self.hard_constraints = []  # store hard clauses to be passed to shrink()
 
     def enumerate_basic(self):
         '''Basic MUS/MCS enumeration, as a simple example.'''
@@ -93,12 +93,6 @@ class MarcoPolo:
                     if self.config['block_both'] and not self.aim_high:
                         self.map.block_up(MSS)
 
-                if self.config['use_singletons']:
-                    if len(MSS) == self.n - 1:
-                        # singleton MCS, record to pass as hard clause to shrink()
-                        singleton = self.map.complement(MSS)
-                        self.hard_constraints.update(singleton)
-
                 if self.config['mssguided']:
                     with self.stats.time('mssguided'):
                         # don't check parents if parent is top and we've already seen it (common)
@@ -117,8 +111,7 @@ class MarcoPolo:
                         # This might change after every blocking clause,
                         # but we only need to check right before we're going to use them.
                         implies = self.map.solver.implies()
-                        assert self.hard_constraints <= set(x-1 for x in implies if x > 0)
-                        self.hard_constraints.update(x-1 for x in implies if x > 0)
+                        self.hard_constraints = [x-1 for x in implies if x > 0]
 
                     with self.stats.time('shrink'):
                         oldlen = len(seed)
