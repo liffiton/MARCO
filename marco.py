@@ -6,6 +6,8 @@ import signal
 import sys
 
 import utils
+import mapsolvers
+import CNFsolvers
 from MarcoPolo import MarcoPolo
 
 
@@ -124,22 +126,18 @@ def setup_solvers(args):
     # create appropriate constraint solver
     if args.cnf or infile.name.endswith('.cnf') or infile.name.endswith('.cnf.gz') or infile.name.endswith('.gcnf') or infile.name.endswith('.gcnf.gz'):
         if args.force_minisat:
-            from MinisatSubsetSolver import MinisatSubsetSolver
-            csolver = MinisatSubsetSolver(infile)
-            infile.close()
+            csolver = CNFsolvers.MinisatSubsetSolver(infile)
         else:
             try:
-                from MUSerSubsetSolver import MUSerSubsetSolver, MUSerException
-                csolver = MUSerSubsetSolver(infile)
-            except MUSerException as e:
+                csolver = CNFsolvers.MUSerSubsetSolver(infile)
+            except CNFsolvers.MUSerException as e:
                 sys.stderr.write("[31;1mERROR:[m Unable to use MUSer2 for MUS extraction.\n[33mUse --force-minisat to use Minisat instead[m (NOTE: it will be much slower.)\n\n")
                 sys.stderr.write(str(e) + "\n")
                 sys.exit(1)
-
         infile.close()
     elif args.smt or infile.name.endswith('.smt2'):
         try:
-            from Z3SubsetSolver import Z3SubsetSolver
+            from SMTsolvers import Z3SubsetSolver
         except ImportError as e:
             sys.stderr.write("ERROR: Unable to import z3 module:  %s\n\nPlease install Z3 from https://z3.codeplex.com/\n" % str(e))
             sys.exit(1)
@@ -157,16 +155,35 @@ def setup_solvers(args):
     if args.nomax or args.max:
         varbias = None  # will get a "random" seed from the Map solver
     else:
-        varbias = (args.aim == 'MUSes')  # High bias for MUSes, low for MCSes
+        varbias = (args.aim == 'MUSes')  # High bias (True) for MUSes, low (False) for MCSes
 
     if args.MAX or args.smus:
-        from mapsolvers import MinicardMapSolver
-        msolver = MinicardMapSolver(n=csolver.n, bias=varbias)
+        msolver = mapsolvers.MinicardMapSolver(n=csolver.n, bias=varbias)
     else:
-        from mapsolvers import MinisatMapSolver
-        msolver = MinisatMapSolver(n=csolver.n, bias=varbias, dump=args.dump_map)
+        msolver = mapsolvers.MinisatMapSolver(n=csolver.n, bias=varbias, dump=args.dump_map)
 
     return (csolver, msolver)
+
+
+def setup_config(args):
+    config = {}
+    config['aim'] = args.aim
+    config['smus'] = args.smus
+    if args.nomax:
+        config['maximize'] = 'none'
+    elif args.smus:
+        config['maximize'] = 'always'
+    elif args.max:
+        config['maximize'] = args.max
+    elif args.MAX:
+        config['maximize'] = 'solver'
+    else:
+        config['maximize'] = 'solver'
+    config['use_implies'] = not args.ignore_implies  # default is to use them
+    config['mssguided'] = args.mssguided
+    config['block_both'] = args.block_both
+
+    return config
 
 
 def main():
@@ -174,28 +191,9 @@ def main():
 
     with stats.time('setup'):
         args = parse_args()
-
         setup_execution(args, stats)
-
-        (csolver, msolver) = setup_solvers(args)
-
-        config = {}
-        config['aim'] = args.aim
-        config['smus'] = args.smus
-        if args.nomax:
-            config['maximize'] = 'none'
-        elif args.smus:
-            config['maximize'] = 'always'
-        elif args.max:
-            config['maximize'] = args.max
-        elif args.MAX:
-            config['maximize'] = 'solver'
-        else:
-            config['maximize'] = 'solver'
-        config['use_implies'] = not args.ignore_implies  # default is to use them
-        config['mssguided'] = args.mssguided
-        config['block_both'] = args.block_both
-
+        csolver, msolver = setup_solvers(args)
+        config = setup_config(args)
         mp = MarcoPolo(csolver, msolver, stats, config)
 
     # useful for timing just the parsing / setup
@@ -209,9 +207,10 @@ def main():
     for result in mp.enumerate():
         if args.verbose:
             output = "%s %s" % (result[0], " ".join([str(x + 1) for x in result[1]]))
-            print(output)
         else:
-            print(result[0])
+            output = result[0]
+
+        print(output)
 
         if remaining:
             remaining -= 1
