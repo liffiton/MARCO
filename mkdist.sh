@@ -2,7 +2,9 @@
 
 # gather "whitelist" of files to include
 marco_files="*.py muser2-static README VERSION"
-test_files="tests/*.cnf tests/*.smt2 tests/*.gz tests/*.py tests/out/*/*"
+if [ $# -lt 2 -o "$2" != "notest" ] ; then
+    test_files="tests/*.cnf tests/*.smt2 tests/*.gz tests/*.py tests/out/*/*"
+fi
 minisolvers_files=`find pyminisolvers/ \( -name "*.cc" -or -name "*.cpp" -or -name "*.h" -or -name "Makefile" -or -name "makefile" -or -name "*.py" -or -name "*.pyx" \) -print`
 
 if [ "$1" = "list" ] ; then
@@ -19,7 +21,11 @@ if [ "$1" = "commit" ] ; then
 else
     version=`cat VERSION`
 fi
-dir=marco_py-$version
+if [ $# -lt 2 -o "$2" != "notest" ] ; then
+    dir=marco_py-$version
+else
+    dir=marco_py-notest-$version
+fi
 if [ -e $dir ] ; then
     echo "WHOA WHOA WHOA...  $dir exists?!  Not going to touch that..."
     exit
