@@ -11,7 +11,7 @@ class MarcoPolo:
         self.seeds = SeedManager(msolver, stats, config)
         self.stats = stats
         self.config = config
-        self.aim_high = self.config['aim'] == 'MUSes'  # used frequently
+        self.bias_high = self.config['bias'] == 'MUSes'  # used frequently
         self.n = self.map.n   # number of constraints
         self.got_top = False  # track whether we've explored the complete set (top of the lattice)
         self.hard_constraints = []  # store hard clauses to be passed to shrink()
@@ -48,35 +48,35 @@ class MarcoPolo:
                 assert not known_max
                 with self.stats.time('maximize'):
                     oldlen = len(seed)
-                    seed = self.map.maximize_seed(seed, direction=self.aim_high)
-                    self.record_delta('max', oldlen, len(seed), self.aim_high)
+                    seed = self.map.maximize_seed(seed, direction=self.bias_high)
+                    self.record_delta('max', oldlen, len(seed), self.bias_high)
 
             with self.stats.time('check'):
                 # subset check may improve upon seed w/ unsat_core or sat_subset
                 oldlen = len(seed)
                 seed_is_sat, seed = self.subs.check_subset(seed, improve_seed=True)
                 self.record_delta('checkA', oldlen, len(seed), seed_is_sat)
-                known_max = (known_max and (seed_is_sat == self.aim_high))
+                known_max = (known_max and (seed_is_sat == self.bias_high))
 
             # -m half: Only maximize if we're SAT and seeking MUSes or UNSAT and seeking MCSes
-            if self.config['maximize'] == 'half' and (seed_is_sat == self.aim_high):
+            if self.config['maximize'] == 'half' and (seed_is_sat == self.bias_high):
                 assert not known_max
                 # Maximize within Map and re-check satisfiability if needed
                 with self.stats.time('maximize'):
                     oldlen = len(seed)
-                    seed = self.map.maximize_seed(seed, direction=self.aim_high)
-                    self.record_delta('max', oldlen, len(seed), self.aim_high)
+                    seed = self.map.maximize_seed(seed, direction=self.bias_high)
+                    self.record_delta('max', oldlen, len(seed), self.bias_high)
                     known_max = True
                 if len(seed) != oldlen:
                     # only need to re-check if maximization produced a different seed
                     with self.stats.time('check'):
                         # improve_seed set to True in case maximized seed needs to go in opposite
-                        # direction of the maximization (i.e., UNSAT seed w/ MUS aim, SAT w/ MCS aim)
+                        # direction of the maximization (i.e., UNSAT seed w/ MUS bias, SAT w/ MCS bias)
                         # (otherwise, no improvement is possible as we maximized it already)
                         oldlen = len(seed)
                         seed_is_sat, seed = self.subs.check_subset(seed, improve_seed=True)
                         self.record_delta('checkB', oldlen, len(seed), seed_is_sat)
-                        known_max = (len(seed) == oldlen and seed_is_sat == self.aim_high)
+                        known_max = (len(seed) == oldlen and seed_is_sat == self.bias_high)
 
             if seed_is_sat:
                 if known_max:
@@ -90,7 +90,7 @@ class MarcoPolo:
                 with self.stats.time('block'):
                     yield ("S", MSS)
                     self.map.block_down(MSS)
-                    if self.config['block_both'] and not self.aim_high:
+                    if self.config['block_both'] and not self.bias_high:
                         self.map.block_up(MSS)
 
                 if self.config['mssguided']:
@@ -122,7 +122,7 @@ class MarcoPolo:
                 with self.stats.time('block'):
                     yield ("U", MUS)
                     self.map.block_up(MUS)
-                    if self.config['block_both'] and self.aim_high:
+                    if self.config['block_both'] and self.bias_high:
                         self.map.block_down(MUS)
                     if self.config['smus']:
                         self.map.block_down(MUS)

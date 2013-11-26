@@ -20,6 +20,8 @@ def parse_args():
                         help="name of file to process (STDIN if omitted)")
     parser.add_argument('-v', '--verbose', action='store_true',
                         help="print more verbose output (constraint indexes)")
+    parser.add_argument('-a', '--alltimes', action='store_true',
+                        help="print the time for every output")
     parser.add_argument('-s', '--stats', action='store_true',
                         help="print timing statistics to stderr")
     parser.add_argument('-T', '--timeout', type=int, default=None,
@@ -31,8 +33,8 @@ def parse_args():
                             help="assume input is in DIMACS CNF or Group CNF format (autodetected if filename is *.[g]cnf or *.[g]cnf.gz).")
     type_group.add_argument('--smt', action='store_true',
                             help="assume input is in SMT2 format (autodetected if filename is *.smt2).")
-    parser.add_argument('-a', '--aim', type=str, choices=['MUSes', 'MCSes'], default='MUSes',
-                        help="aim for MUSes or MCSes early in the execution [default: MUSes] -- all will be enumerated eventually; this just uses heuristics to find more of one or the other early in the enumeration.")
+    parser.add_argument('-b', '--bias', type=str, choices=['MUSes', 'MCSes'], default='MUSes',
+                        help="bias the search toward MUSes or MCSes early in the execution [default: MUSes] -- all will be enumerated eventually; this just uses heuristics to find more of one or the other early in the enumeration.")
 
     # Experimental / Research arguments
     exp_group = parser.add_argument_group('Experimental / research options', "These can typically be ignored; the defaults will give the best performance.")
@@ -43,7 +45,7 @@ def parse_args():
     exp_group.add_argument('--dump-map', nargs='?', type=argparse.FileType('w'),
                            help="dump clauses added to the Map formula to the given file.")
     exp_group.add_argument('--block-both', action='store_true',
-                           help="block both directions from the result type of interest (i.e., block subsets of MUSes for --aim high, etc.)")
+                           help="block both directions from the result type of interest (i.e., block subsets of MUSes for --bias high, etc.)")
     exp_group.add_argument('--force-minisat', action='store_true',
                            help="use Minisat in place of MUSer2 for CNF (NOTE: much slower and usually not worth doing!)")
 
@@ -53,7 +55,7 @@ def parse_args():
     max_group.add_argument('--nomax', action='store_true',
                            help="perform no model maximization whatsoever (applies either shrink() or grow() to all seeds)")
     max_group.add_argument('-m', '--max', type=str, choices=['always', 'half'], default=None,
-                           help="get a random seed from the Map solver initially, then compute a maximal/minimal model (for aim of MUSes/MCSes, resp.) for all seeds ['always'] or only when initial seed doesn't match the --aim ['half'] (i.e., seed is SAT and aim is MUSes)")
+                           help="get a random seed from the Map solver initially, then compute a maximal/minimal model (for bias of MUSes/MCSes, resp.) for all seeds ['always'] or only when initial seed doesn't match the --bias ['half'] (i.e., seed is SAT and bias is MUSes)")
     max_group.add_argument('-M', '--MAX', action='store_true', default=None,
                            help="computes a maximum/minimum model (of largest/smallest cardinality) (uses MiniCard as Map solver)")
     max_group.add_argument('--smus', action='store_true',
@@ -155,7 +157,7 @@ def setup_solvers(args):
     if args.nomax or args.max:
         varbias = None  # will get a "random" seed from the Map solver
     else:
-        varbias = (args.aim == 'MUSes')  # High bias (True) for MUSes, low (False) for MCSes
+        varbias = (args.bias == 'MUSes')  # High bias (True) for MUSes, low (False) for MCSes
 
     if args.MAX or args.smus:
         msolver = mapsolvers.MinicardMapSolver(n=csolver.n, bias=varbias)
@@ -167,7 +169,7 @@ def setup_solvers(args):
 
 def setup_config(args):
     config = {}
-    config['aim'] = args.aim
+    config['bias'] = args.bias
     config['smus'] = args.smus
     if args.nomax:
         config['maximize'] = 'none'
@@ -205,10 +207,11 @@ def main():
     remaining = args.limit
 
     for result in mp.enumerate():
+        output = result[0]
+        if args.alltimes:
+            output = "%s %0.3f" % (output, stats.current_time())
         if args.verbose:
-            output = "%s %s" % (result[0], " ".join([str(x + 1) for x in result[1]]))
-        else:
-            output = result[0]
+            output = "%s %s" % (output, " ".join([str(x + 1) for x in result[1]]))
 
         print(output)
 
