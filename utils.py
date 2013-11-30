@@ -60,7 +60,7 @@ class Statistics:
         if self._category:
             # If we're in a category currently,
             # give it the time up to this point.
-            self._times[self._stats._category] += _get_time() - self._curr
+            self._times[self._category] += _get_time() - self._curr
 
         return self._times
 
