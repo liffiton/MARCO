@@ -21,11 +21,7 @@ if [ "$1" = "commit" ] ; then
 else
     version=`cat VERSION`
 fi
-if [ $# -lt 2 -o "$2" != "notest" ] ; then
-    dir=marco_py-$version
-else
-    dir=marco_py-notest-$version
-fi
+dir=marco_py-$version
 if [ -e $dir ] ; then
     echo "WHOA WHOA WHOA...  $dir exists?!  Not going to touch that..."
     exit
