@@ -19,7 +19,7 @@ def parse_args():
                         default=sys.stdin,
                         help="name of file to process (STDIN if omitted)")
     parser.add_argument('-v', '--verbose', action='count',
-                        help="print more verbose output (constraint indexes, and repeat the flag for detail about the algorithm's progress)")
+                        help="print more verbose output (constraint indexes for MUSes/MCSes) -- repeat the flag for detail about the algorithm's progress)")
     parser.add_argument('-a', '--alltimes', action='store_true',
                         help="print the time for every output")
     parser.add_argument('-s', '--stats', action='store_true',
