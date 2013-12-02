@@ -18,8 +18,8 @@ def parse_args():
     parser.add_argument('infile', nargs='?', type=argparse.FileType('rb'),
                         default=sys.stdin,
                         help="name of file to process (STDIN if omitted)")
-    parser.add_argument('-v', '--verbose', action='store_true',
-                        help="print more verbose output (constraint indexes)")
+    parser.add_argument('-v', '--verbose', action='count',
+                        help="print more verbose output (constraint indexes, and repeat the flag for detail about the algorithm's progress)")
     parser.add_argument('-a', '--alltimes', action='store_true',
                         help="print the time for every output")
     parser.add_argument('-s', '--stats', action='store_true',
@@ -184,6 +184,7 @@ def setup_config(args):
     config['use_implies'] = not args.ignore_implies  # default is to use them
     config['mssguided'] = args.mssguided
     config['block_both'] = args.block_both
+    config['verbose'] = args.verbose > 1
 
     return config
 

@@ -17,7 +17,7 @@ class MarcoPolo:
         self.hard_constraints = []  # store hard clauses to be passed to shrink()
 
     def enumerate_basic(self):
-        '''Basic MUS/MCS enumeration, as a simple example.'''
+        '''Basic MUS/MCS enumeration, as a simple reference/example.'''
         while True:
             seed = self.map.next_seed()
             if seed is None:
@@ -44,6 +44,9 @@ class MarcoPolo:
         '''MUS/MCS enumeration with all the bells and whistles...'''
         for seed, known_max in self.seeds:
 
+            if self.config['verbose']:
+                print("- Initial seed: %s" % " ".join([str(x+1) for x in seed]))
+
             if self.config['maximize'] == 'always':
                 assert not known_max
                 with self.stats.time('maximize'):
@@ -51,12 +54,22 @@ class MarcoPolo:
                     seed = self.map.maximize_seed(seed, direction=self.bias_high)
                     self.record_delta('max', oldlen, len(seed), self.bias_high)
 
+                if self.config['verbose']:
+                    print("- Maximized to: %s" % " ".join([str(x+1) for x in seed]))
+
             with self.stats.time('check'):
                 # subset check may improve upon seed w/ unsat_core or sat_subset
                 oldlen = len(seed)
                 seed_is_sat, seed = self.subs.check_subset(seed, improve_seed=True)
                 self.record_delta('checkA', oldlen, len(seed), seed_is_sat)
                 known_max = (known_max and (seed_is_sat == self.bias_high))
+
+            if self.config['verbose']:
+                print("- Seed is %s." % {True: "SAT", False: "UNSAT"}[seed_is_sat])
+                if known_max:
+                    print("- Seed is known to be optimal.")
+                else:
+                    print("- Seed improved by check: %s" % " ".join([str(x+1) for x in seed]))
 
             # -m half: Only maximize if we're SAT and seeking MUSes or UNSAT and seeking MCSes
             if self.config['maximize'] == 'half' and (seed_is_sat == self.bias_high):
@@ -67,6 +80,10 @@ class MarcoPolo:
                     seed = self.map.maximize_seed(seed, direction=self.bias_high)
                     self.record_delta('max', oldlen, len(seed), self.bias_high)
                     known_max = True
+
+                if self.config['verbose']:
+                    print("- Half-maximization w/in map, new seed: %s" % " ".join([str(x+1) for x in seed]))
+
                 if len(seed) != oldlen:
                     # only need to re-check if maximization produced a different seed
                     with self.stats.time('check'):
@@ -78,6 +95,16 @@ class MarcoPolo:
                         self.record_delta('checkB', oldlen, len(seed), seed_is_sat)
                         known_max = (len(seed) == oldlen and seed_is_sat == self.bias_high)
 
+                    if self.config['verbose']:
+                        print("- Half-max check: Seed is %s" % {True: "SAT", False: "UNSAT"}[seed_is_sat])
+                        if known_max:
+                            print("- Seed is known to be optimal.")
+                        else:
+                            print("- Half-max check: Seed improved by check: %s" % " ".join([str(x+1) for x in seed]))
+                else:  # no re-check needed
+                    if self.config['verbose']:
+                        print("- Seed is known to be optimal.")
+
             if seed_is_sat:
                 if known_max:
                     MSS = seed
@@ -87,11 +114,17 @@ class MarcoPolo:
                         MSS = self.subs.grow(seed, inplace=True)
                         self.record_delta('grow', oldlen, len(MSS), True)
 
+                    if self.config['verbose']:
+                        print("- Grow() -> MSS")
+
                 with self.stats.time('block'):
                     yield ("S", MSS)
                     self.map.block_down(MSS)
                     if self.config['block_both'] and not self.bias_high:
                         self.map.block_up(MSS)
+
+                if self.config['verbose']:
+                    print("- MSS blocked.")
 
                 if self.config['mssguided']:
                     with self.stats.time('mssguided'):
@@ -101,8 +134,10 @@ class MarcoPolo:
                             newseed = self.map.find_above(MSS)
                             if newseed:
                                 self.seeds.add_seed(newseed, False)
+                                if self.config['verbose']:
+                                    print("- New seed found above MSS: %s" % " ".join([(x+1) for x in seed]))
 
-            else:
+            else:  # seed is not SAT
                 self.got_top = True  # any unsat set covers the top of the lattice
                 if known_max:
                     MUS = seed
@@ -119,6 +154,9 @@ class MarcoPolo:
                         MUS = self.subs.shrink(seed, hard=self.hard_constraints)
                         self.record_delta('shrink', oldlen, len(MUS), False)
 
+                    if self.config['verbose']:
+                        print("- Shrink() -> MUS")
+
                 with self.stats.time('block'):
                     yield ("U", MUS)
                     self.map.block_up(MUS)
@@ -127,6 +165,9 @@ class MarcoPolo:
                     if self.config['smus']:
                         self.map.block_down(MUS)
                         self.map.block_above_size(len(MUS) - 1)
+
+                if self.config['verbose']:
+                    print("- MUS blocked.")
 
 
 class SeedManager:
