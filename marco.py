@@ -128,12 +128,21 @@ def setup_solvers(args):
     # create appropriate constraint solver
     if args.cnf or infile.name.endswith('.cnf') or infile.name.endswith('.cnf.gz') or infile.name.endswith('.gcnf') or infile.name.endswith('.gcnf.gz'):
         if args.force_minisat:
-            csolver = CNFsolvers.MinisatSubsetSolver(infile)
+            try:
+                csolver = CNFsolvers.MinisatSubsetSolver(infile)
+            except OSError as e:
+                sys.stderr.write("[31;1mERROR:[m Unable to load pyminisolvers library.\n[33mRun 'make -C pyminisolvers' to compile the library.[m\n\n")
+                sys.stderr.write(str(e) + "\n")
+                sys.exit(1)
         else:
             try:
                 csolver = CNFsolvers.MUSerSubsetSolver(infile)
             except CNFsolvers.MUSerException as e:
                 sys.stderr.write("[31;1mERROR:[m Unable to use MUSer2 for MUS extraction.\n[33mUse --force-minisat to use Minisat instead[m (NOTE: it will be much slower.)\n\n")
+                sys.stderr.write(str(e) + "\n")
+                sys.exit(1)
+            except OSError as e:
+                sys.stderr.write("[31;1mERROR:[m Unable to load pyminisolvers library.\n[33mRun 'make -C pyminisolvers' to compile the library.[m\n\n")
                 sys.stderr.write(str(e) + "\n")
                 sys.exit(1)
         infile.close()
@@ -159,10 +168,15 @@ def setup_solvers(args):
     else:
         varbias = (args.bias == 'MUSes')  # High bias (True) for MUSes, low (False) for MCSes
 
-    if args.MAX or args.smus:
-        msolver = mapsolvers.MinicardMapSolver(n=csolver.n, bias=varbias)
-    else:
-        msolver = mapsolvers.MinisatMapSolver(n=csolver.n, bias=varbias, dump=args.dump_map)
+    try:
+        if args.MAX or args.smus:
+            msolver = mapsolvers.MinicardMapSolver(n=csolver.n, bias=varbias)
+        else:
+            msolver = mapsolvers.MinisatMapSolver(n=csolver.n, bias=varbias, dump=args.dump_map)
+    except OSError as e:
+        sys.stderr.write("[31;1mERROR:[m Unable to load pyminisolvers library.\n[33mRun 'make -C pyminisolvers' to compile the library.[m\n\n")
+        sys.stderr.write(str(e) + "\n")
+        sys.exit(1)
 
     return (csolver, msolver)
 
