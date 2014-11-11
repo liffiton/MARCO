@@ -3,7 +3,7 @@
 # gather "whitelist" of files to include
 marco_files="*.py muser2-static README VERSION"
 if [ $# -lt 2 -o "$2" != "notest" ] ; then
-    test_files="tests/*.cnf tests/*.smt2 tests/*.gz tests/*.py tests/out/*/*"
+    test_files="tests/*.cnf tests/*.gcnf tests/*.smt2 tests/*.gz tests/*.py tests/out/*/*"
 fi
 minisolvers_files=`find pyminisolvers/ \( -name "*.cc" -or -name "*.cpp" -or -name "*.h" -or -name "Makefile" -or -name "makefile" -or -name "*.py" -or -name "*.pyx" \) -print`
 
