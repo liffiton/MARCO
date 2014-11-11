@@ -2,9 +2,9 @@
 MARCO: an efficient MUS and MCS enumeration tool
 
 This is a Python implementation of the MARCO algorithm [1] for enumerating
-MUSes and MCSes of infeasible constraint systems (currently: SAT and SMT).
-This implementation makes use of MUSer2 [2] for MUS extraction and MiniSAT 2.2
-[3] for satisfiability testing and the generation of SAT models.
+MUSes and MCSes of infeasible constraint systems (currently: CNF, GCNF, and
+SMT).  This implementation makes use of MUSer2 [2] for MUS extraction and
+MiniSAT 2.2 [3] for satisfiability testing and the generation of SAT models.
 
    Web: http://www.iwu.edu/~mliffito/marco/
 
@@ -68,7 +68,11 @@ Example: ./marco.py tests/test1.cnf
 
 Run ./marco.py --help for a list of available options.
 
-Input files may be gzipped.
+Input files may be in CNF, GCNF (group oriented CNF), or SMT2 format.  Input
+files may be gzipped.
+
+The supported GCNF format is the one specified in:
+  http://www.satcompetition.org/2011/rules.pdf
 
 The output lists MUSes ("U") and MCSes ("S"), one per line.  In 'verbose' mode
 (-v), each line also lists the indexes of the constraints included in each set
