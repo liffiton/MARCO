@@ -1,0 +1,5 @@
+1.0.1 - 20141111
+----------------
+ * Add note about support for GCNF to README
+ * Include .gcnf test files in distribution
+
