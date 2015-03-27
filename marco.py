@@ -4,6 +4,7 @@ import argparse
 import atexit
 import signal
 import sys
+import threading
 
 import utils
 import mapsolvers
@@ -218,23 +219,30 @@ def main():
         sys.stderr.write("Result limit reached.\n")
         sys.exit(0)
 
-    # enumerate results
-    remaining = args.limit
+    # enumerate results in a separate thread so signal handling works while in C code
+    # ref: https://thisismiller.github.io/blog/CPython-Signal-Handling/
+    def enumerate():
+        remaining = args.limit
 
-    for result in mp.enumerate():
-        output = result[0]
-        if args.alltimes:
-            output = "%s %0.3f" % (output, stats.current_time())
-        if args.verbose:
-            output = "%s %s" % (output, " ".join([str(x + 1) for x in result[1]]))
+        for result in mp.enumerate():
+            output = result[0]
+            if args.alltimes:
+                output = "%s %0.3f" % (output, stats.current_time())
+            if args.verbose:
+                output = "%s %s" % (output, " ".join([str(x + 1) for x in result[1]]))
 
-        print(output)
+            print(output)
 
-        if remaining:
-            remaining -= 1
-            if remaining == 0:
-                sys.stderr.write("Result limit reached.\n")
-                sys.exit(0)
+            if remaining:
+                remaining -= 1
+                if remaining == 0:
+                    sys.stderr.write("Result limit reached.\n")
+                    sys.exit(0)
+
+    enumthread = threading.Thread(target=enumerate)
+    enumthread.daemon = True       # so thread is killed when main thread exits (e.g. in signal handler)
+    enumthread.start()
+    enumthread.join(float("inf"))  # timeout required for signal handler to work; set to infinity
 
 
 if __name__ == '__main__':
