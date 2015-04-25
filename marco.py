@@ -100,6 +100,12 @@ def at_exit(stats):
             sys.stderr.write("%-*s : %f\n" % (maxlen + 4, name + ' avg', sum(values) / float(len(values))))
 
 
+def error_exit(error, details, exception):
+    sys.stderr.write("[31;1mERROR:[m %s\n[33m%s[m\n\n" % (error, details))
+    sys.stderr.write(str(exception) + "\n")
+    sys.exit(1)
+
+
 def setup_execution(args, stats):
     # register timeout/interrupt handler
     def handler(signum, frame):
@@ -129,30 +135,22 @@ def setup_solvers(args):
     # create appropriate constraint solver
     if args.cnf or infile.name.endswith('.cnf') or infile.name.endswith('.cnf.gz') or infile.name.endswith('.gcnf') or infile.name.endswith('.gcnf.gz'):
         if args.force_minisat:
-            try:
-                csolver = CNFsolvers.MinisatSubsetSolver(infile)
-            except OSError as e:
-                sys.stderr.write("[31;1mERROR:[m Unable to load pyminisolvers library.\n[33mRun 'make -C pyminisolvers' to compile the library.[m\n\n")
-                sys.stderr.write(str(e) + "\n")
-                sys.exit(1)
+            _SolverClass = CNFsolvers.MinisatSubsetSolver
         else:
-            try:
-                csolver = CNFsolvers.MUSerSubsetSolver(infile)
-            except CNFsolvers.MUSerException as e:
-                sys.stderr.write("[31;1mERROR:[m Unable to use MUSer2 for MUS extraction.\n[33mUse --force-minisat to use Minisat instead[m (NOTE: it will be much slower.)\n\n")
-                sys.stderr.write(str(e) + "\n")
-                sys.exit(1)
-            except OSError as e:
-                sys.stderr.write("[31;1mERROR:[m Unable to load pyminisolvers library.\n[33mRun 'make -C pyminisolvers' to compile the library.[m\n\n")
-                sys.stderr.write(str(e) + "\n")
-                sys.exit(1)
+            _SolverClass = CNFsolvers.MUSerSubsetSolver
+
+        try:
+            csolver = _SolverClass(infile)
+        except CNFsolvers.MUSerException as e:
+            error_exit("Unable to use MUSer2 for MUS extraction.", "Use --force-minisat to use Minisat instead (NOTE: it will be much slower.)", e)
+        except (IOError, OSError) as e:
+            error_exit("Unable to load pyminisolvers library.", "Run 'make -C pyminisolvers' to compile the library.", e)
         infile.close()
     elif args.smt or infile.name.endswith('.smt2'):
         try:
             from SMTsolvers import Z3SubsetSolver
         except ImportError as e:
-            sys.stderr.write("ERROR: Unable to import z3 module:  %s\n\nPlease install Z3 from https://z3.codeplex.com/\n" % str(e))
-            sys.exit(1)
+            error_exit("Unable to import z3 module.", "Please install Z3 from https://github.com/Z3Prover/z3", e)
         # z3 has to be given a filename, not a file object, so close infile and just pass its name
         infile.close()
         csolver = Z3SubsetSolver(infile.name)
@@ -175,9 +173,7 @@ def setup_solvers(args):
         else:
             msolver = mapsolvers.MinisatMapSolver(n=csolver.n, bias=varbias, dump=args.dump_map)
     except OSError as e:
-        sys.stderr.write("[31;1mERROR:[m Unable to load pyminisolvers library.\n[33mRun 'make -C pyminisolvers' to compile the library.[m\n\n")
-        sys.stderr.write(str(e) + "\n")
-        sys.exit(1)
+        error_exit("Unable to load pyminisolvers library.", "Run 'make -C pyminisolvers' to compile the library.", e)
 
     return (csolver, msolver)
 
