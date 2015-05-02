@@ -237,3 +237,25 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
         ret.extend(hard)
 
         return ret
+
+class ModifiedMinisatSubsetSolver(MinisatSubsetSolver):
+    def __init__(self, filename):
+        MinisatSubsetSolver.__init__(self, filename, store_dimacs=False)
+        self.msolver = None
+
+    def set_msolver(self, msolver):
+        self.msolver = msolver
+
+    def shrink(self, seed, hard=[]):
+        current = set(seed)
+        for i in seed:
+            if i not in current or i in hard:
+                # May have been "also-removed"
+                continue
+            current.remove(i)
+            if self.msolver.check_seed(current) and not self.check_subset(current):
+                # Remove any also-removed constraints
+                current = set(self.s.unsat_core())  # helps a bit
+            else:
+                current.add(i)
+        return current
