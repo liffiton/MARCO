@@ -49,6 +49,8 @@ def parse_args():
                            help="block both directions from the result type of interest (i.e., block subsets of MUSes for --bias high, etc.)")
     exp_group.add_argument('--force-minisat', action='store_true',
                            help="use Minisat in place of MUSer2 for CNF (NOTE: much slower and usually not worth doing!)")
+    exp_group.add_argument('--force-shrinkusemss', action='store_true',
+                           help="import MSSes into shrink.")
 
     # Max/min-models arguments
     max_group_outer = parser.add_argument_group('  Maximal/minimal models options', "By default, the Map solver will efficiently produce maximal/minimal models itself by giving each variable a default polarity.  These options override that (--nomax, -m) or extend it (-M, --smus) in various ways.")
@@ -136,6 +138,8 @@ def setup_solvers(args):
     if args.cnf or infile.name.endswith('.cnf') or infile.name.endswith('.cnf.gz') or infile.name.endswith('.gcnf') or infile.name.endswith('.gcnf.gz'):
         if args.force_minisat:
             _SolverClass = CNFsolvers.MinisatSubsetSolver
+        elif args.force_shrinkusemss:
+            _SolverClass = CNFsolvers.ModifiedMinisatSubsetSolver
         else:
             _SolverClass = CNFsolvers.MUSerSubsetSolver
 
@@ -174,6 +178,9 @@ def setup_solvers(args):
             msolver = mapsolvers.MinisatMapSolver(n=csolver.n, bias=varbias, dump=args.dump_map)
     except OSError as e:
         error_exit("Unable to load pyminisolvers library.", "Run 'make -C pyminisolvers' to compile the library.", e)
+
+    if args.force_shrinkusemss:
+        csolver.set_msolver(msolver)
 
     return (csolver, msolver)
 
