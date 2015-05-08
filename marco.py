@@ -216,6 +216,9 @@ def main():
         csolver, msolver = setup_solvers(args)
         config = setup_config(args)
         mp = MarcoPolo(csolver, msolver, stats, config)
+    
+        if args.force_shrinkusemss: # stats object is not visible in setup_solver(), so I put it here.
+            csolver.set_stats(stats)
 
     # useful for timing just the parsing / setup
     if args.limit == 0:
@@ -242,10 +245,11 @@ def main():
                     sys.stderr.write("Result limit reached.\n")
                     sys.exit(0)
 
-    enumthread = threading.Thread(target=enumerate)
-    enumthread.daemon = True       # so thread is killed when main thread exits (e.g. in signal handler)
-    enumthread.start()
-    enumthread.join(float("inf"))  # timeout required for signal handler to work; set to infinity
+    enumerate()
+    #enumthread = threading.Thread(target=enumerate)
+    #enumthread.daemon = True       # so thread is killed when main thread exits (e.g. in signal handler)
+    #enumthread.start()
+    #enumthread.join(float("inf"))  # timeout required for signal handler to work; set to infinity
 
 
 if __name__ == '__main__':

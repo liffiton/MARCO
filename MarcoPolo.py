@@ -108,6 +108,10 @@ class MarcoPolo:
             if seed_is_sat:
                 if known_max:
                     MSS = seed
+                    try:
+                        self.subs.increment_MSS()
+                    except AttributeError:
+                        pass
                 else:
                     with self.stats.time('grow'):
                         oldlen = len(seed)

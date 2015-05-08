@@ -23,8 +23,14 @@ class MapSolver:
         Returns:
             True if seed is unexplored (i.e., its corresponding assignment is a model)
         """
+        # out = self.complement(seed)
+        return self.solver.solve(self.temp_test(seed))
+
+    def temp_test(self, seed):
         out = self.complement(seed)
-        return self.solver.solve([(i+1) for i in seed] + [-(i+1) for i in out])
+        # ret = list(seed) + list(out)
+        ret = [(i+1) for i in seed] + [-(i+1) for i in out]
+        return ret
 
     def find_above(self, seed):
         """Look for and return any unexplored point including the given seed.

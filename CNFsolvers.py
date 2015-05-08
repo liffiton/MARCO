@@ -238,24 +238,50 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
 
         return ret
 
+
 class ModifiedMinisatSubsetSolver(MinisatSubsetSolver):
     def __init__(self, filename):
         MinisatSubsetSolver.__init__(self, filename, store_dimacs=False)
-        self.msolver = None
+        self._msolver = None
+        self._stats = None
+        self._known_MSS = 0
 
     def set_msolver(self, msolver):
-        self.msolver = msolver
+        self._msolver = msolver
+
+    def set_stats(self, stats):
+        self._stats = stats
+
+    def increment_MSS(self):
+        self._known_MSS += 1
 
     def shrink(self, seed, hard=[]):
+        check_count1 = 0
+        check_count2 = 0
         current = set(seed)
         for i in seed:
             if i not in current or i in hard:
-                # May have been "also-removed"
                 continue
             current.remove(i)
-            if self.msolver.check_seed(current) and not self.check_subset(current):
-                # Remove any also-removed constraints
-                current = set(self.s.unsat_core())  # helps a bit
+            # only check seeds after the first MSS is computed
+            if self._known_MSS > 0:
+                # the number of calls to check_seed
+                check_count1 += 1
+                # check if the current subset has already been marked by any MSS
+                if self._msolver.check_seed(current):
+                    # the number of calls to check_subset
+                    check_count2 += 1
+                    if not self.check_subset(current):
+                        current = set(self.s.unsat_core())
+                    else:
+                        current.add(i)
+                else:
+                    current.add(i)
             else:
-                current.add(i)
+                if not self.check_subset(current):
+                    current = set(self.s.unsat_core())
+                else:
+                    current.add(i)
+        # the difference here shows how many calls to check_subset are avoided
+        self._stats.add_stat("shrink_check", check_count1 - check_count2)
         return current
