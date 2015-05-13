@@ -263,6 +263,7 @@ class ModifiedMinisatSubsetSolver(MinisatSubsetSolver):
             if i not in current or i in hard:
                 continue
             current.remove(i)
+            current_SAT = None
             # only check seeds after the first MSS is computed
             if self._known_MSS > 0:
                 # the number of calls to check_seed
@@ -271,17 +272,15 @@ class ModifiedMinisatSubsetSolver(MinisatSubsetSolver):
                 if self._msolver.check_seed(current):
                     # the number of calls to check_subset
                     check_count2 += 1
-                    if not self.check_subset(current):
-                        current = set(self.s.unsat_core())
+                    current_SAT = self.check_subset(current)
                     else:
-                        current.add(i)
+                        current_SAT = True
                 else:
+                    current_SAT = self.check_subset(current)
+                if current_SAT:
                     current.add(i)
-            else:
-                if not self.check_subset(current):
+                else:
                     current = set(self.s.unsat_core())
-                else:
-                    current.add(i)
         # the difference here shows how many calls to check_subset are avoided
         self._stats.add_stat("shrink_check", check_count1 - check_count2)
         return current
