@@ -273,14 +273,14 @@ class ModifiedMinisatSubsetSolver(MinisatSubsetSolver):
                     # the number of calls to check_subset
                     check_count2 += 1
                     current_SAT = self.check_subset(current)
-                    else:
-                        current_SAT = True
                 else:
-                    current_SAT = self.check_subset(current)
-                if current_SAT:
-                    current.add(i)
-                else:
-                    current = set(self.s.unsat_core())
+                    current_SAT = True
+            else:
+                current_SAT = self.check_subset(current)
+            if current_SAT:
+                current.add(i)
+            else:
+                current = set(self.s.unsat_core())
         # the difference here shows how many calls to check_subset are avoided
         self._stats.add_stat("shrink_check", check_count1 - check_count2)
         return current
