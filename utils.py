@@ -20,7 +20,7 @@ class Statistics:
         self._times = Counter()
         self._counts = Counter()
         self._stats = defaultdict(list)
-        self._category = None
+        self._timer_categories = set()  # track which timers are currently running
 
     # Usage:
     #  s = Statistics()
@@ -29,38 +29,39 @@ class Statistics:
     #  with s.time("two")
     #    # do second thing
     def time(self, category):
-        self._category = category
-        return self.Timer(self)
+        return self.Timer(self, category)
 
     # Context manager class for time() method
     class Timer:
-        def __init__(self, stats):
+        def __init__(self, stats, category):
             self._stats = stats
+            self._category = category
 
         def __enter__(self):
-            self._stats.start_time()
+            self._stats.start_time(self._category)
 
         def __exit__(self, ex_type, ex_value, traceback):
-            self._stats.end_time()
+            self._stats.end_time(self._category)
             return False  # doesn't handle any exceptions itself
 
-    def start_time(self):
-        self._counts[self._category] += 1
+    def start_time(self, category):
+        self._counts[category] += 1
+        self._timer_categories.add(category)
         self._curr = _get_time()
 
-    def end_time(self):
-        self._times[self._category] += _get_time() - self._curr
-        self._category = None
+    def end_time(self, category):
+        self._times[category] += _get_time() - self._curr
+        self._timer_categories.remove(category)
 
     def current_time(self):
         return _get_time() - self._start
 
     def get_times(self):
         self._times['total'] = self.current_time()
-        if self._category:
-            # If we're in a category currently,
-            # give it the time up to this point.
-            self._times[self._category] += _get_time() - self._curr
+        for category in self._timer_categories:
+            # If any timers are currently running,
+            # give them the time up to this point.
+            self._end_time(category)
 
         return self._times
 
