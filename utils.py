@@ -61,7 +61,7 @@ class Statistics:
         for category in self._timer_categories:
             # If any timers are currently running,
             # give them the time up to this point.
-            self._end_time(category)
+            self.end_time(category)
 
         return self._times
 
