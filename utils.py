@@ -49,9 +49,10 @@ class Statistics:
         self._timer_categories.add(category)
         self._curr = _get_time()
 
-    def end_time(self, category):
+    def end_time(self, category, remove=True):
         self._times[category] += _get_time() - self._curr
-        self._timer_categories.remove(category)
+        if remove:
+            self._timer_categories.remove(category)
 
     def current_time(self):
         return _get_time() - self._start
@@ -61,7 +62,7 @@ class Statistics:
         for category in self._timer_categories:
             # If any timers are currently running,
             # give them the time up to this point.
-            self.end_time(category)
+            self.end_time(category, remove=False)
 
         return self._times
 
