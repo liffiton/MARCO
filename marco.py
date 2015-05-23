@@ -235,7 +235,7 @@ def main():
             if args.alltimes:
                 output = "%s %0.3f" % (output, stats.current_time())
             if args.verbose:
-                output = "%s %s" % (output, " ".join([str(x + 1) for x in result[1]]))
+                output = "%s %s" % (output, " ".join([str(x) for x in result[1]]))
 
             print(output)
 

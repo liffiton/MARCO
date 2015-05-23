@@ -92,18 +92,18 @@ class MinisatSubsetSolver:
             self.parse_dimacs(infile)
 
     def check_subset(self, seed, improve_seed=False):
-        is_sat = self.s.solve_subset(seed)
+        is_sat = self.s.solve_subset(i-1 for i in seed)
         if improve_seed:
             if is_sat:
-                seed = self.s.sat_subset()
+                seed = self.s.sat_subset(offset=1)
             else:
-                seed = self.s.unsat_core()
+                seed = self.s.unsat_core(offset=1)
             return is_sat, seed
         else:
             return is_sat
 
     def complement(self, aset):
-        return set(range(self.n)).difference(aset)
+        return set(range(1, self.n+1)).difference(aset)
 
     def shrink(self, seed, hard=[]):
         current = set(seed)
@@ -114,7 +114,7 @@ class MinisatSubsetSolver:
             current.remove(i)
             if not self.check_subset(current):
                 # Remove any also-removed constraints
-                current = set(self.s.unsat_core())  # helps a bit
+                current = set(self.s.unsat_core(offset=1))  # helps a bit
             else:
                 current.add(i)
         return current
@@ -153,7 +153,7 @@ class MinisatSubsetSolver:
             current.append(x)
             if self.check_subset(current):
                 # Add any also-satisfied constraint
-                current = self.s.sat_subset()
+                current = self.s.sat_subset(offset=1)
             else:
                 current.pop()
 
@@ -201,7 +201,7 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
             cnffile.write(self.dimacs[j])
         # also include hard clauses in "Don't care" group
         for i in hard:
-            for j in self.groups[i+1]:
+            for j in self.groups[i]:
                 cnffile.write(b"{0} ")
                 cnffile.write(self.dimacs[j])
 
@@ -209,8 +209,8 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
             if i in hard:
                 # skip hard clauses
                 continue
-            for j in self.groups[i+1]:
-                cnffile.write(("{%d} " % (g+1)).encode())
+            for j in self.groups[i]:
+                cnffile.write(("{%d} " % g).encode())
                 cnffile.write(self.dimacs[j])
 
         cnffile.flush()

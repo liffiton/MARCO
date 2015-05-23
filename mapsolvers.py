@@ -14,7 +14,7 @@ class MapSolver:
         """
         self.n = n
         self.bias = bias
-        self.all_n = set(range(n))  # used in complement fairly frequently
+        self.all_n = set(range(1, n+1))  # used in complement fairly frequently
         self.dump = dump
 
     def check_seed(self, seed):
@@ -28,8 +28,7 @@ class MapSolver:
 
     def temp_test(self, seed):
         out = self.complement(seed)
-        # ret = list(seed) + list(out)
-        ret = [(i+1) for i in seed] + [-(i+1) for i in out]
+        ret = list(seed) + [-i for i in out]
         return ret
 
     def find_above(self, seed):
@@ -40,7 +39,7 @@ class MapSolver:
         Returns:
             Any unexplored strict superset of seed, if one exists.
         """
-        superset_exists = self.solver.solve( (i+1) for i in seed )
+        superset_exists = self.solver.solve(seed)
         if superset_exists:
             return self.get_seed()
         else:
@@ -50,9 +49,9 @@ class MapSolver:
         """Get the seed from the current model.  (Depends on work in next_seed to be valid.)
 
         Returns:
-            A seed as an array of 0-based constraint indexes.
+            A seed as an array of 1-based constraint indexes.
         """
-        return self.solver.get_model_trues(start=0, end=self.n)
+        return self.solver.get_model_trues(start=0, end=self.n, offset=1)
 
         # slower:
         #model = self.solver.get_model()
@@ -70,7 +69,7 @@ class MapSolver:
            The Boolean direction parameter specifies up (True) or down (False)
 
         Returns:
-            A seed as an array of 0-based constraint indexes.
+            A seed as an array of 1-based constraint indexes.
         """
         while True:
             comp = self.complement(seed)
@@ -78,15 +77,15 @@ class MapSolver:
             if direction:
                 # search for a solution w/ all of the current seed plus at
                 # least one from the current complement.
-                self.solver.add_clause([-x] + [i+1 for i in comp])  # temporary clause
+                self.solver.add_clause([-x] + list(comp))  # temporary clause
                 # activate the temporary clause and all seed clauses
-                havenew = self.solver.solve([x] + [i+1 for i in seed])
+                havenew = self.solver.solve([x] + list(seed))
             else:
                 # search for a solution w/ none of current complement and at
                 # least one from the current seed removed.
-                self.solver.add_clause([-x] + [-(i+1) for i in seed])  # temporary clause
+                self.solver.add_clause([-x] + [-i for i in seed])  # temporary clause
                 # activate the temporary clause and deactivate complement clauses
-                havenew = self.solver.solve([x] + [-(i+1) for i in comp])
+                havenew = self.solver.solve([x] + [-i for i in comp])
             self.solver.add_clause([-x])  # remove the temporary clause
 
             if havenew:
@@ -106,13 +105,12 @@ class MapSolver:
 
     def block_down(self, frompoint):
         """Block down from a given set."""
-        comp = self.complement(frompoint)
-        clause = [(i+1) for i in comp]
+        clause = self.complement(frompoint)
         self.add_clause(clause)
 
     def block_up(self, frompoint):
         """Block up from a given set."""
-        clause = [-(i+1) for i in frompoint]
+        clause = [-i for i in frompoint]
         self.add_clause(clause)
 
 

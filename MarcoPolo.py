@@ -45,7 +45,7 @@ class MarcoPolo:
         for seed, known_max in self.seeds:
 
             if self.config['verbose']:
-                print("- Initial seed: %s" % " ".join([str(x+1) for x in seed]))
+                print("- Initial seed: %s" % " ".join([str(x) for x in seed]))
 
             if self.config['maximize'] == 'always':
                 assert not known_max
@@ -55,7 +55,7 @@ class MarcoPolo:
                     self.record_delta('max', oldlen, len(seed), self.bias_high)
 
                 if self.config['verbose']:
-                    print("- Maximized to: %s" % " ".join([str(x+1) for x in seed]))
+                    print("- Maximized to: %s" % " ".join([str(x) for x in seed]))
 
             with self.stats.time('check'):
                 # subset check may improve upon seed w/ unsat_core or sat_subset
@@ -69,7 +69,7 @@ class MarcoPolo:
                 if known_max:
                     print("- Seed is known to be optimal.")
                 else:
-                    print("- Seed improved by check: %s" % " ".join([str(x+1) for x in seed]))
+                    print("- Seed improved by check: %s" % " ".join([str(x) for x in seed]))
 
             # -m half: Only maximize if we're SAT and seeking MUSes or UNSAT and seeking MCSes
             if self.config['maximize'] == 'half' and (seed_is_sat == self.bias_high):
@@ -82,7 +82,7 @@ class MarcoPolo:
                     known_max = True
 
                 if self.config['verbose']:
-                    print("- Half-maximization w/in map, new seed: %s" % " ".join([str(x+1) for x in seed]))
+                    print("- Half-maximization w/in map, new seed: %s" % " ".join([str(x) for x in seed]))
 
                 if len(seed) != oldlen:
                     # only need to re-check if maximization produced a different seed
@@ -100,7 +100,7 @@ class MarcoPolo:
                         if known_max:
                             print("- Seed is known to be optimal.")
                         else:
-                            print("- Half-max check: Seed improved by check: %s" % " ".join([str(x+1) for x in seed]))
+                            print("- Half-max check: Seed improved by check: %s" % " ".join([str(x) for x in seed]))
                 else:  # no re-check needed
                     if self.config['verbose']:
                         print("- Seed is known to be optimal.")
@@ -139,7 +139,7 @@ class MarcoPolo:
                             if newseed:
                                 self.seeds.add_seed(newseed, False)
                                 if self.config['verbose']:
-                                    print("- New seed found above MSS: %s" % " ".join([(x+1) for x in seed]))
+                                    print("- New seed found above MSS: %s" % " ".join([(x) for x in seed]))
 
             else:  # seed is not SAT
                 self.got_top = True  # any unsat set covers the top of the lattice
@@ -150,7 +150,7 @@ class MarcoPolo:
                         # This might change after every blocking clause,
                         # but we only need to check right before we're going to use them.
                         implies = self.map.solver.implies()
-                        self.hard_constraints = [x-1 for x in implies if x > 0]
+                        self.hard_constraints = [x for x in implies if x > 0]
 
                     with self.stats.time('shrink'):
                         oldlen = len(seed)
