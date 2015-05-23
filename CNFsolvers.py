@@ -280,7 +280,7 @@ class ModifiedMinisatSubsetSolver(MinisatSubsetSolver):
             if current_SAT:
                 current.add(i)
             else:
-                current = set(self.s.unsat_core())
+                current = set(self.s.unsat_core(offset=1))
         # the difference here shows how many calls to check_subset are avoided
         self._stats.add_stat("shrink_check", check_count1 - check_count2)
         return current
