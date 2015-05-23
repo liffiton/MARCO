@@ -92,7 +92,7 @@ class MinisatSubsetSolver:
             self.parse_dimacs(infile)
 
     def check_subset(self, seed, improve_seed=False):
-        is_sat = self.s.solve_subset(i-1 for i in seed)
+        is_sat = self.s.solve_subset([i-1 for i in seed])
         if improve_seed:
             if is_sat:
                 seed = self.s.sat_subset(offset=1)
