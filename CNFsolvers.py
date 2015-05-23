@@ -1,4 +1,3 @@
-import array
 import atexit
 import bisect
 import collections
@@ -210,7 +209,7 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
                 # skip hard clauses
                 continue
             for j in self.groups[i]:
-                cnffile.write(("{%d} " % g).encode())
+                cnffile.write(("{%d} " % (g+1)).encode())
                 cnffile.write(self.dimacs[j])
 
         cnffile.flush()
@@ -231,7 +230,7 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
 
         # Parse result, return the core
         matchline = re.search(self.core_pattern, out).group(0)
-        ret = array.array('i', (seed[int(x)-1] for x in matchline.split()[1:-1]) )
+        ret = [seed[int(x)-1] for x in matchline.split()[1:-1]]
 
         # Add back in hard clauses
         ret.extend(hard)

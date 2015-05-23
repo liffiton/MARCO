@@ -139,7 +139,7 @@ class MarcoPolo:
                             if newseed:
                                 self.seeds.add_seed(newseed, False)
                                 if self.config['verbose']:
-                                    print("- New seed found above MSS: %s" % " ".join([(x) for x in seed]))
+                                    print("- New seed found above MSS: %s" % " ".join([str(x) for x in seed]))
 
             else:  # seed is not SAT
                 self.got_top = True  # any unsat set covers the top of the lattice
