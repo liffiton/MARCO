@@ -41,6 +41,16 @@ class MarcoPolo:
             self.stats.add_stat("delta.%s.down" % name, float(oldlen - newlen) / self.n)
 
     def enumerate(self):
+
+        if self.config['singleton_MCSes']:
+            with self.stats.time('singleton_MCSes'):
+                seed = set(range(1, self.n+1))
+                for i in range(1, self.n+1):
+                    seed.remove(i)
+                    if self.subs.check_subset(seed):
+                        self.map.block_down(seed)
+                    seed.add(i)
+
         '''MUS/MCS enumeration with all the bells and whistles...'''
         for seed, known_max in self.seeds:
 
