@@ -51,6 +51,8 @@ def parse_args():
                            help="use Minisat in place of MUSer2 for CNF (NOTE: much slower and usually not worth doing!)")
     exp_group.add_argument('--force-shrinkusemss', action='store_true',
                            help="import MSSes into shrink.")
+    exp_group.add_argument('--use-singletonMCSes', action='store_true',
+                           help="generate all singleton MCSes up front to help shrink.")
 
     # Max/min-models arguments
     max_group_outer = parser.add_argument_group('  Maximal/minimal models options', "By default, the Map solver will efficiently produce maximal/minimal models itself by giving each variable a default polarity.  These options override that (--nomax, -m) or extend it (-M, --smus) in various ways.")
@@ -203,6 +205,7 @@ def setup_config(args):
     config['mssguided'] = args.mssguided
     config['block_both'] = args.block_both
     config['verbose'] = args.verbose > 1
+    config['singleton_MCSes'] = args.use_singletonMCSes
 
     return config
 
@@ -216,8 +219,8 @@ def main():
         csolver, msolver = setup_solvers(args)
         config = setup_config(args)
         mp = MarcoPolo(csolver, msolver, stats, config)
-    
-        if args.force_shrinkusemss: # stats object is not visible in setup_solver(), so I put it here.
+
+        if args.force_shrinkusemss:  # stats object is not visible in setup_solver(), so I put it here.
             csolver.set_stats(stats)
 
     # useful for timing just the parsing / setup
