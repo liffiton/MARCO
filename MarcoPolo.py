@@ -48,6 +48,7 @@ class MarcoPolo:
                 for i in range(1, self.n+1):
                     seed.remove(i)
                     if self.subs.check_subset(seed):
+                        yield ("S", seed)
                         self.map.block_down(seed)
                     seed.add(i)
 
