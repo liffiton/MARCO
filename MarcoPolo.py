@@ -45,7 +45,8 @@ class MarcoPolo:
         if self.config['singleton_MCSes']:
             with self.stats.time('singleton_MCSes'):
                 seed = set(range(1, self.n+1))
-                for i in range(1, self.n+1):
+                _, seed_core = self.subs.check_subset(seed, improve_seed=True)
+                for i in seed_core:
                     seed.remove(i)
                     if self.subs.check_subset(seed):
                         yield ("S", seed)
