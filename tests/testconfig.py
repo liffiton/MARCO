@@ -18,6 +18,15 @@ common_flags = ['-v']
 cmd = '../marco.py'
 
 jobs = [
+    # Random 3SAT, testing a new mode.
+    {
+      'name':    '3sat_new',
+      'cmd':     cmd,
+      'files':   rnd3sat_files,
+      'flags':   ['--force-shrinkusemss', '--use-singletonMCSes --force-shrinkusemss'],
+      'flags_all': ['-v'],
+      'default': False,
+    },
     # Random 3SAT
     {
       'name':    '3sat',
