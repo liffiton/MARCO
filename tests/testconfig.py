@@ -23,8 +23,8 @@ jobs = [
       'name':    '3sat_new',
       'cmd':     cmd,
       'files':   rnd3sat_files,
-      'flags':   ['--force-shrinkusemss', '--use-singletonMCSes --force-shrinkusemss'],
-      'flags_all': ['-v'],
+      'flags':   ['--force-shrinkusemss', ''],
+      'flags_all': ['-v', '--use-singletonMCSes'],
       'default': False,
     },
     # Random 3SAT
