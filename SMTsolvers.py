@@ -30,7 +30,7 @@ def read_smt2(filename):
         return [formula]
 
 
-class Z3SubsetSolver:
+class Z3SubsetSolver(object):
     c_prefix = "!marco"  # to differentiate our vars from instance vars
 
     constraints = []
@@ -104,7 +104,6 @@ class Z3SubsetSolver:
             if not self.check_subset(current):
                 # Remove any also-removed constraints
                 current = set(self.seed_from_core())
-                pass
             else:
                 current.add(i)
         return current

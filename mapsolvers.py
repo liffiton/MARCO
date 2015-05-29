@@ -1,8 +1,12 @@
+import abc
 from pyminisolvers import minisolvers
 
 
-class MapSolver:
-    """The base class for any MapSolver, implementing common utility functions."""
+class MapSolver(object):
+    """The abstract base class for any MapSolver, implementing common utility functions."""
+    __metaclass__ = abc.ABCMeta
+
+    @abc.abstractmethod  # must be overridden, but can be called via super()
     def __init__(self, n, bias=True, dump=None):
         """Common initialization.
 
@@ -12,10 +16,18 @@ class MapSolver:
                   high/inclusion/MUS bias; False is a low/exclusion/MSS bias;
                   None is no bias.
         """
-        self.n = n
+        self.n = n    # pylint: disable=invalid-name
         self.bias = bias
         self.all_n = set(range(n))  # used in complement fairly frequently
         self.dump = dump
+
+    @abc.abstractmethod
+    def next_seed(self):
+        pass
+
+    @abc.abstractproperty
+    def solver(self):
+        pass
 
     def check_seed(self, seed):
         """Check whether a given seed is still unexplored.
@@ -34,7 +46,7 @@ class MapSolver:
         Returns:
             Any unexplored strict superset of seed, if one exists.
         """
-        superset_exists = self.solver.solve( (i+1) for i in seed )
+        superset_exists = self.solver.solve(i+1 for i in seed)
         if superset_exists:
             return self.get_seed()
         else:
@@ -68,20 +80,20 @@ class MapSolver:
         """
         while True:
             comp = self.complement(seed)
-            x = self.solver.new_var() + 1
+            tmpvar = self.solver.new_var() + 1
             if direction:
                 # search for a solution w/ all of the current seed plus at
                 # least one from the current complement.
-                self.solver.add_clause([-x] + [i+1 for i in comp])  # temporary clause
+                self.solver.add_clause([-tmpvar] + [i+1 for i in comp])  # temporary clause
                 # activate the temporary clause and all seed clauses
-                havenew = self.solver.solve([x] + [i+1 for i in seed])
+                havenew = self.solver.solve([tmpvar] + [i+1 for i in seed])
             else:
                 # search for a solution w/ none of current complement and at
                 # least one from the current seed removed.
-                self.solver.add_clause([-x] + [-(i+1) for i in seed])  # temporary clause
+                self.solver.add_clause([-tmpvar] + [-(i+1) for i in seed])  # temporary clause
                 # activate the temporary clause and deactivate complement clauses
-                havenew = self.solver.solve([x] + [-(i+1) for i in comp])
-            self.solver.add_clause([-x])  # remove the temporary clause
+                havenew = self.solver.solve([tmpvar] + [-(i+1) for i in comp])
+            self.solver.add_clause([-tmpvar])  # remove the temporary clause
 
             if havenew:
                 seed = self.get_seed()
@@ -96,7 +108,7 @@ class MapSolver:
         """Add a given clause to the Map solver."""
         self.solver.add_clause(clause)
         if self.dump is not None:
-            self.dump.write(" ".join(map(str, clause)) + " 0\n")
+            self.dump.write(" ".join(str(lit) for lit in clause) + " 0\n")
 
     def block_down(self, frompoint):
         """Block down from a given set."""
@@ -112,13 +124,15 @@ class MapSolver:
 
 class MinicardMapSolver(MapSolver):
     def __init__(self, n, bias=True):   # bias=True is a high/inclusion/MUS bias; False is a low/exclusion/MSS bias.
-        MapSolver.__init__(self, n, bias)
+        super(MinicardMapSolver, self).__init__(n, bias)
 
         if bias:
             self.k = n  # initial lower bound on # of True variables
         else:
             self.k = 0
-        self.solver = minisolvers.MinicardSolver()
+
+        self._solver = minisolvers.MinicardSolver()
+
         while self.solver.nvars() < self.n:
             self.solver.new_var(self.bias)
 
@@ -140,6 +154,10 @@ class MinicardMapSolver(MapSolver):
             self.solver.add_atmost([-(x+1) for x in range(self.n * 2)], self.n)
         else:
             self.solver.add_atmost([(x+1) for x in range(self.n * 2)], self.n)
+
+    @property
+    def solver(self):
+        return self._solver
 
     def solve_with_bound(self, k):
         # same assumptions work both for high bias / atleast and for low bias / atmost
@@ -186,14 +204,18 @@ class MinicardMapSolver(MapSolver):
 
 class MinisatMapSolver(MapSolver):
     def __init__(self, n, bias=True, dump=None):   # bias=True is a high/inclusion/MUS bias; False is a low/exclusion/MSS bias; None is no bias.
-        MapSolver.__init__(self, n, bias, dump)
+        super(MinisatMapSolver, self).__init__(n, bias, dump)
 
-        self.solver = minisolvers.MinisatSolver()
+        self._solver = minisolvers.MinisatSolver()
         while self.solver.nvars() < self.n:
             self.solver.new_var(self.bias)
 
         if self.bias is None:
             self.solver.set_rnd_pol(True)
+
+    @property
+    def solver(self):
+        return self._solver
 
     def next_seed(self):
         if self.solver.solve():

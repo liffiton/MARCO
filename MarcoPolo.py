@@ -4,7 +4,7 @@ except ImportError:
     import Queue as queue
 
 
-class MarcoPolo:
+class MarcoPolo(object):
     def __init__(self, csolver, msolver, stats, config):
         self.subs = csolver
         self.map = msolver
@@ -170,7 +170,7 @@ class MarcoPolo:
                     print("- MUS blocked.")
 
 
-class SeedManager:
+class SeedManager(object):
     def __init__(self, msolver, stats, config):
         self.map = msolver
         self.stats = stats

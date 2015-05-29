@@ -108,7 +108,7 @@ def error_exit(error, details, exception):
 
 def setup_execution(args, stats):
     # register timeout/interrupt handler
-    def handler(signum, frame):
+    def handler(signum, frame):  # pylint: disable=unused-argument
         if signum == signal.SIGALRM:
             sys.stderr.write("Time limit reached.\n")
         else:
@@ -135,12 +135,12 @@ def setup_solvers(args):
     # create appropriate constraint solver
     if args.cnf or infile.name.endswith('.cnf') or infile.name.endswith('.cnf.gz') or infile.name.endswith('.gcnf') or infile.name.endswith('.gcnf.gz'):
         if args.force_minisat:
-            _SolverClass = CNFsolvers.MinisatSubsetSolver
+            solverclass = CNFsolvers.MinisatSubsetSolver
         else:
-            _SolverClass = CNFsolvers.MUSerSubsetSolver
+            solverclass = CNFsolvers.MUSerSubsetSolver
 
         try:
-            csolver = _SolverClass(infile)
+            csolver = solverclass(infile)
         except CNFsolvers.MUSerException as e:
             error_exit("Unable to use MUSer2 for MUS extraction.", "Use --force-minisat to use Minisat instead (NOTE: it will be much slower.)", e)
         except (IOError, OSError) as e:
@@ -217,13 +217,13 @@ def main():
 
     # enumerate results in a separate thread so signal handling works while in C code
     # ref: https://thisismiller.github.io/blog/CPython-Signal-Handling/
-    def enumerate():
+    def do_enumerate():
         remaining = args.limit
 
         for result in mp.enumerate():
             output = result[0]
             if args.alltimes:
-                output = "%s %0.3f" % (output, stats.current_time())
+                output = "%s %0.3f" % (output, stats.total_time())
             if args.verbose:
                 output = "%s %s" % (output, " ".join([str(x + 1) for x in result[1]]))
 
@@ -235,7 +235,7 @@ def main():
                     sys.stderr.write("Result limit reached.\n")
                     sys.exit(0)
 
-    enumthread = threading.Thread(target=enumerate)
+    enumthread = threading.Thread(target=do_enumerate)
     enumthread.daemon = True       # so thread is killed when main thread exits (e.g. in signal handler)
     enumthread.start()
     enumthread.join(float("inf"))  # timeout required for signal handler to work; set to infinity

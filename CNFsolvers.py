@@ -10,7 +10,7 @@ import tempfile
 from pyminisolvers import minisolvers
 
 
-class MinisatSubsetSolver:
+class MinisatSubsetSolver(object):
     def __init__(self, infile, store_dimacs=False):
         self.s = minisolvers.MinisatSubsetSolver()
         self.store_dimacs = store_dimacs
