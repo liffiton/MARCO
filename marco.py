@@ -19,7 +19,7 @@ def parse_args():
     parser.add_argument('infile', nargs='?', type=argparse.FileType('rb'),
                         default=sys.stdin,
                         help="name of file to process (STDIN if omitted)")
-    parser.add_argument('-v', '--verbose', action='count',
+    parser.add_argument('-v', '--verbose', action='count', default=0,
                         help="print more verbose output (constraint indexes for MUSes/MCSes) -- repeat the flag for detail about the algorithm's progress)")
     parser.add_argument('-a', '--alltimes', action='store_true',
                         help="print the time for every output")
@@ -238,7 +238,13 @@ def main():
     enumthread = threading.Thread(target=do_enumerate)
     enumthread.daemon = True       # so thread is killed when main thread exits (e.g. in signal handler)
     enumthread.start()
-    enumthread.join(float("inf"))  # timeout required for signal handler to work; set to infinity
+    if sys.version_info[0] >= 3:
+        enumthread.join()
+    else:
+        # In Python 2, a timeout is required for join() to not just
+        # call a blocking C function (thus blocking the signal handler).
+        # However, infinity works.
+        enumthread.join(float("inf"))
 
 
 if __name__ == '__main__':
