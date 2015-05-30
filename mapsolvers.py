@@ -16,7 +16,7 @@ class MapSolver(object):
                   high/inclusion/MUS bias; False is a low/exclusion/MSS bias;
                   None is no bias.
         """
-        self.n = n    # pylint: disable=invalid-name
+        self.n = n
         self.bias = bias
         self.all_n = set(range(1, n+1))  # used in complement fairly frequently
         self.dump = dump
