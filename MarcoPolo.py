@@ -44,13 +44,19 @@ class MarcoPolo:
 
         if self.config['singleton_MCSes']:
             with self.stats.time('singleton_MCSes'):
+                subset_core = set([])
                 seed = set(range(1, self.n+1))
                 _, seed_core = self.subs.check_subset(seed, improve_seed=True)
                 for i in seed_core:
+                    if i not in subset_core:
+                        continue
                     seed.remove(i)
                     if self.subs.check_subset(seed):
                         yield ("S", seed)
                         self.map.block_down(seed)
+                    else:
+                        _, refined_subset = self.subs.check_subset(seed, improve_seed=True)
+                        subset_core.intersection_update(refined_subset)
                     seed.add(i)
 
         '''MUS/MCS enumeration with all the bells and whistles...'''
