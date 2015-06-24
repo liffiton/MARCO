@@ -44,18 +44,22 @@ class MarcoPolo:
 
         if self.config['singleton_MCSes']:
             with self.stats.time('singleton_MCSes'):
-                subset_core = set([])
                 seed = set(range(1, self.n+1))
                 _, seed_core = self.subs.check_subset(seed, improve_seed=True)
+                # initialize our core-intersection to the first core
+                subset_core = set(seed_core)
                 for i in seed_core:
                     if i not in subset_core:
+                        # skip constraints known to not be in all cores
                         continue
+
                     seed.remove(i)
-                    if self.subs.check_subset(seed):
+                    is_sat, refined_subset = self.subs.check_subset(seed, improve_seed=True)
+                    if is_sat:
                         yield ("S", seed)
                         self.map.block_down(seed)
                     else:
-                        _, refined_subset = self.subs.check_subset(seed, improve_seed=True)
+                        # apply the new core to our intersection of cores
                         subset_core.intersection_update(refined_subset)
                     seed.add(i)
 
