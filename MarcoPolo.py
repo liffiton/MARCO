@@ -58,6 +58,7 @@ class MarcoPolo:
                     if is_sat:
                         yield ("S", seed)
                         self.map.block_down(seed)
+                        self.subs.increment_MSS()
                     else:
                         # apply the new core to our intersection of cores
                         subset_core.intersection_update(refined_subset)
