@@ -257,7 +257,7 @@ class ImprovedImpliesSubsetSolver(MinisatSubsetSolver):
         current = set(seed)
 
         if self._known_MSS > 0:
-            plaincount = len(self._msolver.solver.implies())
+            plaincount = len([x for x in self._msolver.solver.implies() if x > 0])
             implications = self._msolver.solver.implies(-x for x in self.complement(current))
             hard = set(x for x in implications if x > 0)
             initialcount = len(hard)
