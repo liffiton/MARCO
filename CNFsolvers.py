@@ -17,6 +17,18 @@ class MinisatSubsetSolver:
             self.dimacs = []
             self.groups = collections.defaultdict(list)
         self.read_dimacs(infile)
+        self._msolver = None
+        self._stats = None
+        self._known_MSS = 0
+
+    def set_msolver(self, msolver):
+        self._msolver = msolver
+
+    def set_stats(self, stats):
+        self._stats = stats
+
+    def increment_MSS(self):
+        self._known_MSS += 1
 
     def parse_dimacs(self, f):
         i = 0
@@ -104,7 +116,8 @@ class MinisatSubsetSolver:
     def complement(self, aset):
         return set(range(1, self.n+1)).difference(aset)
 
-    def shrink(self, seed, hard=[]):
+    def shrink(self, seed):
+        hard = self._msolver.solver.implies()
         current = set(seed)
         for i in seed:
             if i not in current or i in hard:
@@ -216,7 +229,8 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
 
     # override shrink method to use MUSer2
     # NOTE: seed must be indexed (i.e., not a set)
-    def shrink(self, seed, hard=[]):
+    def shrink(self, seed):
+        hard = self._msolver.solver.implies()
         # Open tmpfile
         with tempfile.NamedTemporaryFile('wb') as cnf:
             self.write_CNF(cnf, seed, hard)
@@ -238,31 +252,54 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
         return ret
 
 
-class ModifiedMinisatSubsetSolver(MinisatSubsetSolver):
-    def __init__(self, filename):
-        MinisatSubsetSolver.__init__(self, filename, store_dimacs=False)
-        self._msolver = None
-        self._stats = None
-        self._known_MSS = 0
+class ImprovedImpliesSubsetSolver(MinisatSubsetSolver):
+    def shrink(self, seed):
+        current = set(seed)
 
-    def set_msolver(self, msolver):
-        self._msolver = msolver
+        if self._known_MSS > 0:
+            plaincount = len(self._msolver.solver.implies())
+            implications = self._msolver.solver.implies(-x for x in self.complement(current))
+            hard = set(x for x in implications if x > 0)
+            initialcount = len(hard)
+        else:
+            plaincount = 0
+            initialcount = 0
+            hard = set()
 
-    def set_stats(self, stats):
-        self._stats = stats
+        for i in seed:
+            if i not in current or i in hard:
+                continue
+            current.remove(i)
 
-    def increment_MSS(self):
-        self._known_MSS += 1
+            if self.check_subset(current):
+                current.add(i)
+            else:
+                current = set(self.s.unsat_core(offset=1))
+                if self._known_MSS > 0:
+                    implications = self._msolver.solver.implies(-x for x in self.complement(current))
+                    hard = set(x for x in implications if x > 0)
 
-    def shrink(self, seed, hard=[]):
+        self._stats.add_stat("hardCons.plain", plaincount)
+        self._stats.add_stat("hardCons.improved.initial", initialcount)
+        self._stats.add_stat("hardCons.improved.end", len(hard))
+        self._stats.add_stat("hardCons.improved.delta", len(hard)-initialcount)
+        return current
+
+
+class ShrinkUseMSSSubsetSolver(MinisatSubsetSolver):
+    def shrink(self, seed):
         check_count1 = 0
         check_count2 = 0
         current = set(seed)
+
+        hard = self._msolver.solver.implies()
+
         for i in seed:
             if i not in current or i in hard:
                 continue
             current.remove(i)
             current_SAT = None
+
             # only check seeds after the first MSS is computed
             if self._known_MSS > 0:
                 # the number of calls to check_seed
@@ -276,10 +313,12 @@ class ModifiedMinisatSubsetSolver(MinisatSubsetSolver):
                     current_SAT = True
             else:
                 current_SAT = self.check_subset(current)
+
             if current_SAT:
                 current.add(i)
             else:
                 current = set(self.s.unsat_core(offset=1))
+
         # the difference here shows how many calls to check_subset are avoided
         self._stats.add_stat("shrink_check", check_count1 - check_count2)
         return current

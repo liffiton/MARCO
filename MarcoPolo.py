@@ -14,7 +14,6 @@ class MarcoPolo:
         self.bias_high = self.config['bias'] == 'MUSes'  # used frequently
         self.n = self.map.n   # number of constraints
         self.got_top = False  # track whether we've explored the complete set (top of the lattice)
-        self.hard_constraints = []  # store hard clauses to be passed to shrink()
 
     def enumerate_basic(self):
         '''Basic MUS/MCS enumeration, as a simple reference/example.'''
@@ -58,7 +57,10 @@ class MarcoPolo:
                     if is_sat:
                         yield ("S", seed)
                         self.map.block_down(seed)
-                        self.subs.increment_MSS()
+                        try:
+                            self.subs.increment_MSS()
+                        except AttributeError:
+                            pass
                     else:
                         # apply the new core to our intersection of cores
                         subset_core.intersection_update(refined_subset)
@@ -169,16 +171,9 @@ class MarcoPolo:
                 if known_max:
                     MUS = seed
                 else:
-                    if self.config['use_implies']:
-                        # This might change after every blocking clause,
-                        # but we only need to check right before we're going to use them.
-                        implies = self.map.solver.implies()
-                        self.hard_constraints = [x for x in implies if x > 0]
-
                     with self.stats.time('shrink'):
                         oldlen = len(seed)
-                        self.stats.add_stat("hard_constraints", len(self.hard_constraints))
-                        MUS = self.subs.shrink(seed, hard=self.hard_constraints)
+                        MUS = self.subs.shrink(seed)
                         self.record_delta('shrink', oldlen, len(MUS), False)
 
                     if self.config['verbose']:

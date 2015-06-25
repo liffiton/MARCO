@@ -41,8 +41,8 @@ def parse_args():
     exp_group = parser.add_argument_group('Experimental / research options', "These can typically be ignored; the defaults will give the best performance.")
     exp_group.add_argument('--mssguided', action='store_true',
                            help="check for unexplored subsets in immediate supersets of any MSS found")
-    exp_group.add_argument('--ignore-implies', action='store_true',
-                           help="do not use implied literals from Map as hard constraints")
+    exp_group.add_argument('--improved-implies', action='store_true',
+                           help="use improved technique for Map formula implications (implications under assumptions) [default: False, use only singleton MCSes as hard constraints]")
     exp_group.add_argument('--dump-map', nargs='?', type=argparse.FileType('w'),
                            help="dump clauses added to the Map formula to the given file.")
     exp_group.add_argument('--block-both', action='store_true',
@@ -140,6 +140,8 @@ def setup_solvers(args):
     if args.cnf or infile.name.endswith('.cnf') or infile.name.endswith('.cnf.gz') or infile.name.endswith('.gcnf') or infile.name.endswith('.gcnf.gz'):
         if args.force_minisat:
             _SolverClass = CNFsolvers.MinisatSubsetSolver
+        elif args.improved_implies:
+            _SolverClass = CNFsolvers.ImprovedImpliesSubsetSolver
         elif args.force_shrinkusemss:
             _SolverClass = CNFsolvers.ModifiedMinisatSubsetSolver
         else:
@@ -181,8 +183,10 @@ def setup_solvers(args):
     except OSError as e:
         error_exit("Unable to load pyminisolvers library.", "Run 'make -C pyminisolvers' to compile the library.", e)
 
-    if args.force_shrinkusemss:
+    try:
         csolver.set_msolver(msolver)
+    except AttributeError:
+        pass
 
     return (csolver, msolver)
 
@@ -201,7 +205,6 @@ def setup_config(args):
         config['maximize'] = 'solver'
     else:
         config['maximize'] = 'solver'
-    config['use_implies'] = not args.ignore_implies  # default is to use them
     config['mssguided'] = args.mssguided
     config['block_both'] = args.block_both
     config['verbose'] = args.verbose > 1
@@ -220,8 +223,11 @@ def main():
         config = setup_config(args)
         mp = MarcoPolo(csolver, msolver, stats, config)
 
-        if args.force_shrinkusemss:  # stats object is not visible in setup_solver(), so I put it here.
+        # stats object is not visible in setup_solver(), so I put it here.
+        try:
             csolver.set_stats(stats)
+        except AttributeError:
+            pass
 
     # useful for timing just the parsing / setup
     if args.limit == 0:
