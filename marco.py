@@ -143,7 +143,7 @@ def setup_solvers(args):
         elif args.improved_implies:
             _SolverClass = CNFsolvers.ImprovedImpliesSubsetSolver
         elif args.force_shrinkusemss:
-            _SolverClass = CNFsolvers.ModifiedMinisatSubsetSolver
+            _SolverClass = CNFsolvers.ShrinkUseMSSSubsetSolver
         else:
             _SolverClass = CNFsolvers.MUSerSubsetSolver
 
