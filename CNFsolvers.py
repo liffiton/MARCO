@@ -230,7 +230,7 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
     # override shrink method to use MUSer2
     # NOTE: seed must be indexed (i.e., not a set)
     def shrink(self, seed):
-        hard = self._msolver.solver.implies()
+        hard = [x for x in self._msolver.solver.implies() if x > 0]
         # Open tmpfile
         with tempfile.NamedTemporaryFile('wb') as cnf:
             self.write_CNF(cnf, seed, hard)
