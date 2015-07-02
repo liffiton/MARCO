@@ -140,7 +140,7 @@ class MarcoPolo:
                 else:
                     with self.stats.time('grow'):
                         oldlen = len(seed)
-                        MSS = self.subs.grow(seed, inplace=True)
+                        MSS = self.subs.grow(seed)
                         self.record_delta('grow', oldlen, len(MSS), True)
 
                     if self.config['verbose']:

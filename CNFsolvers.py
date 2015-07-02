@@ -144,11 +144,8 @@ class MinisatSubsetSolver:
         self.s.add_clause([-x])  # remove the temporary clause
         return ret
 
-    def grow(self, seed, inplace):
-        if inplace:
-            current = seed
-        else:
-            current = seed[:]
+    def grow(self, seed):
+        current = seed
 
         #while self.check_above(current):
         #    current = self.s.sat_subset()

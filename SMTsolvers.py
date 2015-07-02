@@ -109,11 +109,8 @@ class Z3SubsetSolver:
                 current.add(i)
         return current
 
-    def grow(self, seed, inplace):
-        if inplace:
-            current = seed
-        else:
-            current = seed[:]
+    def grow(self, seed):
+        current = seed
 
         for i in self.complement(current):
             #if i in current:
