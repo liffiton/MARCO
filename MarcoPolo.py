@@ -45,25 +45,11 @@ class MarcoPolo:
             with self.stats.time('singleton_MCSes'):
                 seed = set(range(1, self.n+1))
                 _, seed_core = self.subs.check_subset(seed, improve_seed=True)
-                # initialize our core-intersection to the first core
-                subset_core = set(seed_core)
                 for i in seed_core:
-                    if i not in subset_core:
-                        # skip constraints known to not be in all cores
-                        continue
-
                     seed.remove(i)
-                    is_sat, refined_subset = self.subs.check_subset(seed, improve_seed=True)
-                    if is_sat:
+                    if self.subs.check_subset(seed):
                         yield ("S", seed)
                         self.map.block_down(seed)
-                        try:
-                            self.subs.increment_MSS()
-                        except AttributeError:
-                            pass
-                    else:
-                        # apply the new core to our intersection of cores
-                        subset_core.intersection_update(refined_subset)
                     seed.add(i)
 
         '''MUS/MCS enumeration with all the bells and whistles...'''
