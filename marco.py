@@ -49,7 +49,7 @@ def parse_args():
                            help="block both directions from the result type of interest (i.e., block subsets of MUSes for --bias high, etc.)")
     exp_group.add_argument('--force-minisat', action='store_true',
                            help="use Minisat in place of MUSer2 for CNF (NOTE: much slower and usually not worth doing!)")
-    exp_group.add_argument('--force-shrinkusemss', action='store_true',
+    exp_group.add_argument('--shrinkusemss', action='store_true',
                            help="import MSSes into shrink.")
     exp_group.add_argument('--use-singletonMCSes', action='store_true',
                            help="generate all singleton MCSes up front to help shrink.")
@@ -142,7 +142,7 @@ def setup_solvers(args):
             _SolverClass = CNFsolvers.MinisatSubsetSolver
         elif args.improved_implies:
             _SolverClass = CNFsolvers.ImprovedImpliesSubsetSolver
-        elif args.force_shrinkusemss:
+        elif args.shrinkusemss:
             _SolverClass = CNFsolvers.ShrinkUseMSSSubsetSolver
         else:
             _SolverClass = CNFsolvers.MUSerSubsetSolver
