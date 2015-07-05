@@ -119,10 +119,6 @@ class MarcoPolo:
             if seed_is_sat:
                 if known_max:
                     MSS = seed
-                    try:
-                        self.subs.increment_MSS()
-                    except AttributeError:
-                        pass
                 else:
                     with self.stats.time('grow'):
                         oldlen = len(seed)
@@ -134,6 +130,10 @@ class MarcoPolo:
 
                 with self.stats.time('block'):
                     yield ("S", MSS)
+                    try:
+                        self.subs.increment_MSS()
+                    except AttributeError:
+                        pass
                     self.map.block_down(MSS)
                     if self.config['block_both'] and not self.bias_high:
                         self.map.block_up(MSS)
@@ -167,6 +167,10 @@ class MarcoPolo:
 
                 with self.stats.time('block'):
                     yield ("U", MUS)
+                    try:
+                        self.subs.increment_MUS()
+                    except AttributeError:
+                        pass
                     self.map.block_up(MUS)
                     if self.config['block_both'] and self.bias_high:
                         self.map.block_down(MUS)

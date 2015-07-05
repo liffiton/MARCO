@@ -20,6 +20,7 @@ class MinisatSubsetSolver:
         self._msolver = None
         self._stats = None
         self._known_MSS = 0
+        self._known_MUS = 0
 
     def set_msolver(self, msolver):
         self._msolver = msolver
@@ -29,6 +30,9 @@ class MinisatSubsetSolver:
 
     def increment_MSS(self):
         self._known_MSS += 1
+
+    def increment_MUS(self):
+        self._known_MUS += 1
 
     def parse_dimacs(self, f):
         i = 0
@@ -276,10 +280,42 @@ class ImprovedImpliesSubsetSolver(MinisatSubsetSolver):
                     implications = self._msolver.solver.implies(-x for x in self.complement(current))
                     hard = set(x for x in implications if x > 0)
 
-        self._stats.add_stat("hardCons.plain", plaincount)
-        self._stats.add_stat("hardCons.improved.initial", initialcount)
-        self._stats.add_stat("hardCons.improved.end", len(hard))
-        self._stats.add_stat("hardCons.improved.delta", len(hard)-initialcount)
+        self._stats.add_stat("shrink.hardCons.plain", plaincount)
+        self._stats.add_stat("shrink.hardCons.improved.initial", initialcount)
+        self._stats.add_stat("shrink.hardCons.improved.end", len(hard))
+        self._stats.add_stat("shrink.hardCons.improved.delta", len(hard)-initialcount)
+        return current
+
+    def grow(self, seed):
+        current = set(seed)
+
+        if self._known_MUS > 0:
+            plaincount = len([x for x in self._msolver.solver.implies() if x < 0])
+            implications = self._msolver.solver.implies(current)
+            dont_add = set(x for x in implications if x < 0)
+            initialcount = len(dont_add)
+        else:
+            plaincount = 0
+            initialcount = 0
+            dont_add = set()
+
+        for i in self.complement(current):
+            if i in current or i in dont_add:
+                continue
+            current.add(i)
+
+            if not self.check_subset(current):
+                current.remove(i)
+            else:
+                current = set(self.s.sat_subset(offset=1))
+                if self._known_MUS > 0:
+                    implications = self._msolver.solver.implies(current)
+                    dont_add = set(x for x in implications if x < 0)
+
+        self._stats.add_stat("grow.hardCons.plain", plaincount)
+        self._stats.add_stat("grow.hardCons.improved.initial", initialcount)
+        self._stats.add_stat("grow.hardCons.improved.end", len(dont_add))
+        self._stats.add_stat("grow.hardCons.improved.delta", len(dont_add)-initialcount)
         return current
 
 
