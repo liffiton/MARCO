@@ -15,7 +15,8 @@ import subprocess
 import tempfile
 import time
 from collections import defaultdict
-from Queue import Empty
+try: from Queue import Empty  # Python 2
+except ImportError: from queue import Empty  # Python 3
 from multiprocessing import Process, Queue, cpu_count
 
 # pull in configuration from testconfig.py
@@ -34,6 +35,9 @@ except NameError: pass
 def makeTests(testname):
     tests = []
 
+    interpreter = sys.executable  # use whatever interpreter is running this script
+    cmd = testconfig.cmd
+
     for job in testconfig.jobs:
         if testname is None:
             if job['default'] is False:
@@ -43,7 +47,6 @@ def makeTests(testname):
                 continue
 
         name = job['name']
-        cmd = job['cmd']
         files = job['files']
         flags = job.get('flags', [''])
         flags_all = job.get('flags_all', [])
@@ -59,7 +62,7 @@ def makeTests(testname):
             os.makedirs(outdir)
 
         for flag in flags:
-            cmdarray = [cmd] + flags_all + flag.split()
+            cmdarray = [interpreter, cmd] + flags_all + flag.split()
 
             for infile in files:
                 if infile in exclude:
@@ -213,9 +216,9 @@ def viewdiff(f1, f2):
 
 
 def updateout(outfile, newoutput):
-    choice = input("  Store new output as correct? ")
+    choice = input("  Store new output as correct? (y/N) ")
     if choice.lower() == 'y':
-        print "  [33mmv %s %s[0m" % (newoutput, outfile)
+        print("  [33mmv %s %s[0m" % (newoutput, outfile))
         os.rename(newoutput, outfile)
 
 
@@ -253,7 +256,7 @@ class Progress:
             # print '.' for every test to be run
             for i in range(numTests):
                 x = i % (self.cols-2) + 2
-                y = i / (self.cols-2)
+                y = i // (self.cols-2)
                 self.print_at(x, self.printrows-y, '.')
 
     def update(self, testid, result):
@@ -280,7 +283,7 @@ class Progress:
 
         if self.do_print:
             x = testid % (self.cols-2) + 2
-            y = testid / (self.cols-2)
+            y = testid // (self.cols-2)
             self.print_at(x, self.printrows-y, c)
 
     def printstats(self):
@@ -318,7 +321,7 @@ class Progress:
         sys.stdout.write("[%dE" % y)
 
         # move cursor to side and flush anything pending
-        sys.stdout.write("[999G")
+        sys.stdout.write("[0G")
         sys.stdout.flush()
 
 
@@ -373,7 +376,7 @@ def main():
         verbose = True
         mode = 'run'
     elif mode == 'regenerate':
-        sure = input("Are you sure you want to regenerate all test outputs (y/n)? ")
+        sure = input("Are you sure you want to regenerate all test outputs? (y/N) ")
         if sure.lower() != 'y':
             print("Exiting.")
             return 1
@@ -418,8 +421,8 @@ def main():
     msgq = Queue()  # messages *from* each process
 
     # wait for completion, printing progress/stats as needed
+    # if verbose is on, printing the progress bar is not needed/wanted
     prog = Progress(numTests, do_print=(not verbose))
-                              # if verbose is on, printing the progress bar is not needed/wanted
 
     try:
         if verbose:
