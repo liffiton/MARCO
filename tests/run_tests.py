@@ -62,7 +62,7 @@ def makeTests(testname):
             os.makedirs(outdir)
 
         for flag in flags:
-            cmdarray = [interpreter, cmd] + flags_all + flag.split()
+            cmdarray = [interpreter, cmd] + flags_all.split() + flag.split()
 
             for infile in files:
                 if infile in exclude:

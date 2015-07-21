@@ -11,9 +11,9 @@ reg_files.extend(glob.glob('*.gz'))
 
 rnd3sat_files = glob.glob('3sat_n10/*.cnf')
 
-common_flags = ['-v']
+common_flags = '-v'
 # for systems on which MUSer cannot run
-#common_flags.append('--force-minisat')
+#common_flags += ' --force-minisat'
 
 cmd = '../marco.py'
 
@@ -30,7 +30,7 @@ jobs = [
       'name':    '3sat',
       'files':   rnd3sat_files,
       'flags':   ['--nomax', '-m always', '-m half', '-M', '--mssguided', '--ignore-implies'],
-      'flags_all': common_flags + ['-b', 'MCSes'],
+      'flags_all': common_flags + ' -b MCSes',
       'default': False,
     },
     # SMUS
@@ -55,7 +55,7 @@ jobs = [
       'name':    'marco_py',
       'files':   reg_files,
       'flags':   ['', '--nomax', '-m always', '-m half', '-M', '--mssguided', '--ignore-implies'],
-      'flags_all': common_flags + ['-b','MCSes'],
+      'flags_all': common_flags + ' -b MCSes',
       #'exclude': ['dlx2_aa.cnf'],
       'default': True,
     },
@@ -81,7 +81,7 @@ jobs = [
       'name':    'marco_py',
       'files':   reg_files,
       'flags':   ['', '--mssguided', '--ignore-implies'],
-      'flags_all': common_flags + ['--force-minisat'],
+      'flags_all': common_flags + ' --force-minisat',
       'exclude': ['c10.cnf', 'dlx2_aa.cnf'],
       'default': True,
     },
