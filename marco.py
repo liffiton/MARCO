@@ -2,9 +2,11 @@
 
 import argparse
 import atexit
+import copy
+import multiprocessing
+import select
 import signal
 import sys
-import threading
 
 import utils
 import mapsolvers
@@ -200,51 +202,80 @@ def setup_config(args):
     return config
 
 
-def main():
-    stats = utils.Statistics()
-
-    with stats.time('setup'):
-        args = parse_args()
-        setup_execution(args, stats)
-        csolver, msolver = setup_solvers(args)
-        config = setup_config(args)
-        mp = MarcoPolo(csolver, msolver, stats, config)
+def make_enumerator(stats, args, pipe):
+    csolver, msolver = setup_solvers(args)
+    config = setup_config(args)
+    mp = MarcoPolo(csolver, msolver, stats, config, pipe)
 
     # useful for timing just the parsing / setup
     if args.limit == 0:
         sys.stderr.write("Result limit reached.\n")
         sys.exit(0)
 
-    # enumerate results in a separate thread so signal handling works while in C code
-    # ref: https://thisismiller.github.io/blog/CPython-Signal-Handling/
-    def do_enumerate():
-        remaining = args.limit
+    return mp
 
-        for result in mp.enumerate():
-            output = result[0]
-            if args.alltimes:
-                output = "%s %0.3f" % (output, stats.total_time())
-            if args.verbose:
-                output = "%s %s" % (output, " ".join([str(x) for x in result[1]]))
 
-            print(output)
+def run_enumerator(stats, args, mp):
+    remaining = args.limit
 
-            if remaining:
-                remaining -= 1
-                if remaining == 0:
-                    sys.stderr.write("Result limit reached.\n")
-                    sys.exit(0)
+    for result in mp.enumerate():
+        output = result[0]
+        if args.alltimes:
+            output = "%s %0.3f" % (output, stats.total_time())
+        if args.verbose:
+            output = "%s %s" % (output, " ".join([str(x) for x in result[1]]))
 
-    enumthread = threading.Thread(target=do_enumerate)
-    enumthread.daemon = True       # so thread is killed when main thread exits (e.g. in signal handler)
-    enumthread.start()
-    if sys.version_info[0] >= 3:
-        enumthread.join()
-    else:
-        # In Python 2, a timeout is required for join() to not just
-        # call a blocking C function (thus blocking the signal handler).
-        # However, infinity works.
-        enumthread.join(float("inf"))
+        print(output)
+
+        if remaining:
+            remaining -= 1
+            if remaining == 0:
+                sys.stderr.write("Result limit reached.\n")
+                sys.exit(0)
+
+
+def main():
+    stats = utils.Statistics()
+
+    procs = []
+    pipes = []
+
+    with stats.time('setup'):
+        args = parse_args()
+        setup_execution(args, stats)
+        other_args = copy.copy(args)
+        otherother_args = copy.copy(args)
+        args.bias = 'MUSes'
+        other_args.bias = 'MCSes'
+        otherother_args.bias = 'MUSes'
+        args_list = [other_args, other_args, otherother_args]
+
+        for args in args_list:
+            pipe, child_pipe = multiprocessing.Pipe()
+            mp = make_enumerator(stats, args, child_pipe)
+            proc = multiprocessing.Process(target=run_enumerator, args=(stats, args, mp))
+            proc.daemon = True       # so process is killed when main thread exits (e.g. in signal handler)
+            procs.append(proc)
+            pipes.append(pipe)
+
+    for proc in procs:
+        proc.start()
+
+    while multiprocessing.active_children():
+        ready, _, _ = select.select(pipes, [], [])
+        for receiver in ready:
+            while receiver.poll():
+                # get a result
+                res = receiver.recv()
+                if res[0] == 'Done':
+                    # Print stats
+                    at_exit(res[1])
+                    return  # if one finishes, we have everything
+                else:
+                    # send it to all children *other* than the one we got it from
+                    for other in pipes:
+                        if other != receiver:
+                            other.send(res)
 
 
 if __name__ == '__main__':

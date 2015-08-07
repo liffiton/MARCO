@@ -5,31 +5,16 @@ except ImportError:
 
 
 class MarcoPolo(object):
-    def __init__(self, csolver, msolver, stats, config):
+    def __init__(self, csolver, msolver, stats, config, pipe):
         self.subs = csolver
         self.map = msolver
         self.seeds = SeedManager(msolver, stats, config)
         self.stats = stats
         self.config = config
+        self.pipe = pipe
         self.bias_high = self.config['bias'] == 'MUSes'  # used frequently
         self.n = self.map.n   # number of constraints
         self.got_top = False  # track whether we've explored the complete set (top of the lattice)
-
-    def enumerate_basic(self):
-        '''Basic MUS/MCS enumeration, as a simple reference/example.'''
-        while True:
-            seed = self.map.next_seed()
-            if seed is None:
-                return
-
-            if self.subs.check_subset(seed):
-                MSS = self.subs.grow(seed)
-                yield ("S", MSS)
-                self.map.block_down(MSS)
-            else:
-                MUS = self.subs.shrink(seed)
-                yield ("U", MUS)
-                self.map.block_up(MUS)
 
     def record_delta(self, name, oldlen, newlen, up):
         if up:
@@ -117,7 +102,10 @@ class MarcoPolo(object):
                         print("- Grow() -> MSS")
 
                 with self.stats.time('block'):
-                    yield ("S", MSS)
+                    res = ("S", MSS)
+                    yield res
+                    self.pipe.send(res)
+
                     self.map.block_down(MSS)
                     if self.config['block_both'] and not self.bias_high:
                         self.map.block_up(MSS)
@@ -158,7 +146,10 @@ class MarcoPolo(object):
                         print("- Shrink() -> MUS")
 
                 with self.stats.time('block'):
-                    yield ("U", MUS)
+                    res = ("U", MUS)
+                    yield res
+                    self.pipe.send(res)
+
                     self.map.block_up(MUS)
                     if self.config['block_both'] and self.bias_high:
                         self.map.block_down(MUS)
@@ -168,6 +159,19 @@ class MarcoPolo(object):
 
                 if self.config['verbose']:
                     print("- MUS blocked.")
+
+            # TESTING
+            with self.stats.time('receive'):
+                while self.pipe.poll():
+                    res = self.pipe.recv()
+                    if res[0] == 'S':
+                        self.map.block_down(res[1])
+                    elif res[0] == 'U':
+                        self.map.block_up(res[1])
+                    else:
+                        assert(0)
+
+        self.pipe.send(('Done', self.stats))
 
 
 class SeedManager(object):

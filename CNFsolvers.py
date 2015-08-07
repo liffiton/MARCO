@@ -87,8 +87,11 @@ class MinisatSubsetSolver(object):
             with gzip.open(infile.name) as gz_f:
                 self.parse_dimacs(gz_f)
         else:
+            # XXX TODO: using open() here to avoid dupe infile object for parallel branch,
+            #           but this breaks reading from stdin.
             # assume plain .cnf and pass through the file object
-            self.parse_dimacs(infile)
+            with open(infile.name) as f:
+                self.parse_dimacs(f)
 
     def check_subset(self, seed, improve_seed=False):
         is_sat = self.s.solve_subset([i-1 for i in seed])
