@@ -1,3 +1,5 @@
+import threading
+
 try:
     import queue
 except ImportError:
@@ -26,7 +28,29 @@ class MarcoPolo(object):
 
     def enumerate(self):
         '''MUS/MCS enumeration with all the bells and whistles...'''
+        q = queue.Queue()
+
+        def receive_thread():
+            # TESTING
+            while self.pipe.poll(None):
+                with self.stats.time('receive'):
+                    res = self.pipe.recv()
+                    q.put(res)
+
+        thread = threading.Thread(target=receive_thread)
+        thread.daemon = True
+        thread.start()
+
         for seed, known_max in self.seeds:
+            with self.stats.time('receive_int'):
+                while not q.empty():
+                    rec = q.get()
+                    if rec[0] == 'S':
+                        self.map.block_down(rec[1])
+                    elif rec[0] == 'U':
+                        self.map.block_up(rec[1])
+                    else:
+                        assert(0)
 
             if self.config['verbose']:
                 print("- Initial seed: %s" % " ".join([str(x) for x in seed]))
@@ -103,7 +127,7 @@ class MarcoPolo(object):
 
                 with self.stats.time('block'):
                     res = ("S", MSS)
-                    yield res
+                    #yield res
                     self.pipe.send(res)
 
                     self.map.block_down(MSS)
@@ -147,7 +171,7 @@ class MarcoPolo(object):
 
                 with self.stats.time('block'):
                     res = ("U", MUS)
-                    yield res
+                    #yield res
                     self.pipe.send(res)
 
                     self.map.block_up(MUS)
@@ -159,17 +183,6 @@ class MarcoPolo(object):
 
                 if self.config['verbose']:
                     print("- MUS blocked.")
-
-            # TESTING
-            with self.stats.time('receive'):
-                while self.pipe.poll():
-                    res = self.pipe.recv()
-                    if res[0] == 'S':
-                        self.map.block_down(res[1])
-                    elif res[0] == 'U':
-                        self.map.block_up(res[1])
-                    else:
-                        assert(0)
 
         self.pipe.send(('Done', self.stats))
 

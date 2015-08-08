@@ -253,7 +253,8 @@ def main():
         for args in args_list:
             pipe, child_pipe = multiprocessing.Pipe()
             mp = make_enumerator(stats, args, child_pipe)
-            proc = multiprocessing.Process(target=run_enumerator, args=(stats, args, mp))
+            #proc = multiprocessing.Process(target=run_enumerator, args=(stats, args, mp))
+            proc = multiprocessing.Process(target=mp.enumerate)
             proc.daemon = True       # so process is killed when main thread exits (e.g. in signal handler)
             procs.append(proc)
             pipes.append(pipe)
@@ -261,21 +262,29 @@ def main():
     for proc in procs:
         proc.start()
 
+    done_count = 0
     while multiprocessing.active_children():
         ready, _, _ = select.select(pipes, [], [])
-        for receiver in ready:
-            while receiver.poll():
-                # get a result
-                res = receiver.recv()
-                if res[0] == 'Done':
-                    # Print stats
-                    at_exit(res[1])
-                    return  # if one finishes, we have everything
-                else:
-                    # send it to all children *other* than the one we got it from
-                    for other in pipes:
-                        if other != receiver:
-                            other.send(res)
+        with stats.time('hubcomms'):
+            for receiver in ready:
+                while receiver.poll():
+                    # get a result
+                    res = receiver.recv()
+                    if res[0] == 'Done':
+                        # Print stats
+                        at_exit(res[1])
+                        done_count += 1
+                        if done_count == len(procs):
+                            print "gotemall!"
+                            return
+                        return  # if one finishes, we have everything
+                    else:
+                        output = "%s %s" % (res[0], " ".join([str(x) for x in res[1]]))
+                        print(output)
+                        # send it to all children *other* than the one we got it from
+                        for other in pipes:
+                            if other != receiver:
+                                other.send(res)
 
 
 if __name__ == '__main__':
