@@ -215,29 +215,19 @@ def make_enumerator(stats, args, pipe):
     return mp
 
 
-def run_enumerator(stats, args, mp):
-    remaining = args.limit
+def print_result(result, args, stats):
+    output = result[0]
+    if args.alltimes:
+        output = "%s %0.3f" % (output, stats.total_time())
+    if args.verbose:
+        output = "%s %s" % (output, " ".join([str(x) for x in result[1]]))
 
-    for result in mp.enumerate():
-        output = result[0]
-        if args.alltimes:
-            output = "%s %0.3f" % (output, stats.total_time())
-        if args.verbose:
-            output = "%s %s" % (output, " ".join([str(x) for x in result[1]]))
-
-        print(output)
-
-        if remaining:
-            remaining -= 1
-            if remaining == 0:
-                sys.stderr.write("Result limit reached.\n")
-                sys.exit(0)
+    print(output)
 
 
 def main():
     stats = utils.Statistics()
 
-    procs = []
     pipes = []
 
     with stats.time('setup'):
@@ -247,44 +237,51 @@ def main():
         otherother_args = copy.copy(args)
         args.bias = 'MUSes'
         other_args.bias = 'MCSes'
-        otherother_args.bias = 'MUSes'
-        args_list = [other_args, other_args, otherother_args]
+        otherother_args.nomax = True
+        args_list = [args, other_args, otherother_args]
 
         for args in args_list:
             pipe, child_pipe = multiprocessing.Pipe()
+            pipes.append(pipe)
             mp = make_enumerator(stats, args, child_pipe)
-            #proc = multiprocessing.Process(target=run_enumerator, args=(stats, args, mp))
             proc = multiprocessing.Process(target=mp.enumerate)
             proc.daemon = True       # so process is killed when main thread exits (e.g. in signal handler)
-            procs.append(proc)
-            pipes.append(pipe)
+            proc.start()
 
-    for proc in procs:
-        proc.start()
+    # for filtering duplicate results (found near-simultaneously by 2+ processes)
+    results = set()
+    remaining = args.limit
 
-    done_count = 0
     while multiprocessing.active_children():
         ready, _, _ = select.select(pipes, [], [])
         with stats.time('hubcomms'):
             for receiver in ready:
                 while receiver.poll():
                     # get a result
-                    res = receiver.recv()
-                    if res[0] == 'Done':
+                    result = receiver.recv()
+                    if result[0] == 'Done':
                         # Print stats
-                        at_exit(res[1])
-                        done_count += 1
-                        if done_count == len(procs):
-                            print "gotemall!"
-                            return
-                        return  # if one finishes, we have everything
+                        at_exit(result[1])
+                        sys.exit(0)  # if one finishes, we have everything
                     else:
-                        output = "%s %s" % (res[0], " ".join([str(x) for x in res[1]]))
-                        print(output)
+                        # filter out duplicates
+                        res_set = frozenset(result[1])
+                        if res_set in results:
+                            continue
+
+                        results.add(res_set)
+                        print_result(result, args, stats)
+
+                        if remaining:
+                            remaining -= 1
+                            if remaining == 0:
+                                sys.stderr.write("Result limit reached.\n")
+                                sys.exit(0)
+
                         # send it to all children *other* than the one we got it from
                         for other in pipes:
                             if other != receiver:
-                                other.send(res)
+                                other.send(result)
 
 
 if __name__ == '__main__':
