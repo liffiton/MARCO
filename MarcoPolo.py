@@ -131,22 +131,9 @@ class MarcoPolo(object):
                     self.pipe.send(res)
 
                     self.map.block_down(MSS)
-                    if self.config['block_both'] and not self.bias_high:
-                        self.map.block_up(MSS)
 
                 if self.config['verbose']:
                     print("- MSS blocked.")
-
-                if self.config['mssguided']:
-                    with self.stats.time('mssguided'):
-                        # don't check parents if parent is top and we've already seen it (common)
-                        if len(MSS) < self.n - 1 or not self.got_top:
-                            # add any unexplored superset to the queue
-                            newseed = self.map.find_above(MSS)
-                            if newseed:
-                                self.seeds.add_seed(newseed, False)
-                                if self.config['verbose']:
-                                    print("- New seed found above MSS: %s" % " ".join([str(x) for x in seed]))
 
             else:  # seed is not SAT
                 self.got_top = True  # any unsat set covers the top of the lattice
@@ -154,14 +141,13 @@ class MarcoPolo(object):
                     MUS = seed
                 else:
                     with self.stats.time('shrink'):
-                        if self.config['use_implies']:
-                            # This might change after every blocking clause,
-                            # but we only need to check right before we're going to use them.
-                            implies = self.map.solver.implies()
-                            hard_constraints = [x for x in implies if x > 0]
-                            self.stats.add_stat("hard_constraints", len(hard_constraints))
-                        else:
-                            hard_constraints = []
+                        # Implications might change after every blocking
+                        # clause, but we only need to check right before we're
+                        # going to use them.
+                        implies = self.map.solver.implies()
+                        hard_constraints = [x for x in implies if x > 0]
+                        self.stats.add_stat("hard_constraints", len(hard_constraints))
+
                         oldlen = len(seed)
                         MUS = self.subs.shrink(seed, hard=hard_constraints)
                         self.record_delta('shrink', oldlen, len(MUS), False)
@@ -175,8 +161,7 @@ class MarcoPolo(object):
                     self.pipe.send(res)
 
                     self.map.block_up(MUS)
-                    if self.config['block_both'] and self.bias_high:
-                        self.map.block_down(MUS)
+
                     if self.config['smus']:
                         self.map.block_down(MUS)
                         self.map.block_above_size(len(MUS) - 1)
