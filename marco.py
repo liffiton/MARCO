@@ -39,14 +39,8 @@ def parse_args():
 
     # Experimental / Research arguments
     exp_group = parser.add_argument_group('Experimental / research options', "These can typically be ignored; the defaults will give the best performance.")
-    exp_group.add_argument('--mssguided', action='store_true',
-                           help="check for unexplored subsets in immediate supersets of any MSS found")
-    exp_group.add_argument('--ignore-implies', action='store_true',
-                           help="do not use implied literals from Map as hard constraints")
     exp_group.add_argument('--dump-map', nargs='?', type=argparse.FileType('w'),
                            help="dump clauses added to the Map formula to the given file.")
-    exp_group.add_argument('--block-both', action='store_true',
-                           help="block both directions from the result type of interest (i.e., block subsets of MUSes for --bias high, etc.)")
     exp_group.add_argument('--force-minisat', action='store_true',
                            help="use Minisat in place of MUSer2 for CNF (NOTE: much slower and usually not worth doing!)")
 
@@ -192,9 +186,6 @@ def setup_config(args):
         config['maximize'] = 'solver'
     else:
         config['maximize'] = 'solver'
-    config['use_implies'] = not args.ignore_implies  # default is to use them
-    config['mssguided'] = args.mssguided
-    config['block_both'] = args.block_both
     config['verbose'] = args.verbose > 1
 
     return config
