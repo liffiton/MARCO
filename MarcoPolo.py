@@ -18,6 +18,16 @@ class MarcoPolo(object):
         self.n = self.map.n   # number of constraints
         self.got_top = False  # track whether we've explored the complete set (top of the lattice)
 
+        thread = threading.Thread(target=self.receive_thread)
+        thread.daemon = True
+        thread.start()
+
+    def receive_thread(self):
+        while self.pipe.poll(None):
+            with self.stats.time('receive'):
+                res = self.pipe.recv()
+                self.seeds.add_incoming(res)
+
     def record_delta(self, name, oldlen, newlen, up):
         if up:
             assert newlen >= oldlen
@@ -28,29 +38,8 @@ class MarcoPolo(object):
 
     def enumerate(self):
         '''MUS/MCS enumeration with all the bells and whistles...'''
-        q = queue.Queue()
-
-        def receive_thread():
-            # TESTING
-            while self.pipe.poll(None):
-                with self.stats.time('receive'):
-                    res = self.pipe.recv()
-                    q.put(res)
-
-        thread = threading.Thread(target=receive_thread)
-        thread.daemon = True
-        thread.start()
 
         for seed, known_max in self.seeds:
-            with self.stats.time('receive_int'):
-                while not q.empty():
-                    rec = q.get()
-                    if rec[0] == 'S':
-                        self.map.block_down(rec[1])
-                    elif rec[0] == 'U':
-                        self.map.block_up(rec[1])
-                    else:
-                        assert(0)
 
             if self.config['verbose']:
                 print("- Initial seed: %s" % " ".join([str(x) for x in seed]))
@@ -177,23 +166,37 @@ class SeedManager(object):
         self.map = msolver
         self.stats = stats
         self.config = config
-        self.queue = queue.Queue()
+        self._seed_queue = queue.Queue()
+        self._incoming_queue = queue.Queue()
 
     def __iter__(self):
         return self
 
     def __next__(self):
         with self.stats.time('seed'):
-            if not self.queue.empty():
-                return self.queue.get()
+            if not self._seed_queue.empty():
+                return self._seed_queue.get()
             else:
+                # Update blocking clauses w/ incoming results
+                with self.stats.time('receive_int'):
+                    while not self._incoming_queue.empty():
+                        rec = self._incoming_queue.get()
+                        if rec[0] == 'S':
+                            self.map.block_down(rec[1])
+                        elif rec[0] == 'U':
+                            self.map.block_up(rec[1])
+                        else:
+                            assert(0)
                 seed, known_max = self.seed_from_solver()
                 if seed is None:
                     raise StopIteration
                 return seed, known_max
 
+    def add_incoming(self, result):
+        self._incoming_queue.put(result)
+
     def add_seed(self, seed, known_max):
-        self.queue.put((seed, known_max))
+        self._seed_queue.put((seed, known_max))
 
     def seed_from_solver(self):
         known_max = (self.config['maximize'] == 'solver')

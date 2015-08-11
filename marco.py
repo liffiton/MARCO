@@ -193,17 +193,12 @@ def setup_config(args):
     return config
 
 
-def make_enumerator(stats, args, pipe):
+def run_enumerator(stats, args, pipe):
     csolver, msolver = setup_solvers(args)
     config = setup_config(args)
     mp = MarcoPolo(csolver, msolver, stats, config, pipe)
 
-    # useful for timing just the parsing / setup
-    if args.limit == 0:
-        sys.stderr.write("Result limit reached.\n")
-        sys.exit(0)
-
-    return mp
+    mp.enumerate()
 
 
 def print_result(result, args, stats):
@@ -234,12 +229,16 @@ def main():
         for args in args_list:
             pipe, child_pipe = multiprocessing.Pipe()
             pipes.append(pipe)
-            mp = make_enumerator(stats, args, child_pipe)
-            proc = multiprocessing.Process(target=mp.enumerate)
+            proc = multiprocessing.Process(target=run_enumerator, args=(stats, args, child_pipe))
             proc.daemon = True       # so process is killed when main thread exits (e.g. in signal handler)
             proc.start()
 
-    # for filtering duplicate results (found near-simultaneously by 2+ processes)
+    # useful for timing just the parsing / setup
+    if args.limit == 0:
+        sys.stderr.write("Result limit reached.\n")
+        sys.exit(0)
+
+    # for filtering duplicate results (found near-simultaneously by 2+ children)
     results = set()
     remaining = args.limit
 
