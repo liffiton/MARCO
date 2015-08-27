@@ -253,6 +253,9 @@ def main():
                         # "done" indicates the child process has finished its work,
                         # but enumeration may not be complete (if the child was only
                         # enumerating MCSes, e.g.)
+                        # Send an "okay" so the child knows it can terminate (avoids
+                        # closing the pipe while the parent still tries to send to it.)
+                        receiver.send('okay')
                         # Remove it from the list of active pipes
                         pipes.remove(receiver)
 
