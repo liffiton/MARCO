@@ -11,6 +11,7 @@ import sys
 import utils
 import mapsolvers
 import CNFsolvers
+from MCSEnumerator import MCSEnumerator
 from MarcoPolo import MarcoPolo
 
 
@@ -31,6 +32,8 @@ def parse_args():
                         help="limit the runtime to TIMEOUT seconds")
     parser.add_argument('-l', '--limit', type=int, default=None,
                         help="limit number of subsets output (counting both MCSes and MUSes)")
+    parser.add_argument('--mcs-only', action='store_true', default=False,
+                        help="camus")
     type_group = parser.add_mutually_exclusive_group()
     type_group.add_argument('--cnf', action='store_true',
                             help="assume input is in DIMACS CNF or Group CNF format (autodetected if filename is *.[g]cnf or *.[g]cnf.gz).")
@@ -136,7 +139,10 @@ def setup_solvers(args):
             solverclass = CNFsolvers.MUSerSubsetSolver
 
         try:
-            csolver = solverclass(infile)
+            if args.mcs_only:
+                csolver = solverclass(infile, store_dimacs=True)
+            else:
+                csolver = solverclass(infile)
         except CNFsolvers.MUSerException as e:
             error_exit("Unable to use MUSer2 for MUS extraction.", "Use --force-minisat to use Minisat instead (NOTE: it will be much slower.)", e)
         except (IOError, OSError) as e:
@@ -196,9 +202,12 @@ def setup_config(args):
 def run_enumerator(stats, args, pipe):
     csolver, msolver = setup_solvers(args)
     config = setup_config(args)
-    mp = MarcoPolo(csolver, msolver, stats, config, pipe)
-
-    mp.enumerate()
+    if args.mcs_only:
+        mcsfinder = MCSEnumerator(csolver, stats, pipe)
+        mcsfinder.enumerate()
+    else:
+        mp = MarcoPolo(csolver, msolver, stats, config, pipe)
+        mp.enumerate()
 
 
 def print_result(result, args, stats):
@@ -221,10 +230,12 @@ def main():
         setup_execution(args, stats)
         other_args = copy.copy(args)
         otherother_args = copy.copy(args)
+        fourth_args = copy.copy(args)
         args.bias = 'MUSes'
         other_args.bias = 'MCSes'
         otherother_args.nomax = True
-        args_list = [args, other_args, otherother_args]
+        fourth_args.mcs_only = True  # Caution! If mcs_only is assigned false, it will run MUS bias by default.
+        args_list = [other_args, fourth_args]
 
         for args in args_list:
             pipe, child_pipe = multiprocessing.Pipe()
