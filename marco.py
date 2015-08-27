@@ -249,10 +249,20 @@ def main():
                 while receiver.poll():
                     # get a result
                     result = receiver.recv()
-                    if result[0] == 'Done':
-                        # Print stats
+                    if result[0] == 'done':
+                        # "done" indicates the child process has finished its work,
+                        # but enumeration may not be complete (if the child was only
+                        # enumerating MCSes, e.g.)
+                        # Remove it from the list of active pipes
+                        pipes.remove(receiver)
+
+                    elif result[0] == 'complete':
+                        # "complete" indicates the child process has completed enumeration,
+                        # with everything blocked.
+                        # Print stats and exit
                         at_exit(result[1])
                         sys.exit(0)  # if one finishes, we have everything
+
                     else:
                         # filter out duplicates
                         res_set = frozenset(result[1])

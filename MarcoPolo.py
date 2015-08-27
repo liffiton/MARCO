@@ -158,7 +158,7 @@ class MarcoPolo(object):
                 if self.config['verbose']:
                     print("- MUS blocked.")
 
-        self.pipe.send(('Done', self.stats))
+        self.pipe.send(('complete', self.stats))
 
 
 class SeedManager(object):
