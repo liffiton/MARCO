@@ -17,6 +17,18 @@ class MinisatSubsetSolver(object):
             self.dimacs = []
             self.groups = collections.defaultdict(list)
         self.read_dimacs(infile)
+        self._msolver = None
+        self._known_MSS = 0
+        self._known_MUS = 0
+
+    def set_msolver(self, msolver):
+        self._msolver = msolver
+
+    def increment_MSS(self):
+        self._known_MSS += 1
+
+    def increment_MUS(self):
+        self._known_MUS += 1
 
     def parse_dimacs(self, f):
         i = 0
@@ -107,7 +119,8 @@ class MinisatSubsetSolver(object):
     def complement(self, aset):
         return set(range(1, self.n+1)).difference(aset)
 
-    def shrink(self, seed, hard=[]):
+    def shrink(self, seed):
+        hard = self._msolver.solver.implies()
         current = set(seed)
         for i in seed:
             if i not in current or i in hard:
@@ -134,11 +147,8 @@ class MinisatSubsetSolver(object):
         self.s.add_clause([-x])  # remove the temporary clause
         return ret
 
-    def grow(self, seed, inplace):
-        if inplace:
-            current = seed
-        else:
-            current = seed[:]
+    def grow(self, seed):
+        current = seed
 
         #while self.check_above(current):
         #    current = self.s.sat_subset()
@@ -219,7 +229,8 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
 
     # override shrink method to use MUSer2
     # NOTE: seed must be indexed (i.e., not a set)
-    def shrink(self, seed, hard=[]):
+    def shrink(self, seed):
+        hard = [x for x in self._msolver.solver.implies() if x > 0]
         # Open tmpfile
         with tempfile.NamedTemporaryFile('wb') as cnf:
             self.write_CNF(cnf, seed, hard)
@@ -239,3 +250,89 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
         ret.extend(hard)
 
         return ret
+
+
+class ImprovedImpliesSubsetSolver(MinisatSubsetSolver):
+    def shrink(self, seed):
+        current = set(seed)
+
+        if self._known_MSS > 0:
+            implications = self._msolver.solver.implies(-x for x in self.complement(current))
+            hard = set(x for x in implications if x > 0)
+        else:
+            hard = set()
+
+        for i in seed:
+            if i not in current or i in hard:
+                continue
+            current.remove(i)
+
+            if self.check_subset(current):
+                current.add(i)
+            else:
+                current = set(self.s.unsat_core(offset=1))
+                if self._known_MSS > 0:
+                    implications = self._msolver.solver.implies(-x for x in self.complement(current))
+                    hard = set(x for x in implications if x > 0)
+
+        return current
+
+    def grow(self, seed):
+        current = set(seed)
+
+        if self._known_MUS > 0:
+            implications = self._msolver.solver.implies(current)
+            dont_add = set(x for x in implications if x < 0)
+        else:
+            dont_add = set()
+
+        for i in self.complement(current):
+            if i in current or i in dont_add:
+                continue
+            current.add(i)
+
+            if not self.check_subset(current):
+                current.remove(i)
+            else:
+                current = set(self.s.sat_subset(offset=1))
+                if self._known_MUS > 0:
+                    implications = self._msolver.solver.implies(current)
+                    dont_add = set(x for x in implications if x < 0)
+
+        return current
+
+
+class ShrinkUseMSSSubsetSolver(MinisatSubsetSolver):
+    def shrink(self, seed):
+        check_count1 = 0
+        check_count2 = 0
+        current = set(seed)
+
+        hard = self._msolver.solver.implies()
+
+        for i in seed:
+            if i not in current or i in hard:
+                continue
+            current.remove(i)
+            current_SAT = None
+
+            # only check seeds after the first MSS is computed
+            if self._known_MSS > 0:
+                # the number of calls to check_seed
+                check_count1 += 1
+                # check if the current subset has already been marked by any MSS
+                if self._msolver.check_seed(current):
+                    # the number of calls to check_subset
+                    check_count2 += 1
+                    current_SAT = self.check_subset(current)
+                else:
+                    current_SAT = True
+            else:
+                current_SAT = self.check_subset(current)
+
+            if current_SAT:
+                current.add(i)
+            else:
+                current = set(self.s.unsat_core(offset=1))
+
+        return current

@@ -108,7 +108,7 @@ class MarcoPolo(object):
                 else:
                     with self.stats.time('grow'):
                         oldlen = len(seed)
-                        MSS = self.subs.grow(seed, inplace=True)
+                        MSS = self.subs.grow(seed)
                         self.record_delta('grow', oldlen, len(MSS), True)
 
                     if self.config['verbose']:
@@ -118,6 +118,11 @@ class MarcoPolo(object):
                     res = ("S", MSS)
                     #yield res
                     self.pipe.send(res)
+
+                    try:
+                        self.subs.increment_MSS()
+                    except AttributeError:
+                        pass
 
                     self.map.block_down(MSS)
 
@@ -138,7 +143,7 @@ class MarcoPolo(object):
                         self.stats.add_stat("hard_constraints", len(hard_constraints))
 
                         oldlen = len(seed)
-                        MUS = self.subs.shrink(seed, hard=hard_constraints)
+                        MUS = self.subs.shrink(seed)
                         self.record_delta('shrink', oldlen, len(MUS), False)
 
                     if self.config['verbose']:
@@ -148,6 +153,11 @@ class MarcoPolo(object):
                     res = ("U", MUS)
                     #yield res
                     self.pipe.send(res)
+
+                    try:
+                        self.subs.increment_MUS()
+                    except AttributeError:
+                        pass
 
                     self.map.block_up(MUS)
 

@@ -44,10 +44,16 @@ def parse_args():
 
     # Experimental / Research arguments
     exp_group = parser.add_argument_group('Experimental / research options', "These can typically be ignored; the defaults will give the best performance.")
+    exp_group.add_argument('--improved-implies', action='store_true',
+                           help="use improved technique for Map formula implications (implications under assumptions) [default: False, use only singleton MCSes as hard constraints]")
     exp_group.add_argument('--dump-map', nargs='?', type=argparse.FileType('w'),
                            help="dump clauses added to the Map formula to the given file.")
     exp_group.add_argument('--force-minisat', action='store_true',
                            help="use Minisat in place of MUSer2 for CNF (NOTE: much slower and usually not worth doing!)")
+    exp_group.add_argument('--shrinkusemss', action='store_true',
+                           help="import MSSes into shrink.")
+    exp_group.add_argument('--use-singletonMCSes', action='store_true',
+                           help="generate all singleton MCSes up front to help shrink.")
 
     # Max/min-models arguments
     max_group_outer = parser.add_argument_group('  Maximal/minimal models options', "By default, the Map solver will efficiently produce maximal/minimal models itself by giving each variable a default polarity.  These options override that (--nomax, -m) or extend it (-M, --smus) in various ways.")
@@ -133,8 +139,12 @@ def setup_solvers(args):
 
     # create appropriate constraint solver
     if args.cnf or infile.name.endswith('.cnf') or infile.name.endswith('.cnf.gz') or infile.name.endswith('.gcnf') or infile.name.endswith('.gcnf.gz'):
-        if args.force_minisat:
+        if args.force_minisat or args.mcs_only:  # mcs_only doesn't care about fancy features, give it a plain MinisatSubsetSolver
             solverclass = CNFsolvers.MinisatSubsetSolver
+        elif args.improved_implies:
+            solverclass = CNFsolvers.ImprovedImpliesSubsetSolver
+        elif args.shrinkusemss:
+            solverclass = CNFsolvers.ShrinkUseMSSSubsetSolver
         else:
             solverclass = CNFsolvers.MUSerSubsetSolver
 
@@ -177,6 +187,11 @@ def setup_solvers(args):
     except OSError as e:
         error_exit("Unable to load pyminisolvers library.", "Run 'make -C pyminisolvers' to compile the library.", e)
 
+    try:
+        csolver.set_msolver(msolver)
+    except AttributeError:
+        pass
+
     return (csolver, msolver)
 
 
@@ -195,6 +210,7 @@ def setup_config(args):
     else:
         config['maximize'] = 'solver'
     config['verbose'] = args.verbose > 1
+    config['singleton_MCSes'] = args.use_singletonMCSes
 
     return config
 
