@@ -4,6 +4,7 @@ import argparse
 import atexit
 import copy
 import multiprocessing
+import os
 import select
 import signal
 import sys
@@ -111,13 +112,16 @@ def error_exit(error, details, exception):
     sys.exit(1)
 
 
-def setup_execution(args, stats):
+def setup_execution(args, stats, mainpid):
     # register timeout/interrupt handler
     def handler(signum, frame):  # pylint: disable=unused-argument
-        if signum == signal.SIGALRM:
-            sys.stderr.write("Time limit reached.\n")
-        else:
-            sys.stderr.write("Interrupted.\n")
+        mypid = os.getpid()
+        # only report out if we're the main process
+        if mypid == mainpid:
+            if signum == signal.SIGALRM:
+                sys.stderr.write("Time limit reached.\n")
+            else:
+                sys.stderr.write("Interrupted.\n")
         sys.exit(128)
         # at_exit will fire here
 
@@ -243,7 +247,7 @@ def main():
 
     with stats.time('setup'):
         args = parse_args()
-        setup_execution(args, stats)
+        setup_execution(args, stats, os.getpid())
         other_args = copy.copy(args)
         otherother_args = copy.copy(args)
         fourth_args = copy.copy(args)
@@ -251,7 +255,7 @@ def main():
         other_args.bias = 'MCSes'
         otherother_args.nomax = True
         fourth_args.mcs_only = True  # Caution! If mcs_only is assigned false, it will run MUS bias by default.
-        args_list = [fourth_args]
+        args_list = [other_args, fourth_args]
 
         for args in args_list:
             pipe, child_pipe = multiprocessing.Pipe()
@@ -269,29 +273,41 @@ def main():
     results = set()
     remaining = args.limit
 
-    while multiprocessing.active_children() and pipes:
+    while multiprocessing.active_children():
         ready, _, _ = select.select(pipes, [], [])
         with stats.time('hubcomms'):
             for receiver in ready:
                 while receiver.poll():
-                    # get a result
-                    result = receiver.recv()
+                    try:
+                        # get a result
+                        result = receiver.recv()
+                    except EOFError:
+                        # Sometimes a closed pipe will still trigger ready and .poll(),
+                        # but it then throws an EOFError on .recv().  Handle that here.
+                        pipes.remove(receiver)
+                        break
+
                     if result[0] == 'done':
                         # "done" indicates the child process has finished its work,
                         # but enumeration may not be complete (if the child was only
                         # enumerating MCSes, e.g.)
-                        # Send an "okay" so the child knows it can terminate (avoids
-                        # closing the pipe while the parent still tries to send to it.)
-                        receiver.send('okay')
+                        # Terminate the child process.
+                        receiver.send('terminate')
                         # Remove it from the list of active pipes
                         pipes.remove(receiver)
 
                     elif result[0] == 'complete':
                         # "complete" indicates the child process has completed enumeration,
-                        # with everything blocked.
-                        # Print stats and exit
+                        # with everything blocked.  Everything can be stopped at this point.
+                        # Print received stats
                         at_exit(result[1])
-                        sys.exit(0)  # if one finishes, we have everything
+                        # End / cleanup children
+                        # (the .daemon=True mechanism appears to be unreliable)
+                        for other in pipes:
+                            if other != receiver:
+                                other.send('terminate')
+                        # Exit main process
+                        sys.exit(0)
 
                     else:
                         # filter out duplicates

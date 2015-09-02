@@ -1,4 +1,5 @@
 from pyminisolvers import minisolvers
+import sys
 import threading
 try:
     import queue
@@ -28,9 +29,9 @@ class MCSEnumerator(object):
         while self.pipe.poll(None):
             with self.stats.time('receive'):
                 res = self.pipe.recv()
-                if res == "okay":
-                    # received after sending "done" and parent okays this child to close
-                    return  # triggers join() in enumerate()
+                if res == 'terminate':
+                    # exit process on terminate message
+                    sys.exit(0)
                 self.incoming_queue.put(res)
 
     def add_received(self, add_to_instrumented=False):

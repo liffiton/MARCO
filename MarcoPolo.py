@@ -1,3 +1,4 @@
+import sys
 import threading
 
 try:
@@ -26,6 +27,10 @@ class MarcoPolo(object):
         while self.pipe.poll(None):
             with self.stats.time('receive'):
                 res = self.pipe.recv()
+                if res == 'terminate':
+                    # exit process on terminate message
+                    sys.exit(0)
+                # otherwise, we've received another result
                 self.seeds.add_incoming(res)
 
     def record_delta(self, name, oldlen, newlen, up):
