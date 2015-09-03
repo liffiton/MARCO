@@ -255,7 +255,7 @@ def main():
         other_args.bias = 'MCSes'
         otherother_args.nomax = True
         fourth_args.mcs_only = True  # Caution! If mcs_only is assigned false, it will run MUS bias by default.
-        args_list = [other_args, fourth_args]
+        args_list = [fourth_args]
 
         for args in args_list:
             pipe, child_pipe = multiprocessing.Pipe()
@@ -273,7 +273,7 @@ def main():
     results = set()
     remaining = args.limit
 
-    while multiprocessing.active_children():
+    while multiprocessing.active_children() and pipes:
         ready, _, _ = select.select(pipes, [], [])
         with stats.time('hubcomms'):
             for receiver in ready:
