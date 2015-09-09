@@ -11,8 +11,8 @@ class MCSEnumerator(object):
     def __init__(self, csolver, stats, pipe):
         self.solver = csolver.s
         self.clauses = []
-        self.blk_down = []
-        self.blk_up = []
+        self.blk_downs = []
+        self.blk_ups = []
         self.setup_clauses(csolver.dimacs)
         self.nvars = csolver.nvars
         self.nclauses = csolver.nclauses
@@ -38,21 +38,21 @@ class MCSEnumerator(object):
         while not self.incoming_queue.empty():
             rec = self.incoming_queue.get()
             if rec[0] == 'S':
-                self.blk_down.append(rec[1])
+                self.blk_downs.append(rec[1])
                 self.block_down(self.solver, rec[1])
                 if add_to_instrumented:
                     self.block_down(self.instrumented_solver, rec[1])
             if rec[0] == 'U':
-                self.blk_up.append(rec[1])
+                self.blk_ups.append(rec[1])
                 self.block_up(self.solver, rec[1])
                 if add_to_instrumented:
                     self.block_up(self.instrumented_solver, rec[1])
 
-    def check_sat(self, solver):
+    def check_sat(self, solver, assumps=None):
         # Update blocking clauses as close as possible to calling solve()
         self.add_received(add_to_instrumented=(solver == self.instrumented_solver))
 
-        return solver.solve()
+        return solver.solve(assumps)
 
     def setup_clauses(self, dimacs):
         for clause in dimacs:
@@ -63,14 +63,14 @@ class MCSEnumerator(object):
 
     def setup_solver(self):
         solver = minisolvers.MinicardSubsetSolver()
-        while solver.nvars() < self.nvars:
+        solver.set_varcounts(self.nvars, self.nclauses)  # fix the TypeError bug in pyminisolver
+        while solver.nvars() < self.nvars + self.nclauses:
             solver.new_var()
-        for clause in self.clauses:
-            sel_var = solver.new_var() + 1
-            solver.add_clause([-sel_var]+clause)
-        for clause in self.blk_down:
+        for i, clause in enumerate(self.clauses):
+            solver.add_clause_instrumented(clause, i)
+        for clause in self.blk_downs:
             self.block_down(solver, clause)
-        for clause in self.blk_up:
+        for clause in self.blk_ups:
             self.block_up(solver, clause)
         return solver
 
@@ -89,19 +89,22 @@ class MCSEnumerator(object):
 
     def enumerate(self):
         k = 1  # counting for AtMost constraints
+        self.check_sat(self.solver, list(range(self.nvars+1, self.nvars+self.nclauses+1)))
+        included = set(self.solver.unsat_core(offset=1))
 
         while self.check_sat(self.solver):
             self.instrumented_solver = self.setup_solver()
-            sel_vars = list(range(-(self.nvars+1), -(self.nvars+self.nclauses+1), -1))  # generate a list of clause selector vars
-            self.instrumented_solver.add_atmost(sel_vars, k)  # adding a bound for selector variables
+            self.instrumented_solver.add_atmost([-(i+self.nvars) for i in included], k)  # adding a bound for selector variables
 
-            while self.check_sat(self.instrumented_solver):
+            instrumented = [(i+self.nvars) for i in self.complement(included)]
+            while self.check_sat(self.instrumented_solver, instrumented):
                 MSS = self.get_MSS()
                 res = ("S", MSS)
                 self.pipe.send(res)
-                self.blk_down.append(MSS)  # save for later solvers
+                self.blk_downs.append(MSS)  # save for later solvers
                 self.block_down(self.solver, MSS)
                 self.block_down(self.instrumented_solver, MSS)
+            included.update(self.instrumented_solver.unsat_core(offset=1))
             k += 1
         self.pipe.send(('done', self.stats))
 
