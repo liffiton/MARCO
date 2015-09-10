@@ -255,7 +255,7 @@ def main():
         other_args.bias = 'MCSes'
         otherother_args.nomax = True
         fourth_args.mcs_only = True  # Caution! If mcs_only is assigned false, it will run MUS bias by default.
-        args_list = [fourth_args]
+        args_list = [args, args, args]
 
         for args in args_list:
             pipe, child_pipe = multiprocessing.Pipe()
@@ -270,7 +270,13 @@ def main():
         sys.exit(0)
 
     # for filtering duplicate results (found near-simultaneously by 2+ children)
-    results = set()
+    # and spurious results (if using improved-implies and a child reaches a point that
+    # suddenly becomes blocked by new blocking clauses, it could return that incorrectly
+    # as an MUS or MCS)
+    # HACK: just use setup_solvers to get an appropriate map solver for now
+    _, msolver = setup_solvers(args)
+    # Old way: results = set()
+
     remaining = args.limit
 
     while multiprocessing.active_children() and pipes:
@@ -310,12 +316,26 @@ def main():
                         sys.exit(0)
 
                     else:
-                        # filter out duplicates
-                        res_set = frozenset(result[1])
-                        if res_set in results:
-                            continue
+                        # filter out duplicate / spurious results
+                        with stats.time('msolver'):
+                            if not msolver.check_seed(result[1]):
+                                # already found/reported/explored
+                                continue
 
-                        results.add(res_set)
+                        with stats.time('msolver_block'):
+                            if result[0] == 'U':
+                                msolver.block_up(result[1])
+                            elif result[0] == 'S':
+                                msolver.block_down(result[1])
+
+                        # Old way to check duplicates:
+                        #res_set = frozenset(result[1])
+                        #res_set = ",".join(str(x) for x in result[1])
+                        #if res_set in results:
+                        #    continue
+
+                        #results.add(res_set)
+
                         print_result(result, args, stats)
 
                         if remaining:
