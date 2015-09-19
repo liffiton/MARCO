@@ -279,6 +279,9 @@ def main():
 
     remaining = args.limit
 
+    duplicate_MUS = 0  # record duplicate results
+    duplicate_MSS = 0
+
     while multiprocessing.active_children() and pipes:
         ready, _, _ = select.select(pipes, [], [])
         with stats.time('hubcomms'):
@@ -305,6 +308,11 @@ def main():
                     elif result[0] == 'complete':
                         # "complete" indicates the child process has completed enumeration,
                         # with everything blocked.  Everything can be stopped at this point.
+
+                        # record how many duplicate results
+                        stats.add_stat("duplicate MUS", duplicate_MUS)
+                        stats.add_stat("duplicate MSS", duplicate_MSS)
+
                         # Print received stats
                         at_exit(result[1])
                         # End / cleanup children
@@ -319,8 +327,13 @@ def main():
                         # filter out duplicate / spurious results
                         with stats.time('msolver'):
                             if not msolver.check_seed(result[1]):
+                                if result[0] == 'U':
+                                    duplicate_MUS += 1
+                                else:
+                                    duplicate_MSS += 1
+
                                 # already found/reported/explored
-                                continue
+                                # continue
 
                         with stats.time('msolver_block'):
                             if result[0] == 'U':
