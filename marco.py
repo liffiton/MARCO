@@ -279,9 +279,6 @@ def main():
 
     remaining = args.limit
 
-    duplicate_MUS = 0  # record duplicate results
-    duplicate_MSS = 0
-
     while multiprocessing.active_children() and pipes:
         ready, _, _ = select.select(pipes, [], [])
         with stats.time('hubcomms'):
