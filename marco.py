@@ -92,9 +92,9 @@ def at_exit(stats):
     maxlen = max(len(x) for x in categories)
     for category in categories:
         sys.stderr.write("%-*s : %8.3f\n" % (maxlen, category, times[category]))
-    for category in categories:
-        if category in counts:
-            sys.stderr.write("%-*s : %8d\n" % (maxlen + 6, category + ' count', counts[category]))
+    for category in sorted(counts):
+        sys.stderr.write("%-*s : %8d\n" % (maxlen + 6, category + ' count', counts[category]))
+        if category in times:
             sys.stderr.write("%-*s : %8.5f\n" % (maxlen + 6, category + ' per', times[category] / counts[category]))
 
     # print min, max, avg of other values recorded
@@ -309,10 +309,6 @@ def main():
                         # "complete" indicates the child process has completed enumeration,
                         # with everything blocked.  Everything can be stopped at this point.
 
-                        # record how many duplicate results
-                        stats.add_stat("duplicate MUS", duplicate_MUS)
-                        stats.add_stat("duplicate MSS", duplicate_MSS)
-
                         # TODO: print children's results, but differentiate somehow...
                         #if args.stats:
                         #    # Print received stats
@@ -331,9 +327,9 @@ def main():
                         with stats.time('msolver'):
                             if not msolver.check_seed(result[1]):
                                 if result[0] == 'U':
-                                    duplicate_MUS += 1
+                                    stats.increment_counter("duplicate MUS")
                                 else:
-                                    duplicate_MSS += 1
+                                    stats.increment_counter("duplicate MSS")
 
                                 # already found/reported/explored
                                 continue

@@ -38,6 +38,14 @@ class Statistics(object):
     >>> s.get_counts()
     Counter({'outer': 2, 'inner': 1})
 
+    And counters (without associated times) can be created/maintained
+    with increment_counter()
+    >>> s.increment_counter('countA')
+    >>> s.increment_counter('countB')
+    >>> s.increment_counter('countA')
+    >>> s.get_counts()
+    Counter({'outer': 2, 'inner': 1, 'countA': 2, 'countB': 1})
+
     The object also provides a method for collecting arbitrary statistics.
     Every value added for a given string is appended to a list.
     >>> s.add_stat('statA', 5)
@@ -69,9 +77,12 @@ class Statistics(object):
             self._stats.end_time(self._category)
             return False  # doesn't handle any exceptions itself
 
+    def increment_counter(self, category):
+        self._counts[category] += 1
+
     def start_time(self, category):
         assert category not in self._active_timers
-        self._counts[category] += 1
+        self.increment_counter(category)
         self._active_timers[category] = _get_time()
 
     def end_time(self, category):
