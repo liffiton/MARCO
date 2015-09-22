@@ -336,7 +336,7 @@ def main():
                                     duplicate_MSS += 1
 
                                 # already found/reported/explored
-                                # continue
+                                continue
 
                         with stats.time('msolver_block'):
                             if result[0] == 'U':
