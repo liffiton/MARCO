@@ -138,7 +138,7 @@ def setup_execution(args, stats, mainpid):
         atexit.register(at_exit, stats)
 
 
-def setup_solvers(args):
+def setup_csolver(args):
     infile = args.infile
 
     # create appropriate constraint solver
@@ -177,6 +177,10 @@ def setup_solvers(args):
         )
         sys.exit(1)
 
+    return csolver
+
+
+def setup_msolver(n, args):
     # create appropriate map solver
     if args.nomax or args.max:
         varbias = None  # will get a "random" seed from the Map solver
@@ -185,11 +189,18 @@ def setup_solvers(args):
 
     try:
         if args.MAX or args.smus:
-            msolver = mapsolvers.MinicardMapSolver(n=csolver.n, bias=varbias)
+            msolver = mapsolvers.MinicardMapSolver(n, bias=varbias)
         else:
-            msolver = mapsolvers.MinisatMapSolver(n=csolver.n, bias=varbias, dump=args.dump_map)
+            msolver = mapsolvers.MinisatMapSolver(n, bias=varbias, dump=args.dump_map)
     except OSError as e:
         error_exit("Unable to load pyminisolvers library.", "Run 'make -C pyminisolvers' to compile the library.", e)
+
+    return msolver
+
+
+def setup_solvers(args):
+    csolver = setup_csolver(args)
+    msolver = setup_msolver(csolver.n, args)
 
     try:
         csolver.set_msolver(msolver)
@@ -273,8 +284,9 @@ def main():
     # and spurious results (if using improved-implies and a child reaches a point that
     # suddenly becomes blocked by new blocking clauses, it could return that incorrectly
     # as an MUS or MCS)
-    # HACK: just use setup_solvers to get an appropriate map solver for now
-    _, msolver = setup_solvers(args)
+    # Need to parse the constraint set (again!) just to get n for the map formula...
+    csolver = setup_csolver(args)
+    msolver = mapsolvers.MinisatMapSolver(csolver.n)
     # Old way: results = set()
 
     remaining = args.limit
