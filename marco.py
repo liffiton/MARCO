@@ -313,8 +313,11 @@ def main():
                         stats.add_stat("duplicate MUS", duplicate_MUS)
                         stats.add_stat("duplicate MSS", duplicate_MSS)
 
-                        # Print received stats
-                        at_exit(result[1])
+                        # TODO: print children's results, but differentiate somehow...
+                        #if args.stats:
+                        #    # Print received stats
+                        #    at_exit(result[1])
+
                         # End / cleanup children
                         # (the .daemon=True mechanism appears to be unreliable)
                         for other in pipes:
