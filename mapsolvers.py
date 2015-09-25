@@ -29,6 +29,10 @@ class MapSolver(object):
     def solver(self):
         pass
 
+    def set_rnd_seed(self, seed):
+        """Set the underlying solver's random seed."""
+        self.solver.set_rnd_seed(seed)
+
     def check_seed(self, seed):
         """Check whether a given seed is still unexplored.
 

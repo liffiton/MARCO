@@ -180,7 +180,7 @@ def setup_csolver(args):
     return csolver
 
 
-def setup_msolver(n, args):
+def setup_msolver(n, args, seed=None):
     # create appropriate map solver
     if args.nomax or args.max:
         varbias = None  # will get a "random" seed from the Map solver
@@ -195,12 +195,15 @@ def setup_msolver(n, args):
     except OSError as e:
         error_exit("Unable to load pyminisolvers library.", "Run 'make -C pyminisolvers' to compile the library.", e)
 
+    if seed is not None:
+        msolver.set_rnd_seed(seed)
+
     return msolver
 
 
-def setup_solvers(args):
+def setup_solvers(args, seed=None):
     csolver = setup_csolver(args)
-    msolver = setup_msolver(csolver.n, args)
+    msolver = setup_msolver(csolver.n, args, seed)
 
     try:
         csolver.set_msolver(msolver)
@@ -230,8 +233,8 @@ def setup_config(args):
     return config
 
 
-def run_enumerator(stats, args, pipe):
-    csolver, msolver = setup_solvers(args)
+def run_enumerator(worker_id, stats, args, pipe):
+    csolver, msolver = setup_solvers(args, seed=worker_id)
     config = setup_config(args)
     if args.mcs_only:
         mcsfinder = MCSEnumerator(csolver, stats, pipe)
@@ -268,10 +271,10 @@ def main():
         fourth_args.mcs_only = True  # Caution! If mcs_only is assigned false, it will run MUS bias by default.
         args_list = [args, args, args]
 
-        for args in args_list:
+        for i, args in enumerate(args_list):
             pipe, child_pipe = multiprocessing.Pipe()
             pipes.append(pipe)
-            proc = multiprocessing.Process(target=run_enumerator, args=(stats, args, child_pipe))
+            proc = multiprocessing.Process(target=run_enumerator, args=(i+1, stats, args, child_pipe))
             proc.daemon = True       # so process is killed when main thread exits (e.g. in signal handler)
             proc.start()
 
