@@ -186,8 +186,10 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
         try:
             # a bit of a hack to check whether we can really run it
             DEVNULL = open(os.devnull, 'wb')
-            subprocess.Popen([self.muser_path], stdout=DEVNULL, stderr=DEVNULL)
-        except:
+            p = subprocess.Popen([self.muser_path], stdout=DEVNULL, stderr=DEVNULL)
+            p.kill()
+            p.wait()
+        except OSError:
             raise MUSerException("MUSer2 binary %s is not executable.\n"
                                  "It may be compiled for a different platform." % self.muser_path)
 
