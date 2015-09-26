@@ -8,6 +8,7 @@ import os
 import select
 import signal
 import sys
+import threading
 
 import utils
 import mapsolvers
@@ -112,18 +113,32 @@ def error_exit(error, details, exception):
     sys.exit(1)
 
 
+# used to prevent an infinite recursion of signal handlers
+# calling themselves (via the propagation to the process group)
+first_handler_call = True
+
+
 def setup_execution(args, stats, mainpid):
     # register timeout/interrupt handler
+
     def handler(signum, frame):  # pylint: disable=unused-argument
-        mypid = os.getpid()
+        global first_handler_call
+        if not first_handler_call:
+            return
+        first_handler_call = False
+
         # only report out if we're the main process
+        mypid = os.getpid()
         if mypid == mainpid:
             if signum == signal.SIGALRM:
                 sys.stderr.write("Time limit reached.\n")
             else:
                 sys.stderr.write("Interrupted.\n")
+            # kill all children (all procs in process group)
+            os.killpg(mainpid, signal.SIGTERM)
+
         sys.exit(128)
-        # at_exit will fire here
+        # at_exit will fire here in the main process
 
     signal.signal(signal.SIGTERM, handler)  # external termination
     signal.signal(signal.SIGINT, handler)   # ctl-c keyboard interrupt
@@ -234,14 +249,30 @@ def setup_config(args):
 
 
 def run_enumerator(worker_id, stats, args, pipe):
+
     csolver, msolver = setup_solvers(args, seed=worker_id)
     config = setup_config(args)
-    if args.mcs_only:
-        mcsfinder = MCSEnumerator(csolver, stats, pipe)
-        mcsfinder.enumerate()
+
+    # enumerate results in a separate thread so signal handling works while in C code
+    # ref: https://thisismiller.github.io/blog/CPython-Signal-Handling/
+    def enumerate():
+        if args.mcs_only:
+            mcsfinder = MCSEnumerator(csolver, stats, pipe)
+            mcsfinder.enumerate()
+        else:
+            mp = MarcoPolo(csolver, msolver, stats, config, pipe)
+            mp.enumerate()
+
+    enumthread = threading.Thread(target=enumerate)
+    enumthread.daemon = True      # so thread is killed when main thread exits (e.g. in signal handler)
+    enumthread.start()
+    if sys.version_info[0] >= 3:
+        enumthread.join()
     else:
-        mp = MarcoPolo(csolver, msolver, stats, config, pipe)
-        mp.enumerate()
+        # In Python 2, a timeout is required for join() to not just
+        # call a blocking C function (thus blocking the signal handler).
+        # However, infinity works.
+        enumthread.join(float('inf'))
 
 
 def print_result(result, args, stats):

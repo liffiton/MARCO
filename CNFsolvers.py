@@ -1,4 +1,3 @@
-import atexit
 import bisect
 import collections
 import gzip
@@ -193,14 +192,6 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
             raise MUSerException("MUSer2 binary %s is not executable.\n"
                                  "It may be compiled for a different platform." % self.muser_path)
 
-        self._proc = None  # track the MUSer process
-        atexit.register(self.cleanup)
-
-    # kill MUSer process if still running when we exit (e.g. due to a timeout)
-    def cleanup(self):
-        if self._proc:
-            self._proc.kill()
-
     # write CNF output for MUSer2
     def write_CNF(self, cnffile, seed, hard):
         # Write CNF (grouped, with hard clauses, if any, in the 0 / Don't-care group)
@@ -238,10 +229,11 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
             self.write_CNF(cnf, seed, hard)
 
             # Run MUSer
-            self._proc = subprocess.Popen([self.muser_path, '-comp', '-grp', '-v', '-1', cnf.name],
-                                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            out, err = self._proc.communicate()
-            self._proc = None  # clear it when we're done (so cleanup won't try to kill it)
+            p = subprocess.Popen([self.muser_path, '-comp', '-grp', '-v', '-1', cnf.name],
+                                 stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE)
+            out, err = p.communicate()
+
             out = out.decode()
 
         # Parse result, return the core
