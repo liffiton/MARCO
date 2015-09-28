@@ -153,7 +153,7 @@ def setup_execution(args, stats, mainpid):
         atexit.register(at_exit, stats)
 
 
-def setup_csolver(args):
+def setup_csolver(args, seed=None):
     infile = args.infile
 
     # create appropriate constraint solver
@@ -177,6 +177,10 @@ def setup_csolver(args):
         except (IOError, OSError) as e:
             error_exit("Unable to load pyminisolvers library.", "Run 'make -C pyminisolvers' to compile the library.", e)
         infile.close()
+
+        if seed is not None:
+            csolver.set_rnd_seed(seed)
+
     elif args.smt or infile.name.endswith('.smt2'):
         try:
             from SMTsolvers import Z3SubsetSolver
@@ -217,7 +221,7 @@ def setup_msolver(n, args, seed=None):
 
 
 def setup_solvers(args, seed=None):
-    csolver = setup_csolver(args)
+    csolver = setup_csolver(args, seed)
     msolver = setup_msolver(csolver.n, args, seed)
 
     try:

@@ -20,6 +20,10 @@ class MinisatSubsetSolver(object):
         self._known_MSS = 0
         self._known_MUS = 0
 
+    def set_rnd_seed(self, seed):
+        """Set the underlying solver's random seed."""
+        self.s.set_rnd_seed(seed)
+
     def set_msolver(self, msolver):
         self._msolver = msolver
 
