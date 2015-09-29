@@ -294,6 +294,10 @@ def main():
 
     pipes = []
 
+    # make process group id match process id so all children
+    # will share the same group id (for easier termination)
+    os.setpgrp()
+
     with stats.time('setup'):
         args = parse_args()
         setup_execution(args, stats, os.getpid())
