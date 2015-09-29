@@ -9,8 +9,14 @@ from pyminisolvers import minisolvers
 
 
 class MinisatSubsetSolver(object):
-    def __init__(self, infile, store_dimacs=False):
+    def __init__(self, infile, rand_seed=None, store_dimacs=False):
         self.s = minisolvers.MinisatSubsetSolver()
+
+        # Initialize random seed and randomize variable activity if seed is given
+        if rand_seed is not None:
+            self.s.set_rnd_seed(rand_seed)
+            self.s.set_rnd_init_act(True)
+
         self.store_dimacs = store_dimacs
         if self.store_dimacs:
             self.dimacs = []
@@ -180,8 +186,8 @@ class MUSerException(Exception):
 
 
 class MUSerSubsetSolver(MinisatSubsetSolver):
-    def __init__(self, filename):
-        MinisatSubsetSolver.__init__(self, filename, store_dimacs=True)
+    def __init__(self, filename, rand_seed=None):
+        MinisatSubsetSolver.__init__(self, filename, rand_seed, store_dimacs=True)
         self.core_pattern = re.compile(r'^v [\d ]+$', re.MULTILINE)
         self.muser_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'muser2-static')
         if not os.path.isfile(self.muser_path):

@@ -169,17 +169,14 @@ def setup_csolver(args, seed=None):
 
         try:
             if args.mcs_only:
-                csolver = solverclass(infile, store_dimacs=True)
+                csolver = solverclass(infile, seed, store_dimacs=True)
             else:
-                csolver = solverclass(infile)
+                csolver = solverclass(infile, seed)
         except CNFsolvers.MUSerException as e:
             error_exit("Unable to use MUSer2 for MUS extraction.", "Use --force-minisat to use Minisat instead (NOTE: it will be much slower.)", e)
         except (IOError, OSError) as e:
             error_exit("Unable to load pyminisolvers library.", "Run 'make -C pyminisolvers' to compile the library.", e)
         infile.close()
-
-        if seed is not None:
-            csolver.set_rnd_seed(seed)
 
     elif args.smt or infile.name.endswith('.smt2'):
         try:
@@ -208,14 +205,11 @@ def setup_msolver(n, args, seed=None):
 
     try:
         if args.MAX or args.smus:
-            msolver = mapsolvers.MinicardMapSolver(n, bias=varbias)
+            msolver = mapsolvers.MinicardMapSolver(n, bias=varbias, rand_seed=seed)
         else:
-            msolver = mapsolvers.MinisatMapSolver(n, bias=varbias, dump=args.dump_map)
+            msolver = mapsolvers.MinisatMapSolver(n, bias=varbias, rand_seed=seed, dump=args.dump_map)
     except OSError as e:
         error_exit("Unable to load pyminisolvers library.", "Run 'make -C pyminisolvers' to compile the library.", e)
-
-    if seed is not None:
-        msolver.set_rnd_seed(seed)
 
     return msolver
 

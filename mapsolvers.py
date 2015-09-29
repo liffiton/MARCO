@@ -29,10 +29,6 @@ class MapSolver(object):
     def solver(self):
         pass
 
-    def set_rnd_seed(self, seed):
-        """Set the underlying solver's random seed."""
-        self.solver.set_rnd_seed(seed)
-
     def check_seed(self, seed):
         """Check whether a given seed is still unexplored.
 
@@ -125,7 +121,7 @@ class MapSolver(object):
 
 
 class MinicardMapSolver(MapSolver):
-    def __init__(self, n, bias=True):   # bias=True is a high/inclusion/MUS bias; False is a low/exclusion/MSS bias.
+    def __init__(self, n, bias=True, rand_seed=None):   # bias=True is a high/inclusion/MUS bias; False is a low/exclusion/MSS bias.
         super(MinicardMapSolver, self).__init__(n, bias)
 
         if bias:
@@ -134,6 +130,11 @@ class MinicardMapSolver(MapSolver):
             self.k = 0
 
         self._solver = minisolvers.MinicardSolver()
+
+        # Initialize random seed and randomize variable activity if seed is given
+        if rand_seed is not None:
+            self._solver.set_rnd_seed(rand_seed)
+            self._solver.set_rnd_init_act(True)
 
         while self.solver.nvars() < self.n:
             self.solver.new_var(self.bias)
@@ -205,10 +206,16 @@ class MinicardMapSolver(MapSolver):
 
 
 class MinisatMapSolver(MapSolver):
-    def __init__(self, n, bias=True, dump=None):   # bias=True is a high/inclusion/MUS bias; False is a low/exclusion/MSS bias; None is no bias.
+    def __init__(self, n, bias=True, rand_seed=None, dump=None):   # bias=True is a high/inclusion/MUS bias; False is a low/exclusion/MSS bias; None is no bias.
         super(MinisatMapSolver, self).__init__(n, bias, dump)
 
         self._solver = minisolvers.MinisatSolver()
+
+        # Initialize random seed and randomize variable activity if seed is given
+        if rand_seed is not None:
+            self._solver.set_rnd_seed(rand_seed)
+            self._solver.set_rnd_init_act(True)
+
         while self.solver.nvars() < self.n:
             self.solver.new_var(self.bias)
 
