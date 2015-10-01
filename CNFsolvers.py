@@ -48,6 +48,10 @@ class MinisatSubsetSolver(object):
             if line.startswith(b'c'):
                 continue
 
+            line = line.strip()
+            if line == '':
+                continue
+
             # anything else is a clause
             assert self.n > 0
             vals = line.split()
