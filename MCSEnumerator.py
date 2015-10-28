@@ -75,7 +75,7 @@ class MCSEnumerator(object):
         return solver
 
     def block_down(self, solver, frompoint):
-        clause = [i+self.nvars for i in self.complement(frompoint)]
+        clause = [i+self.nvars for i in frompoint]
         solver.add_clause(clause)
 
     def block_up(self, solver, frompoint):
@@ -101,9 +101,10 @@ class MCSEnumerator(object):
                 MSS = self.get_MSS()
                 res = ("S", MSS)
                 self.pipe.send(res)
-                self.blk_downs.append(MSS)  # save for later solvers
-                self.block_down(self.solver, MSS)
-                self.block_down(self.instrumented_solver, MSS)
+                MCS = self.complement(MSS)
+                self.blk_downs.append(MCS)  # save for later solvers
+                self.block_down(self.solver, MCS)
+                self.block_down(self.instrumented_solver, MCS)
             included.update(self.instrumented_solver.unsat_core(offset=1))
             k += 1
         self.pipe.send(('done', self.stats))
