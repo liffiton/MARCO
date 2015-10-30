@@ -1,10 +1,12 @@
-from pyminisolvers import minisolvers
+import array
 import sys
 import threading
 try:
     import queue
 except ImportError:
     import Queue as queue
+
+from pyminisolvers import minisolvers
 
 
 class MCSEnumerator(object):
@@ -56,7 +58,7 @@ class MCSEnumerator(object):
 
     def setup_clauses(self, dimacs):
         for clause in dimacs:
-            self.clauses.append([int(i) for i in clause.split()[:-1]])
+            self.clauses.append(array.array('i', [int(i) for i in clause.split()[:-1]]))
 
     def complement(self, aset):
         return set(range(1, self.nclauses+1)).difference(aset)
@@ -83,8 +85,8 @@ class MCSEnumerator(object):
         solver.add_clause(clause)
 
     def get_MSS(self):
-        model = set(self.instrumented_solver.get_model_trues(offset=1))
-        MSS = [x-self.nvars for x in model if x > self.nvars]
+        model = self.instrumented_solver.get_model_trues(offset=1)
+        MSS = array.array('i', [x-self.nvars for x in model if x > self.nvars])
         return MSS  # return a list of clause selector vars, not the actual clause indices
 
     def enumerate(self):
