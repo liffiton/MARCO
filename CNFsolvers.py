@@ -233,7 +233,7 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
             self.write_CNF(cnf, seed, hard)
             args = [self.muser_path, '-comp', '-grp', '-v', '-1']
             if self.parallel:
-                args += ['-threads', '4']
+                args += ['-threads', '4', '-tmp']
             args += [cnf.name]
 
             # Run MUSer
@@ -244,6 +244,8 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
 
         # Parse result, return the core
         matchline = re.search(self.core_pattern, out).group(0)
+        # pMUSer outputs 0 groups as part of MUSes, so we'll just filter it out to prevent the
+        # duplicate clauses in MUSes
         ret = [seed[int(x)-1] for x in matchline.split()[1:-1] if int(x) > 0]
 
         # Add back in hard clauses

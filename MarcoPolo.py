@@ -137,7 +137,10 @@ class MarcoPolo(object):
                         self.stats.add_stat("hard_constraints", len(hard_constraints))
 
                         oldlen = len(seed)
-                        MUS = self.subs.shrink(seed, hard=hard_constraints)
+                        if oldlen == len(hard_constraints):
+                            MUS = seed
+                        else:
+                            MUS = self.subs.shrink(seed, hard=hard_constraints)
                         self.record_delta('shrink', oldlen, len(MUS), False)
 
                     if self.config['verbose']:

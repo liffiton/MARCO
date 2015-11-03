@@ -138,7 +138,7 @@ def setup_solvers(args):
             if args.pmuser:
                 csolver = solverclass(infile, parallel=True)
             else:
-	            csolver = solverclass(infile)
+                csolver = solverclass(infile)
         except CNFsolvers.MUSerException as e:
             error_exit("Unable to use MUSer2 for MUS extraction.", "Use --force-minisat to use Minisat instead (NOTE: it will be much slower.)", e)
         except (IOError, OSError) as e:
