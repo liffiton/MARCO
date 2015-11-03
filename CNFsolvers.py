@@ -77,7 +77,7 @@ class MinisatSubsetSolver(object):
                     self.dimacs.append(b" ".join(str(x).encode() for x in clause) + b" 0\n")
                     self.groups[groupid].append(i)
                 else:
-                    self.dimacs.append(line)
+                    self.dimacs.append(line + b"\n")
                     self.groups[groupid] = [i]
 
             i += 1
