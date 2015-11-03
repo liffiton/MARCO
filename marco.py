@@ -205,9 +205,15 @@ def setup_msolver(n, args, seed=None):
 
     try:
         if args.MAX or args.smus:
-            msolver = mapsolvers.MinicardMapSolver(n, bias=varbias, rand_seed=seed)
+            #msolver = mapsolvers.MinicardMapSolver(n, bias=varbias, rand_seed=seed)
+            # TODO: only synchronize if running in parallel mode
+            msolverclass = utils.synchronize_class(mapsolvers.MinicardMapSolver)
+            msolver = msolverclass(n, bias=varbias, rand_seed=seed)
         else:
-            msolver = mapsolvers.MinisatMapSolver(n, bias=varbias, rand_seed=seed, dump=args.dump_map)
+            #msolver = mapsolvers.MinisatMapSolver(n, bias=varbias, rand_seed=seed, dump=args.dump_map)
+            # TODO: only synchronize if running in parallel mode
+            msolverclass = utils.synchronize_class(mapsolvers.MinisatMapSolver)
+            msolver = msolverclass(n, bias=varbias, rand_seed=seed, dump=args.dump_map)
     except OSError as e:
         error_exit("Unable to load pyminisolvers library.", "Run 'make -C pyminisolvers' to compile the library.", e)
 
@@ -247,7 +253,6 @@ def setup_config(args):
 
 
 def run_enumerator(worker_id, stats, args, pipe):
-
     csolver, msolver = setup_solvers(args, seed=worker_id)
     config = setup_config(args)
 

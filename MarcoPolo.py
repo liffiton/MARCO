@@ -30,8 +30,16 @@ class MarcoPolo(object):
                 if res == 'terminate':
                     # exit process on terminate message
                     sys.exit(0)
-                # otherwise, we've received another result
-                self.seeds.add_incoming(res)
+                # Otherwise, we've received another result,
+                # update blocking clauses.
+                # Requires map solver to be thread-safe:
+                assert hasattr(self.map, "__synchronized__") and self.map.__synchronized__
+                if res[0] == 'S':
+                    self.map.block_down(res[1])
+                elif res[0] == 'U':
+                    self.map.block_up(res[1])
+                else:
+                    assert False
 
     def record_delta(self, name, oldlen, newlen, up):
         if up:
@@ -140,15 +148,15 @@ class MarcoPolo(object):
                     MUS = seed
                 else:
                     with self.stats.time('shrink'):
-                        # Implications might change after every blocking
-                        # clause, but we only need to check right before we're
-                        # going to use them.
-                        implies = self.map.solver.implies()
-                        hard_constraints = [x for x in implies if x > 0]
-                        self.stats.add_stat("hard_constraints", len(hard_constraints))
-
                         oldlen = len(seed)
                         MUS = self.subs.shrink(seed)
+
+                        if MUS is None:
+                            # seed was explored in another process
+                            # in the meantime
+                            self.stats.increment_counter("parallel_rejected")
+                            continue
+
                         self.record_delta('shrink', oldlen, len(MUS), False)
 
                     if self.config['verbose']:
@@ -182,7 +190,6 @@ class SeedManager(object):
         self.stats = stats
         self.config = config
         self._seed_queue = queue.Queue()
-        self._incoming_queue = queue.Queue()
 
     def __iter__(self):
         return self
@@ -192,23 +199,10 @@ class SeedManager(object):
             if not self._seed_queue.empty():
                 return self._seed_queue.get()
             else:
-                # Update blocking clauses w/ incoming results
-                with self.stats.time('receive_int'):
-                    while not self._incoming_queue.empty():
-                        rec = self._incoming_queue.get()
-                        if rec[0] == 'S':
-                            self.map.block_down(rec[1])
-                        elif rec[0] == 'U':
-                            self.map.block_up(rec[1])
-                        else:
-                            assert(0)
                 seed, known_max = self.seed_from_solver()
                 if seed is None:
                     raise StopIteration
                 return seed, known_max
-
-    def add_incoming(self, result):
-        self._incoming_queue.put(result)
 
     def add_seed(self, seed, known_max):
         self._seed_queue.put((seed, known_max))

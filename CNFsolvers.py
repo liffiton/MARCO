@@ -133,7 +133,7 @@ class MinisatSubsetSolver(object):
         return set(range(1, self.n+1)).difference(aset)
 
     def shrink(self, seed):
-        hard = self._msolver.solver.implies()
+        hard = self._msolver.implies()
         current = set(seed)
         for i in seed:
             if i not in current or i in hard:
@@ -237,7 +237,14 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
     # override shrink method to use MUSer2
     # NOTE: seed must be indexed (i.e., not a set)
     def shrink(self, seed):
-        hard = [x for x in self._msolver.solver.implies() if x > 0]
+        hard = [x for x in self._msolver.implies() if x > 0]
+        # In parallel mode, this seed may be explored by the time
+        # we get here.  If it is, the hard constraints may include
+        # constraints *outside* of the current seed, which would invalidate
+        # the returned MUS.  If the seed is explored, give up on this seed.
+        if not self._msolver.check_seed(seed):
+            return None
+
         # Open tmpfile
         with tempfile.NamedTemporaryFile('wb') as cnf:
             self.write_CNF(cnf, seed, hard)
@@ -257,6 +264,8 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
         # Add back in hard clauses
         ret.extend(hard)
 
+        assert len(ret) <= len(seed)
+
         return ret
 
 
@@ -265,7 +274,7 @@ class ImprovedImpliesSubsetSolver(MinisatSubsetSolver):
         current = set(seed)
 
         if self._known_MSS > 0:
-            implications = self._msolver.solver.implies(-x for x in self.complement(current))
+            implications = self._msolver.implies(-x for x in self.complement(current))
             hard = set(x for x in implications if x > 0)
         else:
             hard = set()
@@ -280,7 +289,7 @@ class ImprovedImpliesSubsetSolver(MinisatSubsetSolver):
             else:
                 current = set(self.s.unsat_core(offset=1))
                 if self._known_MSS > 0:
-                    implications = self._msolver.solver.implies(-x for x in self.complement(current))
+                    implications = self._msolver.implies(-x for x in self.complement(current))
                     hard = set(x for x in implications if x > 0)
 
         return current
@@ -289,7 +298,7 @@ class ImprovedImpliesSubsetSolver(MinisatSubsetSolver):
         current = set(seed)
 
         if self._known_MUS > 0:
-            implications = self._msolver.solver.implies(current)
+            implications = self._msolver.implies(current)
             dont_add = set(x for x in implications if x < 0)
         else:
             dont_add = set()
@@ -304,7 +313,7 @@ class ImprovedImpliesSubsetSolver(MinisatSubsetSolver):
             else:
                 current = set(self.s.sat_subset(offset=1))
                 if self._known_MUS > 0:
-                    implications = self._msolver.solver.implies(current)
+                    implications = self._msolver.implies(current)
                     dont_add = set(x for x in implications if x < 0)
 
         return current
@@ -316,7 +325,7 @@ class ShrinkUseMSSSubsetSolver(MinisatSubsetSolver):
         check_count2 = 0
         current = set(seed)
 
-        hard = self._msolver.solver.implies()
+        hard = self._msolver.implies()
 
         for i in seed:
             if i not in current or i in hard:

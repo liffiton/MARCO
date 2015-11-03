@@ -1,4 +1,5 @@
 import abc
+import array
 from pyminisolvers import minisolvers
 
 
@@ -25,17 +26,23 @@ class MapSolver(object):
     def next_seed(self):
         pass
 
-    @abc.abstractproperty
-    def solver(self):
-        pass
-
     def check_seed(self, seed):
         """Check whether a given seed is still unexplored.
 
         Returns:
             True if seed is unexplored (i.e., its corresponding assignment is a model)
         """
-        return self.solver.check_complete(positive_lits=seed)
+        return self._solver.check_complete(positive_lits=seed)
+
+    def implies(self, assumptions=None):
+        """Get implications (level-0 decisions) of the current instance.
+        If assumptions are provided, get implications of the current
+        instance w.r.t. those assumptions.
+
+        Returns:
+            An array of literals.
+        """
+        return self._solver.implies(assumptions)
 
     def find_above(self, seed):
         """Look for and return any unexplored point including the given seed.
@@ -45,7 +52,7 @@ class MapSolver(object):
         Returns:
             Any unexplored strict superset of seed, if one exists.
         """
-        superset_exists = self.solver.solve(seed)
+        superset_exists = self._solver.solve(seed)
         if superset_exists:
             return self.get_seed()
         else:
@@ -57,16 +64,16 @@ class MapSolver(object):
         Returns:
             A seed as an array of 1-based constraint indexes.
         """
-        return self.solver.get_model_trues(start=0, end=self.n, offset=1)
+        return self._solver.get_model_trues(start=0, end=self.n, offset=1)
 
         # slower:
-        #model = self.solver.get_model()
+        #model = self._solver.get_model()
         #return [i for i in range(self.n) if model[i]]
 
         # slowest:
         #seed = []
         #for i in range(self.n):
-        #    if self.solver.model_value(i+1):
+        #    if self._solver.model_value(i+1):
         #        seed.add(i)
         #return seed
 
@@ -79,20 +86,20 @@ class MapSolver(object):
         """
         while True:
             comp = self.complement(seed)
-            tmpvar = self.solver.new_var() + 1
+            tmpvar = self._solver.new_var() + 1
             if direction:
                 # search for a solution w/ all of the current seed plus at
                 # least one from the current complement.
-                self.solver.add_clause([-tmpvar] + list(comp))  # temporary clause
+                self._solver.add_clause([-tmpvar] + list(comp))  # temporary clause
                 # activate the temporary clause and all seed clauses
-                havenew = self.solver.solve([tmpvar] + list(seed))
+                havenew = self._solver.solve([tmpvar] + list(seed))
             else:
                 # search for a solution w/ none of current complement and at
                 # least one from the current seed removed.
-                self.solver.add_clause([-tmpvar] + [-i for i in seed])  # temporary clause
+                self._solver.add_clause([-tmpvar] + [-i for i in seed])  # temporary clause
                 # activate the temporary clause and deactivate complement clauses
-                havenew = self.solver.solve([tmpvar] + [-i for i in comp])
-            self.solver.add_clause([-tmpvar])  # remove the temporary clause
+                havenew = self._solver.solve([tmpvar] + [-i for i in comp])
+            self._solver.add_clause([-tmpvar])  # remove the temporary clause
 
             if havenew:
                 seed = self.get_seed()
@@ -105,7 +112,7 @@ class MapSolver(object):
 
     def add_clause(self, clause):
         """Add a given clause to the Map solver."""
-        self.solver.add_clause(clause)
+        self._solver.add_clause(clause)
         if self.dump is not None:
             self.dump.write(" ".join(str(lit) for lit in clause) + " 0\n")
 
@@ -136,12 +143,12 @@ class MinicardMapSolver(MapSolver):
             self._solver.set_rnd_seed(rand_seed)
             self._solver.set_rnd_init_act(True)
 
-        while self.solver.nvars() < self.n:
-            self.solver.new_var(self.bias)
+        while self._solver.nvars() < self.n:
+            self._solver.new_var(self.bias)
 
         # add "bound-setting" variables
-        while self.solver.nvars() < self.n*2:
-            self.solver.new_var()
+        while self._solver.nvars() < self.n*2:
+            self._solver.new_var()
 
         # add cardinality constraint (comment is for high bias, maximal model;
         #                             becomes AtMostK for low bias, minimal model)
@@ -154,17 +161,27 @@ class MinicardMapSolver(MapSolver):
         # and to make AtLeast into an AtMost:
         #   AtLeast([lits], k) ==> AtMost([-lits], #lits-k)
         if self.bias:
-            self.solver.add_atmost([-(x+1) for x in range(self.n * 2)], self.n)
+            self._solver.add_atmost([-(x+1) for x in range(self.n * 2)], self.n)
         else:
-            self.solver.add_atmost([(x+1) for x in range(self.n * 2)], self.n)
-
-    @property
-    def solver(self):
-        return self._solver
+            self._solver.add_atmost([(x+1) for x in range(self.n * 2)], self.n)
 
     def solve_with_bound(self, k):
         # same assumptions work both for high bias / atleast and for low bias / atmost
-        return self.solver.solve( [-(self.n+x+1) for x in range(k)] + [(self.n+k+x+1) for x in range(self.n-k)] )
+        return self._solver.solve( [-(self.n+x+1) for x in range(k)] + [(self.n+k+x+1) for x in range(self.n-k)] )
+
+    def check_seed(self, seed):
+        """Check whether a given seed is still unexplored.
+
+        For MinicardMapSolver, we have to make sure to effectively disable the
+        cardinality constraint.  When bias=True, this requires setting its auxiliary
+        variables to True (hence including them in positive_lits in check_complete).
+
+        Returns:
+            True if seed is unexplored (i.e., its corresponding assignment is a model)
+        """
+        positive_lits = seed + array.array('i', range(self.n+1, self.n*2+1))
+        ret = self._solver.check_complete(positive_lits)
+        return ret
 
     def next_seed(self):
         '''
@@ -197,11 +214,11 @@ class MinicardMapSolver(MapSolver):
         return self.get_seed()
 
     def block_above_size(self, size):
-        self.solver.add_atmost( [(x+1) for x in range(self.n)], size)
+        self._solver.add_atmost( [(x+1) for x in range(self.n)], size)
         self.k = min(size, self.k)
 
     def block_below_size(self, size):
-        self.solver.add_atmost( [-(x+1) for x in range(self.n)], self.n-size)
+        self._solver.add_atmost( [-(x+1) for x in range(self.n)], self.n-size)
         self.k = min(size, self.k)
 
 
@@ -216,18 +233,14 @@ class MinisatMapSolver(MapSolver):
             self._solver.set_rnd_seed(rand_seed)
             self._solver.set_rnd_init_act(True)
 
-        while self.solver.nvars() < self.n:
-            self.solver.new_var(self.bias)
+        while self._solver.nvars() < self.n:
+            self._solver.new_var(self.bias)
 
         if self.bias is None:
-            self.solver.set_rnd_pol(True)
-
-    @property
-    def solver(self):
-        return self._solver
+            self._solver.set_rnd_pol(True)
 
     def next_seed(self):
-        if self.solver.solve():
+        if self._solver.solve():
             return self.get_seed()
         else:
             return None

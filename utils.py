@@ -1,5 +1,7 @@
 """Utility class(es) for marco_py"""
 from collections import Counter, defaultdict
+import threading
+import types
 
 # Three options for measuring time: choose one.
 # TODO: Consider using time.process_time() (only in 3.3, though)
@@ -12,6 +14,41 @@ _get_time = time.time   # wall-time
 
 #import os
 #_get_time = lambda: sum(os.times()[:4])  # combined user/sys time for this process and its children
+
+
+def synchronize_class(sync_class):
+    """Make any class [somewhat] thread-safe by acquiring an
+    object-wide lock on every method call.  Note: this will
+    *not* protect access to non-method attributes.
+
+    Based on: http://theorangeduck.com/page/synchronized-python
+    """
+    lock = threading.RLock()
+
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            with lock:
+                return func(*args, **kwargs)
+        return wrapper
+
+    orig_init = sync_class.__init__
+
+    def __init__(self, *args, **kwargs):
+        self.__lock__ = lock          # not used by this code, but could be useful
+        self.__synchronized__ = True  # a flag to check in assertions
+        orig_init(self, *args, **kwargs)
+
+    sync_class.__init__ = __init__
+
+    for key in dir(sync_class):
+        val = getattr(sync_class, key)
+        # synchronize all methods except __init__ (no other thread
+        # can have a reference to an object before __init__ complete,
+        # as far as I know)
+        if isinstance(val, types.MethodType) and key != '__init__':
+            setattr(sync_class, key, decorator(val))
+
+    return sync_class
 
 
 class Statistics(object):
