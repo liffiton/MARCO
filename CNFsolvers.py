@@ -192,6 +192,10 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
         self._proc = None  # track the MUSer process
         atexit.register(self.cleanup)
 
+    # set # of threads for pMUSer
+    def set_threads(self, threads):
+        self.threads = threads
+
     # kill MUSer process if still running when we exit (e.g. due to a timeout)
     def cleanup(self):
         if self._proc:
@@ -233,7 +237,7 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
             self.write_CNF(cnf, seed, hard)
             args = [self.muser_path, '-comp', '-grp', '-v', '-1']
             if self.parallel:
-                args += ['-threads', '4', '-tmp']
+                args += ['-threads', str(self.threads), '-tmp']
             args += [cnf.name]
 
             # Run MUSer
