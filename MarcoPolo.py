@@ -1,3 +1,6 @@
+import sys
+import threading
+
 try:
     import queue
 except ImportError:
@@ -5,31 +8,38 @@ except ImportError:
 
 
 class MarcoPolo(object):
-    def __init__(self, csolver, msolver, stats, config):
+    def __init__(self, csolver, msolver, stats, config, pipe):
         self.subs = csolver
         self.map = msolver
         self.seeds = SeedManager(msolver, stats, config)
         self.stats = stats
         self.config = config
+        self.pipe = pipe
         self.bias_high = self.config['bias'] == 'MUSes'  # used frequently
         self.n = self.map.n   # number of constraints
         self.got_top = False  # track whether we've explored the complete set (top of the lattice)
 
-    def enumerate_basic(self):
-        '''Basic MUS/MCS enumeration, as a simple reference/example.'''
-        while True:
-            seed = self.map.next_seed()
-            if seed is None:
-                return
+        thread = threading.Thread(target=self.receive_thread)
+        thread.daemon = True
+        thread.start()
 
-            if self.subs.check_subset(seed):
-                MSS = self.subs.grow(seed)
-                yield ("S", MSS)
-                self.map.block_down(MSS)
-            else:
-                MUS = self.subs.shrink(seed)
-                yield ("U", MUS)
-                self.map.block_up(MUS)
+    def receive_thread(self):
+        while self.pipe.poll(None):
+            with self.stats.time('receive'):
+                res = self.pipe.recv()
+                if res == 'terminate':
+                    # exit process on terminate message
+                    sys.exit(0)
+                # Otherwise, we've received another result,
+                # update blocking clauses.
+                # Requires map solver to be thread-safe:
+                assert hasattr(self.map, "__synchronized__") and self.map.__synchronized__
+                if res[0] == 'S':
+                    self.map.block_down(res[1])
+                elif res[0] == 'U':
+                    self.map.block_up(res[1])
+                else:
+                    assert False
 
     def record_delta(self, name, oldlen, newlen, up):
         if up:
@@ -41,6 +51,7 @@ class MarcoPolo(object):
 
     def enumerate(self):
         '''MUS/MCS enumeration with all the bells and whistles...'''
+
         for seed, known_max in self.seeds:
 
             if self.config['verbose']:
@@ -110,14 +121,22 @@ class MarcoPolo(object):
                 else:
                     with self.stats.time('grow'):
                         oldlen = len(seed)
-                        MSS = self.subs.grow(seed, inplace=True)
+                        MSS = self.subs.grow(seed)
                         self.record_delta('grow', oldlen, len(MSS), True)
 
                     if self.config['verbose']:
                         print("- Grow() -> MSS")
 
                 with self.stats.time('block'):
-                    yield ("S", MSS)
+                    res = ("S", MSS)
+                    #yield res
+                    self.pipe.send(res)
+
+                    try:
+                        self.subs.increment_MSS()
+                    except AttributeError:
+                        pass
+
                     self.map.block_down(MSS)
 
                 if self.config['verbose']:
@@ -129,25 +148,31 @@ class MarcoPolo(object):
                     MUS = seed
                 else:
                     with self.stats.time('shrink'):
-                        # Implications might change after every blocking
-                        # clause, but we only need to check right before we're
-                        # going to use them.
-                        implies = self.map.solver.implies()
-                        hard_constraints = [x for x in implies if x > 0]
-                        self.stats.add_stat("hard_constraints", len(hard_constraints))
-
                         oldlen = len(seed)
-                        if oldlen == len(hard_constraints):
-                            MUS = seed
-                        else:
-                            MUS = self.subs.shrink(seed, hard=hard_constraints)
+
+                        MUS = self.subs.shrink(seed)
+
+                        if MUS is None:
+                            # seed was explored in another process
+                            # in the meantime
+                            self.stats.increment_counter("parallel_rejected")
+                            continue
+
                         self.record_delta('shrink', oldlen, len(MUS), False)
 
                     if self.config['verbose']:
                         print("- Shrink() -> MUS")
 
                 with self.stats.time('block'):
-                    yield ("U", MUS)
+                    res = ("U", MUS)
+                    #yield res
+                    self.pipe.send(res)
+
+                    try:
+                        self.subs.increment_MUS()
+                    except AttributeError:
+                        pass
+
                     self.map.block_up(MUS)
 
                     if self.config['smus']:
@@ -157,21 +182,23 @@ class MarcoPolo(object):
                 if self.config['verbose']:
                     print("- MUS blocked.")
 
+        self.pipe.send(('complete', self.stats))
+
 
 class SeedManager(object):
     def __init__(self, msolver, stats, config):
         self.map = msolver
         self.stats = stats
         self.config = config
-        self.queue = queue.Queue()
+        self._seed_queue = queue.Queue()
 
     def __iter__(self):
         return self
 
     def __next__(self):
         with self.stats.time('seed'):
-            if not self.queue.empty():
-                return self.queue.get()
+            if not self._seed_queue.empty():
+                return self._seed_queue.get()
             else:
                 seed, known_max = self.seed_from_solver()
                 if seed is None:
@@ -179,7 +206,7 @@ class SeedManager(object):
                 return seed, known_max
 
     def add_seed(self, seed, known_max):
-        self.queue.put((seed, known_max))
+        self._seed_queue.put((seed, known_max))
 
     def seed_from_solver(self):
         known_max = (self.config['maximize'] == 'solver')

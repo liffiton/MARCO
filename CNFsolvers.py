@@ -1,4 +1,3 @@
-import atexit
 import bisect
 import collections
 import gzip
@@ -10,15 +9,35 @@ from pyminisolvers import minisolvers
 
 
 class MinisatSubsetSolver(object):
-    def __init__(self, infile, rnd_init=False, store_dimacs=False):
+    def __init__(self, infile, rand_seed=None, store_dimacs=False):
         self.s = minisolvers.MinisatSubsetSolver()
-        if rnd_init:
+
+        # Initialize random seed and randomize variable activity if seed is given
+        if rand_seed is not None:
+            self.s.set_rnd_seed(rand_seed)
             self.s.set_rnd_init_act(True)
+
         self.store_dimacs = store_dimacs
         if self.store_dimacs:
             self.dimacs = []
             self.groups = collections.defaultdict(list)
         self.read_dimacs(infile)
+        self._msolver = None
+        self._known_MSS = 0
+        self._known_MUS = 0
+
+    def set_rnd_seed(self, seed):
+        """Set the underlying solver's random seed."""
+        self.s.set_rnd_seed(seed)
+
+    def set_msolver(self, msolver):
+        self._msolver = msolver
+
+    def increment_MSS(self):
+        self._known_MSS += 1
+
+    def increment_MUS(self):
+        self._known_MUS += 1
 
     def parse_dimacs(self, f):
         i = 0
@@ -93,8 +112,11 @@ class MinisatSubsetSolver(object):
             with gzip.open(infile.name) as gz_f:
                 self.parse_dimacs(gz_f)
         else:
+            # XXX TODO: using open() here to avoid dupe infile object for parallel branch,
+            #           but this breaks reading from stdin.
             # assume plain .cnf and pass through the file object
-            self.parse_dimacs(infile)
+            with open(infile.name) as f:
+                self.parse_dimacs(f)
 
     def check_subset(self, seed, improve_seed=False):
         is_sat = self.s.solve_subset([i-1 for i in seed])
@@ -110,7 +132,8 @@ class MinisatSubsetSolver(object):
     def complement(self, aset):
         return set(range(1, self.n+1)).difference(aset)
 
-    def shrink(self, seed, hard=[]):
+    def shrink(self, seed):
+        hard = self._msolver.implies()
         current = set(seed)
         for i in seed:
             if i not in current or i in hard:
@@ -137,11 +160,8 @@ class MinisatSubsetSolver(object):
         self.s.add_clause([-x])  # remove the temporary clause
         return ret
 
-    def grow(self, seed, inplace):
-        if inplace:
-            current = seed
-        else:
-            current = seed[:]
+    def grow(self, seed):
+        current = seed
 
         #while self.check_above(current):
         #    current = self.s.sat_subset()
@@ -170,8 +190,8 @@ class MUSerException(Exception):
 
 
 class MUSerSubsetSolver(MinisatSubsetSolver):
-    def __init__(self, filename, rnd_init=False, numthreads=1):
-        MinisatSubsetSolver.__init__(self, filename, rnd_init, store_dimacs=True)
+    def __init__(self, filename, rand_seed=None, numthreads=1):
+        MinisatSubsetSolver.__init__(self, filename, rand_seed, store_dimacs=True)
         self.core_pattern = re.compile(r'^v [\d ]+$', re.MULTILINE)
         self.numthreads = numthreads
         self.parallel = (numthreads > 1)
@@ -191,14 +211,6 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
         except OSError:
             raise MUSerException("MUSer2 binary %s is not executable.\n"
                                  "It may be compiled for a different platform." % self.muser_path)
-
-        self._proc = None  # track the MUSer process
-        atexit.register(self.cleanup)
-
-    # kill MUSer process if still running when we exit (e.g. due to a timeout)
-    def cleanup(self):
-        if self._proc:
-            self._proc.kill()
 
     # write CNF output for MUSer2
     def write_CNF(self, cnffile, seed, hard):
@@ -230,7 +242,20 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
 
     # override shrink method to use MUSer2
     # NOTE: seed must be indexed (i.e., not a set)
-    def shrink(self, seed, hard=[]):
+    def shrink(self, seed):
+        hard = [x for x in self._msolver.implies() if x > 0]
+        # In parallel mode, this seed may be explored by the time
+        # we get here.  If it is, the hard constraints may include
+        # constraints *outside* of the current seed, which would invalidate
+        # the returned MUS.  If the seed is explored, give up on this seed.
+        if not self._msolver.check_seed(seed):
+            return None
+
+        # Parallel MUSer doesn't like a formula with only hard constraints,
+        # and it's a waste of time to call MUSer at all on it anyway.
+        if len(seed) == len(hard):
+            return seed
+
         # Open tmpfile
         with tempfile.NamedTemporaryFile('wb') as cnf:
             self.write_CNF(cnf, seed, hard)
@@ -243,6 +268,7 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
             self._proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             out, err = self._proc.communicate()
             self._proc = None  # clear it when we're done (so cleanup won't try to kill it)
+
             out = out.decode()
 
         # Parse result, return the core
@@ -253,4 +279,57 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
 
         # Add back in hard clauses
         ret.extend(hard)
+
+        assert len(ret) <= len(seed)
+
         return ret
+
+
+class ImprovedImpliesSubsetSolver(MinisatSubsetSolver):
+    def shrink(self, seed):
+        current = set(seed)
+
+        if self._known_MSS > 0:
+            implications = self._msolver.implies(-x for x in self.complement(current))
+            hard = set(x for x in implications if x > 0)
+        else:
+            hard = set()
+
+        for i in seed:
+            if i not in current or i in hard:
+                continue
+            current.remove(i)
+
+            if self.check_subset(current):
+                current.add(i)
+            else:
+                current = set(self.s.unsat_core(offset=1))
+                if self._known_MSS > 0:
+                    implications = self._msolver.implies(-x for x in self.complement(current))
+                    hard = set(x for x in implications if x > 0)
+
+        return current
+
+    def grow(self, seed):
+        current = set(seed)
+
+        if self._known_MUS > 0:
+            implications = self._msolver.implies(current)
+            dont_add = set(x for x in implications if x < 0)
+        else:
+            dont_add = set()
+
+        for i in self.complement(current):
+            if i in current or i in dont_add:
+                continue
+            current.add(i)
+
+            if not self.check_subset(current):
+                current.remove(i)
+            else:
+                current = set(self.s.sat_subset(offset=1))
+                if self._known_MUS > 0:
+                    implications = self._msolver.implies(current)
+                    dont_add = set(x for x in implications if x < 0)
+
+        return current

@@ -59,6 +59,15 @@ jobs = [
       #'exclude': ['dlx2_aa.cnf'],
       'default': True,
     },
+    # --rnd-init
+    {
+      'name':    'marco_py',
+      'files':   reg_files,
+      'flags':   [''],
+      'flags_all': '-v --rnd-init 54321',
+      'exclude': ['c10.cnf', 'dlx2_aa.cnf'],
+      'default': True,
+    },
     # --pmuser
     {
       'name':    'marco_py',

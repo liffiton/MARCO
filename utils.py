@@ -1,5 +1,7 @@
 """Utility class(es) for marco_py"""
 from collections import Counter, defaultdict
+import threading
+import types
 
 # Three options for measuring time: choose one.
 # TODO: Consider using time.process_time() (only in 3.3, though)
@@ -12,6 +14,41 @@ _get_time = time.time   # wall-time
 
 #import os
 #_get_time = lambda: sum(os.times()[:4])  # combined user/sys time for this process and its children
+
+
+def synchronize_class(sync_class):
+    """Make any class [somewhat] thread-safe by acquiring an
+    object-wide lock on every method call.  Note: this will
+    *not* protect access to non-method attributes.
+
+    Based on: http://theorangeduck.com/page/synchronized-python
+    """
+    lock = threading.RLock()
+
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            with lock:
+                return func(*args, **kwargs)
+        return wrapper
+
+    orig_init = sync_class.__init__
+
+    def __init__(self, *args, **kwargs):
+        self.__lock__ = lock          # not used by this code, but could be useful
+        self.__synchronized__ = True  # a flag to check in assertions
+        orig_init(self, *args, **kwargs)
+
+    sync_class.__init__ = __init__
+
+    for key in dir(sync_class):
+        val = getattr(sync_class, key)
+        # synchronize all methods except __init__ (no other thread
+        # can have a reference to an object before __init__ complete,
+        # as far as I know)
+        if isinstance(val, types.MethodType) and key != '__init__':
+            setattr(sync_class, key, decorator(val))
+
+    return sync_class
 
 
 class Statistics(object):
@@ -37,6 +74,14 @@ class Statistics(object):
     ['total: 0.17', 'outer: 0.17', 'inner: 0.05']
     >>> s.get_counts()
     Counter({'outer': 2, 'inner': 1})
+
+    And counters (without associated times) can be created/maintained
+    with increment_counter()
+    >>> s.increment_counter('countA')
+    >>> s.increment_counter('countB')
+    >>> s.increment_counter('countA')
+    >>> s.get_counts()
+    Counter({'outer': 2, 'inner': 1, 'countA': 2, 'countB': 1})
 
     The object also provides a method for collecting arbitrary statistics.
     Every value added for a given string is appended to a list.
@@ -69,9 +114,12 @@ class Statistics(object):
             self._stats.end_time(self._category)
             return False  # doesn't handle any exceptions itself
 
+    def increment_counter(self, category):
+        self._counts[category] += 1
+
     def start_time(self, category):
         assert category not in self._active_timers
-        self._counts[category] += 1
+        self.increment_counter(category)
         self._active_timers[category] = _get_time()
 
     def end_time(self, category):
