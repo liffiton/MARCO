@@ -59,12 +59,21 @@ jobs = [
       #'exclude': ['dlx2_aa.cnf'],
       'default': True,
     },
+    # --pmuser
+    {
+      'name':    'marco_py',
+      'files':   reg_files,
+      'flags':   [''],
+      'flags_all': '-v --pmuser 2',
+      'exclude': ['c10.cnf', 'dlx2_aa.cnf'],
+      'default': True,
+    },
     # --force-minisat
     {
       'name':    'marco_py',
       'files':   reg_files,
       'flags':   [''],
-      'flags_all': common_flags + ' --force-minisat',
+      'flags_all': '-v --force-minisat',
       'exclude': ['c10.cnf', 'dlx2_aa.cnf'],
       'default': True,
     },

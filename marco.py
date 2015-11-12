@@ -41,10 +41,11 @@ def parse_args():
     exp_group = parser.add_argument_group('Experimental / research options', "These can typically be ignored; the defaults will give the best performance.")
     exp_group.add_argument('--dump-map', nargs='?', type=argparse.FileType('w'),
                            help="dump clauses added to the Map formula to the given file.")
-    exp_group.add_argument('--force-minisat', action='store_true',
+    solver_group = exp_group.add_mutually_exclusive_group()
+    solver_group.add_argument('--force-minisat', action='store_true',
                            help="use Minisat in place of MUSer2 for CNF (NOTE: much slower and usually not worth doing!)")
-    exp_group.add_argument('--pmuser', type=int, default=None,
-                           help="run MUSer2 in parallel (please specify # of threads.)")
+    solver_group.add_argument('--pmuser', type=int, default=None,
+                           help="use MUSer2-para in place of MUSer2 to run in parallel (specify # of threads.)")
     # Max/min-models arguments
     max_group_outer = parser.add_argument_group('  Maximal/minimal models options', "By default, the Map solver will efficiently produce maximal/minimal models itself by giving each variable a default polarity.  These options override that (--nomax, -m) or extend it (-M, --smus) in various ways.")
     max_group = max_group_outer.add_mutually_exclusive_group()
