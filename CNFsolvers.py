@@ -10,8 +10,10 @@ from pyminisolvers import minisolvers
 
 
 class MinisatSubsetSolver(object):
-    def __init__(self, infile, store_dimacs=False):
+    def __init__(self, infile, rnd_init=False, store_dimacs=False):
         self.s = minisolvers.MinisatSubsetSolver()
+        if rnd_init:
+            self.s.set_rnd_init_act(True)
         self.store_dimacs = store_dimacs
         if self.store_dimacs:
             self.dimacs = []
@@ -168,8 +170,8 @@ class MUSerException(Exception):
 
 
 class MUSerSubsetSolver(MinisatSubsetSolver):
-    def __init__(self, filename, numthreads=1):
-        MinisatSubsetSolver.__init__(self, filename, store_dimacs=True)
+    def __init__(self, filename, rnd_init=False, numthreads=1):
+        MinisatSubsetSolver.__init__(self, filename, rnd_init, store_dimacs=True)
         self.core_pattern = re.compile(r'^v [\d ]+$', re.MULTILINE)
         self.numthreads = numthreads
         self.parallel = (numthreads > 1)

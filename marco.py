@@ -46,6 +46,9 @@ def parse_args():
                            help="use Minisat in place of MUSer2 for CNF (NOTE: much slower and usually not worth doing!)")
     solver_group.add_argument('--pmuser', type=int, default=None,
                            help="use MUSer2-para in place of MUSer2 to run in parallel (specify # of threads.)")
+    exp_group.add_argument('--rnd-init', action='store_true',
+                           help="initialize variable activity in csolver to random values.")
+
     # Max/min-models arguments
     max_group_outer = parser.add_argument_group('  Maximal/minimal models options', "By default, the Map solver will efficiently produce maximal/minimal models itself by giving each variable a default polarity.  These options override that (--nomax, -m) or extend it (-M, --smus) in various ways.")
     max_group = max_group_outer.add_mutually_exclusive_group()
@@ -137,9 +140,9 @@ def setup_solvers(args):
 
         try:
             if args.pmuser is not None:
-                csolver = solverclass(infile, numthreads=args.pmuser)
+                csolver = solverclass(infile, args.rnd_init, numthreads=args.pmuser)
             else:
-                csolver = solverclass(infile)
+                csolver = solverclass(infile, args.rnd_init)
         except CNFsolvers.MUSerException as e:
             error_exit("Unable to use MUSer2 for MUS extraction.", "Use --force-minisat to use Minisat instead (NOTE: it will be much slower.)", e)
         except (IOError, OSError) as e:
