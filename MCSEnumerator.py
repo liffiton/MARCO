@@ -18,6 +18,8 @@ class MCSEnumerator(object):
         self.setup_clauses(csolver.dimacs)
         self.nvars = csolver.nvars
         self.nclauses = csolver.nclauses
+        self.n = csolver.n
+        self.groups = csolver.groups
         self.instrumented_solver = None
         self.stats = stats
         self.pipe = pipe
@@ -61,15 +63,30 @@ class MCSEnumerator(object):
             self.clauses.append(array.array('i', [int(i) for i in clause.split()[:-1]]))
 
     def complement(self, aset):
-        return set(range(1, self.nclauses+1)).difference(aset)
+        return set(range(1, self.n+1)).difference(aset)
 
     def setup_solver(self):
         solver = minisolvers.MinicardSubsetSolver()
-        solver.set_varcounts(self.nvars, self.nclauses)  # fix the TypeError bug in pyminisolver
-        while solver.nvars() < self.nvars + self.nclauses:
-            solver.new_var()
-        for i, clause in enumerate(self.clauses):
-            solver.add_clause_instrumented(clause, i)
+        solver.set_varcounts(self.nvars, self.n)
+
+        assert (self.n <= self.nclauses)
+        gcnf_in = (self.n != self.nclauses)  # In gcnf, # of groups is less than # of clauses
+
+        # Create new vars
+        while solver.nvars() < self.nvars + self.n:
+                solver.new_var()
+
+        # add clauses ...
+        if gcnf_in:
+            for groupid, clauses in self.groups.iteritems():
+                for j in clauses:
+                    if groupid == 0:
+                        solver.add_clause(self.clauses[j])
+                    else:
+                        solver.add_clause_instrumented(self.clauses[j], groupid-1)
+        else:
+            for i, clause in enumerate(self.clauses):
+                solver.add_clause_instrumented(clause, i)
         for clause in self.blk_downs:
             self.block_down(solver, clause)
         for clause in self.blk_ups:
@@ -91,7 +108,7 @@ class MCSEnumerator(object):
 
     def enumerate(self):
         k = 1  # counting for AtMost constraints
-        self.check_sat(self.solver, list(range(self.nvars+1, self.nvars+self.nclauses+1)))
+        self.check_sat(self.solver, list(range(self.nvars+1, self.nvars+self.n+1)))
         included = set(self.solver.unsat_core(offset=1))
 
         while self.check_sat(self.solver):
