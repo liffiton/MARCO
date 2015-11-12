@@ -168,11 +168,12 @@ class MUSerException(Exception):
 
 
 class MUSerSubsetSolver(MinisatSubsetSolver):
-    def __init__(self, filename, parallel=False):
+    def __init__(self, filename, numthreads=1):
         MinisatSubsetSolver.__init__(self, filename, store_dimacs=True)
         self.core_pattern = re.compile(r'^v [\d ]+$', re.MULTILINE)
-        self.parallel = parallel
-        if parallel:
+        self.numthreads = numthreads
+        self.parallel = (numthreads > 1)
+        if self.parallel:
             binary = 'muser2-para'
         else:
             binary = 'muser2-static'
@@ -191,10 +192,6 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
 
         self._proc = None  # track the MUSer process
         atexit.register(self.cleanup)
-
-    # set # of threads for pMUSer
-    def set_threads(self, threads):
-        self.threads = threads
 
     # kill MUSer process if still running when we exit (e.g. due to a timeout)
     def cleanup(self):
@@ -237,7 +234,7 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
             self.write_CNF(cnf, seed, hard)
             args = [self.muser_path, '-comp', '-grp', '-v', '-1']
             if self.parallel:
-                args += ['-threads', str(self.threads), '-tmp']
+                args += ['-threads', str(self.numthreads), '-tmp']
             args += [cnf.name]
 
             # Run MUSer

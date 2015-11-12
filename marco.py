@@ -136,8 +136,7 @@ def setup_solvers(args):
 
         try:
             if args.pmuser is not None:
-                csolver = solverclass(infile, parallel=True)
-                csolver.set_threads(args.pmuser)
+                csolver = solverclass(infile, numthreads=args.pmuser)
             else:
                 csolver = solverclass(infile)
         except CNFsolvers.MUSerException as e:
