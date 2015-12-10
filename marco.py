@@ -167,10 +167,10 @@ def setup_csolver(args, seed=None):
             solverclass = CNFsolvers.MUSerSubsetSolver
 
         try:
-            if args.pmuser is not None:
-                csolver = solverclass(infile, args.rnd_init, numthreads=args.pmuser)
-            elif args.mcs_only:
+            if args.mcs_only:
                 csolver = solverclass(infile, args.rnd_init, store_dimacs=True)
+            elif args.pmuser is not None:
+                csolver = solverclass(infile, args.rnd_init, numthreads=args.pmuser)
             else:
                 csolver = solverclass(infile, args.rnd_init)
         except CNFsolvers.MUSerException as e:
@@ -267,7 +267,6 @@ def run_enumerator(worker_id, stats, args, pipe):
             mp.enumerate()
 
     enumthread = threading.Thread(target=enumerate)
-    enumthread.daemon = True      # so thread is killed when main thread exits (e.g. in signal handler)
     enumthread.start()
     if sys.version_info[0] >= 3:
         enumthread.join()
@@ -313,7 +312,6 @@ def main():
             pipe, child_pipe = multiprocessing.Pipe()
             pipes.append(pipe)
             proc = multiprocessing.Process(target=run_enumerator, args=(i+1, stats, args, child_pipe))
-            proc.daemon = True       # so process is killed when main thread exits (e.g. in signal handler)
             proc.start()
 
     # useful for timing just the parsing / setup
@@ -364,11 +362,9 @@ def main():
                         #    # Print received stats
                         #    at_exit(result[1])
 
-                        # End / cleanup children
-                        # (the .daemon=True mechanism appears to be unreliable)
-                        for other in pipes:
-                            if other != receiver:
-                                other.send('terminate')
+                        # End / cleanup all children
+                        for pipe in pipes:
+                            pipe.send('terminate')
                         # Exit main process
                         sys.exit(0)
 

@@ -26,7 +26,6 @@ class MCSEnumerator(object):
         self.incoming_queue = queue.Queue()
 
         self.receive_thread = threading.Thread(target=self.receive_thread)
-        self.receive_thread.daemon = True
         self.receive_thread.start()
 
     def receive_thread(self):

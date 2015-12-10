@@ -19,9 +19,8 @@ class MarcoPolo(object):
         self.n = self.map.n   # number of constraints
         self.got_top = False  # track whether we've explored the complete set (top of the lattice)
 
-        thread = threading.Thread(target=self.receive_thread)
-        thread.daemon = True
-        thread.start()
+        self._recv_thread = threading.Thread(target=self.receive_thread)
+        self._recv_thread.start()
 
     def receive_thread(self):
         while self.pipe.poll(None):
@@ -183,6 +182,7 @@ class MarcoPolo(object):
                     print("- MUS blocked.")
 
         self.pipe.send(('complete', self.stats))
+        self._recv_thread.join()
 
 
 class SeedManager(object):
