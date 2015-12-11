@@ -15,6 +15,14 @@ common_flags = '-v'
 # for systems on which MUSer cannot run
 #common_flags += ' --force-minisat'
 
+# old tests
+#test_set_flags = ['--nomax', '-m always', '-m half', '-M'],
+#test_set_flags += ['-b MCSes --nomax', '-b MCSes -m always', '-b MCSes -m half', '-b MCSes -M'],
+
+test_set_flags = [
+        '', '-b MCSes', '--parallel MUS', '--parallel MUS,MUS', '--parallel MUS,MCS', '--parallel MUS,MCSonly'
+        ]
+
 cmd = '../marco.py'
 
 jobs = [
@@ -22,15 +30,8 @@ jobs = [
     {
       'name':    '3sat',
       'files':   rnd3sat_files,
-      'flags':   ['--nomax', '-m always', '-m half', '-M'],
+      'flags':   test_set_flags,
       'flags_all': common_flags,
-      'default': False,
-    },
-    {
-      'name':    '3sat',
-      'files':   rnd3sat_files,
-      'flags':   ['--nomax', '-m always', '-m half', '-M'],
-      'flags_all': common_flags + ' -b MCSes',
       'default': False,
     },
     # SMUS
@@ -47,24 +48,16 @@ jobs = [
     {
       'name':    'marco_py',
       'files':   reg_files,
-      'flags':   ['', '--nomax', '-m always', '-m half', '-M'],
+      'flags':   test_set_flags,
       'flags_all': common_flags,
-      'default': True,
-    },
-    {
-      'name':    'marco_py',
-      'files':   reg_files,
-      'flags':   ['', '--nomax', '-m always', '-m half', '-M'],
-      'flags_all': common_flags + ' -b MCSes',
-      #'exclude': ['dlx2_aa.cnf'],
       'default': True,
     },
     # --rnd-init
     {
       'name':    'marco_py',
       'files':   reg_files,
-      'flags':   [''],
-      'flags_all': '-v --rnd-init 54321',
+      'flags':   ['--rnd-init 54321'],
+      'flags_all': common_flags,
       'exclude': ['c10.cnf', 'dlx2_aa.cnf'],
       'default': True,
     },
@@ -72,8 +65,8 @@ jobs = [
     {
       'name':    'marco_py',
       'files':   reg_files,
-      'flags':   [''],
-      'flags_all': '-v --pmuser 2',
+      'flags':   ['--pmuser 2'],
+      'flags_all': common_flags,
       'exclude': ['c10.cnf', 'dlx2_aa.cnf'],
       'default': True,
     },
@@ -81,8 +74,8 @@ jobs = [
     {
       'name':    'marco_py',
       'files':   reg_files,
-      'flags':   [''],
-      'flags_all': '-v --force-minisat',
+      'flags':   ['--force-minisat'],
+      'flags_all': common_flags,
       'exclude': ['c10.cnf', 'dlx2_aa.cnf'],
       'default': True,
     },

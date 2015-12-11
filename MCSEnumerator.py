@@ -1,5 +1,5 @@
 import array
-import sys
+import os
 import threading
 try:
     import queue
@@ -10,7 +10,7 @@ from pyminisolvers import minisolvers
 
 
 class MCSEnumerator(object):
-    def __init__(self, csolver, stats, pipe):
+    def __init__(self, csolver, stats, pipe=None):
         self.solver = csolver.s
         self.clauses = []
         self.blk_downs = []
@@ -22,11 +22,13 @@ class MCSEnumerator(object):
         self.groups = csolver.groups
         self.instrumented_solver = None
         self.stats = stats
-        self.pipe = pipe
-        self.incoming_queue = queue.Queue()
 
-        self.receive_thread = threading.Thread(target=self.receive_thread)
-        self.receive_thread.start()
+        self.pipe = pipe
+        # if a pipe is provided, use it to receive results from other enumerators
+        if self.pipe:
+            self.incoming_queue = queue.Queue()
+            self.recv_thread = threading.Thread(target=self.receive_thread)
+            self.recv_thread.start()
 
     def receive_thread(self):
         while self.pipe.poll(None):
@@ -34,7 +36,7 @@ class MCSEnumerator(object):
                 res = self.pipe.recv()
                 if res == 'terminate':
                     # exit process on terminate message
-                    sys.exit(0)
+                    os._exit(0)
                 self.incoming_queue.put(res)
 
     def add_received(self, add_to_instrumented=False):
@@ -52,8 +54,9 @@ class MCSEnumerator(object):
                     self.block_up(self.instrumented_solver, rec[1])
 
     def check_sat(self, solver, assumps=None):
-        # Update blocking clauses as close as possible to calling solve()
-        self.add_received(add_to_instrumented=(solver == self.instrumented_solver))
+        if self.pipe:
+            # Update blocking clauses as close as possible to calling solve()
+            self.add_received(add_to_instrumented=(solver == self.instrumented_solver))
 
         return solver.solve(assumps)
 
@@ -118,14 +121,16 @@ class MCSEnumerator(object):
             while self.check_sat(self.instrumented_solver, instrumented):
                 MSS = self.get_MSS()
                 res = ("S", MSS)
-                self.pipe.send(res)
+                yield res
+
                 MCS = self.complement(MSS)
                 self.blk_downs.append(MCS)  # save for later solvers
                 self.block_down(self.solver, MCS)
                 self.block_down(self.instrumented_solver, MCS)
             included.update(self.instrumented_solver.unsat_core(offset=1))
             k += 1
-        self.pipe.send(('done', self.stats))
 
-        # wait for receive thread to finish processing any incoming data until our "done" is acknowledged by the parent
-        self.receive_thread.join()
+        if self.pipe:
+            self.pipe.send(('done', self.stats))
+            # wait for receive thread to finish processing any incoming data until our "done" is acknowledged by the parent
+            self.recv_thread.join()

@@ -35,7 +35,7 @@ def parse_args():
     parser.add_argument('-l', '--limit', type=int, default=None,
                         help="limit number of subsets output (counting both MCSes and MUSes)")
     parser.add_argument('--mcs-only', action='store_true', default=False,
-                        help="camus")
+                        help="enumerate MCSes only using a CAMUS-style MCS enumerator.")
     type_group = parser.add_mutually_exclusive_group()
     type_group.add_argument('--cnf', action='store_true',
                             help="assume input is in DIMACS CNF or Group CNF format (autodetected if filename is *.[g]cnf or *.[g]cnf.gz).")
@@ -57,6 +57,8 @@ def parse_args():
                               help="use MUSer2-para in place of MUSer2 to run in parallel (specify # of threads.)")
     exp_group.add_argument('--rnd-init', type=int, nargs='?', const=1,
                            help="initialize variable activity in solvers to random values (optionally specify a random seed [default: 1 if --rnd-init specified without a seed]).")
+    exp_group.add_argument('--parallel', type=str, default=None,
+                           help="run MARCO in parallel, specifying a comma-delimited list of modes selected from: 'MUS', 'MCS', 'MCSonly' -- e.g., \"MUS,MUS,MCS,MCSonly\" will run four separate threads: two MUS biased, one MCS biased, and one with a CAMUS-style MCS enumerator.")
 
     # Max/min-models arguments
     max_group_outer = parser.add_argument_group('  Maximal/minimal models options', "By default, the Map solver will efficiently produce maximal/minimal models itself by giving each variable a default polarity.  These options override that (--nomax, -m) or extend it (-M, --smus) in various ways.")
@@ -154,7 +156,7 @@ def setup_execution(args, stats, mainpid):
         atexit.register(at_exit, stats)
 
 
-def setup_csolver(args, seed=None):
+def setup_csolver(args, seed):
     infile = args.infile
 
     # create appropriate constraint solver
@@ -168,11 +170,11 @@ def setup_csolver(args, seed=None):
 
         try:
             if args.mcs_only:
-                csolver = solverclass(infile, args.rnd_init, store_dimacs=True)
+                csolver = solverclass(infile, seed, store_dimacs=True)
             elif args.pmuser is not None:
-                csolver = solverclass(infile, args.rnd_init, numthreads=args.pmuser)
+                csolver = solverclass(infile, seed, numthreads=args.pmuser)
             else:
-                csolver = solverclass(infile, args.rnd_init)
+                csolver = solverclass(infile, seed)
         except CNFsolvers.MUSerException as e:
             error_exit("Unable to use MUSer2 for MUS extraction.", "Use --force-minisat to use Minisat instead (NOTE: it will be much slower.)", e)
         except (IOError, OSError) as e:
@@ -206,14 +208,16 @@ def setup_msolver(n, args, seed=None):
 
     try:
         if args.MAX or args.smus:
-            #msolver = mapsolvers.MinicardMapSolver(n, bias=varbias, rand_seed=seed)
-            # TODO: only synchronize if running in parallel mode
-            msolverclass = utils.synchronize_class(mapsolvers.MinicardMapSolver)
+            msolverclass = mapsolvers.MinicardMapSolver
+            if args.parallel:
+                # Synchronize if running in parallel mode
+                msolverclass = utils.synchronize_class(msolverclass)
             msolver = msolverclass(n, bias=varbias, rand_seed=seed)
         else:
-            #msolver = mapsolvers.MinisatMapSolver(n, bias=varbias, rand_seed=seed, dump=args.dump_map)
-            # TODO: only synchronize if running in parallel mode
-            msolverclass = utils.synchronize_class(mapsolvers.MinisatMapSolver)
+            msolverclass = mapsolvers.MinisatMapSolver
+            if args.parallel:
+                # Synchronize if running in parallel mode
+                msolverclass = utils.synchronize_class(msolverclass)
             msolver = msolverclass(n, bias=varbias, rand_seed=seed, dump=args.dump_map)
     except OSError as e:
         error_exit("Unable to load pyminisolvers library.", "Run 'make -C pyminisolvers' to compile the library.", e)
@@ -252,21 +256,26 @@ def setup_config(args):
     return config
 
 
-def run_enumerator(worker_id, stats, args, pipe):
-    csolver, msolver = setup_solvers(args, seed=worker_id)
+def run_enumerator(seed, stats, args, pipe=None):
+    csolver, msolver = setup_solvers(args, seed)
     config = setup_config(args)
+
+    if args.mcs_only:
+        enumerator = MCSEnumerator(csolver, stats, pipe)
+    else:
+        enumerator = MarcoPolo(csolver, msolver, stats, config, pipe)
 
     # enumerate results in a separate thread so signal handling works while in C code
     # ref: https://thisismiller.github.io/blog/CPython-Signal-Handling/
     def enumerate():
-        if args.mcs_only:
-            mcsfinder = MCSEnumerator(csolver, stats, pipe)
-            mcsfinder.enumerate()
-        else:
-            mp = MarcoPolo(csolver, msolver, stats, config, pipe)
-            mp.enumerate()
+        for result in enumerator.enumerate():
+            if pipe:
+                pipe.send(result)
+            else:
+                print_result(result, args, stats)
 
     enumthread = threading.Thread(target=enumerate)
+    enumthread.daemon = True  # required so signal handler exit will end enumeration thread
     enumthread.start()
     if sys.version_info[0] >= 3:
         enumthread.join()
@@ -277,54 +286,13 @@ def run_enumerator(worker_id, stats, args, pipe):
         enumthread.join(float('inf'))
 
 
-def print_result(result, args, stats):
-    output = result[0]
-    if args.alltimes:
-        output = "%s %0.3f" % (output, stats.total_time())
-    if args.verbose:
-        output = "%s %s" % (output, " ".join([str(x) for x in result[1]]))
-
-    print(output)
-
-
-def main():
-    stats = utils.Statistics()
-
-    pipes = []
-
-    # make process group id match process id so all children
-    # will share the same group id (for easier termination)
-    os.setpgrp()
-
-    with stats.time('setup'):
-        args = parse_args()
-        setup_execution(args, stats, os.getpid())
-        other_args = copy.copy(args)
-        otherother_args = copy.copy(args)
-        fourth_args = copy.copy(args)
-        args.bias = 'MUSes'
-        other_args.bias = 'MCSes'
-        otherother_args.nomax = True
-        fourth_args.mcs_only = True  # Caution! If mcs_only is assigned false, it will run MUS bias by default.
-        args_list = [args, args, args]
-
-        for i, args in enumerate(args_list):
-            pipe, child_pipe = multiprocessing.Pipe()
-            pipes.append(pipe)
-            proc = multiprocessing.Process(target=run_enumerator, args=(i+1, stats, args, child_pipe))
-            proc.start()
-
-    # useful for timing just the parsing / setup
-    if args.limit == 0:
-        sys.stderr.write("Result limit reached.\n")
-        sys.exit(0)
-
+def run_master(stats, args, pipes):
     # for filtering duplicate results (found near-simultaneously by 2+ children)
     # and spurious results (if using improved-implies and a child reaches a point that
     # suddenly becomes blocked by new blocking clauses, it could return that incorrectly
     # as an MUS or MCS)
     # Need to parse the constraint set (again!) just to get n for the map formula...
-    csolver = setup_csolver(args)
+    csolver = setup_csolver(args, args.rnd_init)
     msolver = mapsolvers.MinisatMapSolver(csolver.n)
     # Old way: results = set()
 
@@ -406,6 +374,61 @@ def main():
                         for other in pipes:
                             if other != receiver:
                                 other.send(result)
+
+
+def print_result(result, args, stats):
+    output = result[0]
+    if args.alltimes:
+        output = "%s %0.3f" % (output, stats.total_time())
+    if args.verbose:
+        output = "%s %s" % (output, " ".join([str(x) for x in result[1]]))
+
+    print(output)
+
+
+def main():
+    stats = utils.Statistics()
+
+    pipes = []
+    procs = []
+
+    # make process group id match process id so all children
+    # will share the same group id (for easier termination)
+    os.setpgrp()
+
+    with stats.time('setup'):
+        args = parse_args()
+        setup_execution(args, stats, os.getpid())
+
+        if args.parallel:
+            for i, mode in enumerate(args.parallel.split(',')):
+                newargs = copy.copy(args)
+                if mode == 'MUS':
+                    newargs.bias = 'MUSes'
+                elif mode == 'MCS':
+                    newargs.bias = 'MCSes'
+                elif mode == 'MCSonly':
+                    newargs.mcs_only = True
+                else:
+                    assert False, "Invalid parallel mode: %s" % mode
+
+                pipe, child_pipe = multiprocessing.Pipe()
+                pipes.append(pipe)
+                proc = multiprocessing.Process(target=run_enumerator, args=(i+1, stats, newargs, child_pipe))
+                procs.append(proc)
+
+    # useful for timing just the parsing / setup
+    if args.limit == 0:
+        sys.stderr.write("Result limit reached.\n")
+        sys.exit(0)
+
+    if args.parallel:
+        for proc in procs:
+            proc.start()
+        run_master(stats, args, pipes)
+
+    else:
+        run_enumerator(1, stats, args)
 
 
 if __name__ == '__main__':

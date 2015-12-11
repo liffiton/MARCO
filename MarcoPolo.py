@@ -1,4 +1,4 @@
-import sys
+import os
 import threading
 
 try:
@@ -8,19 +8,21 @@ except ImportError:
 
 
 class MarcoPolo(object):
-    def __init__(self, csolver, msolver, stats, config, pipe):
+    def __init__(self, csolver, msolver, stats, config, pipe=None):
         self.subs = csolver
         self.map = msolver
         self.seeds = SeedManager(msolver, stats, config)
         self.stats = stats
         self.config = config
-        self.pipe = pipe
         self.bias_high = self.config['bias'] == 'MUSes'  # used frequently
         self.n = self.map.n   # number of constraints
         self.got_top = False  # track whether we've explored the complete set (top of the lattice)
 
-        self._recv_thread = threading.Thread(target=self.receive_thread)
-        self._recv_thread.start()
+        self.pipe = pipe
+        # if a pipe is provided, use it to receive results from other enumerators
+        if self.pipe:
+            self.recv_thread = threading.Thread(target=self.receive_thread)
+            self.recv_thread.start()
 
     def receive_thread(self):
         while self.pipe.poll(None):
@@ -28,7 +30,7 @@ class MarcoPolo(object):
                 res = self.pipe.recv()
                 if res == 'terminate':
                     # exit process on terminate message
-                    sys.exit(0)
+                    os._exit(0)
                 # Otherwise, we've received another result,
                 # update blocking clauses.
                 # Requires map solver to be thread-safe:
@@ -128,8 +130,7 @@ class MarcoPolo(object):
 
                 with self.stats.time('block'):
                     res = ("S", MSS)
-                    #yield res
-                    self.pipe.send(res)
+                    yield res
 
                     try:
                         self.subs.increment_MSS()
@@ -164,8 +165,7 @@ class MarcoPolo(object):
 
                 with self.stats.time('block'):
                     res = ("U", MUS)
-                    #yield res
-                    self.pipe.send(res)
+                    yield res
 
                     try:
                         self.subs.increment_MUS()
@@ -181,8 +181,9 @@ class MarcoPolo(object):
                 if self.config['verbose']:
                     print("- MUS blocked.")
 
-        self.pipe.send(('complete', self.stats))
-        self._recv_thread.join()
+        if self.pipe:
+            self.pipe.send(('complete', self.stats))
+            self.recv_thread.join()
 
 
 class SeedManager(object):
