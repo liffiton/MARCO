@@ -196,10 +196,8 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
         self.core_pattern = re.compile(r'^v [\d ]+$', re.MULTILINE)
         self.numthreads = numthreads
         self.parallel = (numthreads > 1)
-        if self.parallel:
-            binary = 'muser2-para'
-        else:
-            binary = 'muser2-static'
+
+        binary = 'muser2-para'
         self.muser_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), binary)
         if not os.path.isfile(self.muser_path):
             raise MUSerException("MUSer2 binary not found at %s" % self.muser_path)
