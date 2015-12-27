@@ -1,3 +1,4 @@
+import atexit
 import bisect
 import collections
 import gzip
@@ -211,6 +212,14 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
         except OSError:
             raise MUSerException("MUSer2 binary %s is not executable.\n"
                                  "It may be compiled for a different platform." % self.muser_path)
+
+        self._proc = None  # track the MUSer process
+        atexit.register(self.cleanup)
+
+    # kill MUSer process if still running when we exit (e.g. due to a timeout)
+    def cleanup(self):
+        if self._proc:
+            self._proc.kill()
 
     # write CNF output for MUSer2
     def write_CNF(self, cnffile, seed, hard):

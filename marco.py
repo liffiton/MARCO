@@ -116,27 +116,21 @@ def error_exit(error, details, exception):
     sys.exit(1)
 
 
-# used to prevent an infinite recursion of signal handlers
-# calling themselves (via the propagation to the process group)
-first_handler_call = True
-
-
 def setup_execution(args, stats, mainpid):
     # register timeout/interrupt handler
 
     def handler(signum, frame):  # pylint: disable=unused-argument
-        global first_handler_call
-        if not first_handler_call:
-            return
-        first_handler_call = False
-
-        # only report out if we're the main process
+        # only report out and propagate to process group if we're the main process
         mypid = os.getpid()
         if mypid == mainpid:
             if signum == signal.SIGALRM:
                 sys.stderr.write("Time limit reached.\n")
             else:
                 sys.stderr.write("Interrupted.\n")
+
+            # prevent an infinite recursion of signal handlers calling
+            # themselves when we signal the process group next
+            signal.signal(signal.SIGTERM, signal.SIG_IGN)
             # kill all children (all procs in process group)
             os.killpg(mainpid, signal.SIGTERM)
 
