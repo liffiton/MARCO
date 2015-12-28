@@ -71,7 +71,7 @@ class MinisatSubsetSolver(object):
                 continue
 
             line = line.strip()
-            if line == '':
+            if line == b'':
                 continue
 
             # anything else is a clause
@@ -110,13 +110,13 @@ class MinisatSubsetSolver(object):
         if infile.name.endswith('.gz'):
             # use gzip to decompress
             infile.close()
-            with gzip.open(infile.name) as gz_f:
+            with gzip.open(infile.name, 'rb') as gz_f:
                 self.parse_dimacs(gz_f)
         else:
             # XXX TODO: using open() here to avoid dupe infile object for parallel branch,
             #           but this breaks reading from stdin.
             # assume plain .cnf and pass through the file object
-            with open(infile.name) as f:
+            with open(infile.name, 'rb') as f:
                 self.parse_dimacs(f)
 
     def check_subset(self, seed, improve_seed=False):
