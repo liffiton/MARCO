@@ -45,7 +45,7 @@ def synchronize_class(sync_class):
         # synchronize all methods except __init__ (no other thread
         # can have a reference to an object before __init__ complete,
         # as far as I know)
-        if isinstance(val, types.MethodType) and key != '__init__':
+        if isinstance(val, (types.MethodType, types.FunctionType)) and key != '__init__':
             setattr(sync_class, key, decorator(val))
 
     return sync_class
