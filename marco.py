@@ -250,7 +250,7 @@ def setup_config(args):
     return config
 
 
-def run_enumerator(seed, stats, args, pipe=None):
+def run_enumerator(stats, args, seed=None, pipe=None):
     csolver, msolver = setup_solvers(args, seed)
     config = setup_config(args)
 
@@ -408,7 +408,9 @@ def main():
 
                 pipe, child_pipe = multiprocessing.Pipe()
                 pipes.append(pipe)
-                proc = multiprocessing.Process(target=run_enumerator, args=(i+1, stats, newargs, child_pipe))
+
+                seed = i+1
+                proc = multiprocessing.Process(target=run_enumerator, args=(stats, newargs, seed, child_pipe))
                 procs.append(proc)
 
     # useful for timing just the parsing / setup
@@ -422,7 +424,7 @@ def main():
         run_master(stats, args, pipes)
 
     else:
-        run_enumerator(1, stats, args)
+        run_enumerator(stats, args)
 
 
 if __name__ == '__main__':
