@@ -55,7 +55,7 @@ def parse_args():
                               help="use Minisat in place of MUSer2 for CNF (NOTE: much slower and usually not worth doing!)")
     solver_group.add_argument('--pmuser', type=int, default=None,
                               help="use MUSer2-para in place of MUSer2 to run in parallel (specify # of threads.)")
-    exp_group.add_argument('--rnd-init', type=int, nargs='?', const=1,
+    exp_group.add_argument('--rnd-init', type=int, nargs='?', const=1, default=None,   # default = val if --rnd-init not specified; const = val if --rnd-init specified w/o a value
                            help="initialize variable activity in solvers to random values (optionally specify a random seed [default: 1 if --rnd-init specified without a seed]).")
     exp_group.add_argument('--parallel', type=str, default=None,
                            help="run MARCO in parallel, specifying a comma-delimited list of modes selected from: 'MUS', 'MCS', 'MCSonly' -- e.g., \"MUS,MUS,MCS,MCSonly\" will run four separate threads: two MUS biased, one MCS biased, and one with a CAMUS-style MCS enumerator.")
@@ -310,6 +310,8 @@ def run_master(stats, args, pipes):
                         # "done" indicates the child process has finished its work,
                         # but enumeration may not be complete (if the child was only
                         # enumerating MCSes, e.g.)
+                        if args.verbose > 1:
+                            print("Child (%s) sent 'done'." % receiver)
                         # Terminate the child process.
                         receiver.send('terminate')
                         # Remove it from the list of active pipes
@@ -318,6 +320,8 @@ def run_master(stats, args, pipes):
                     elif result[0] == 'complete':
                         # "complete" indicates the child process has completed enumeration,
                         # with everything blocked.  Everything can be stopped at this point.
+                        if args.verbose > 1:
+                            print("Child (%s) sent 'complete'." % receiver)
 
                         # TODO: print children's results, but differentiate somehow...
                         #if args.stats:
@@ -331,9 +335,12 @@ def run_master(stats, args, pipes):
                         sys.exit(0)
 
                     else:
+                        assert result[0] in ['U', 'S']
                         # filter out duplicate / spurious results
                         with stats.time('msolver'):
                             if not msolver.check_seed(result[1]):
+                                if args.verbose > 1:
+                                    print("Child (%s) sent duplicate (len: %d)" % (receiver, len(result[1])))
                                 if result[0] == 'U':
                                     stats.increment_counter("duplicate MUS")
                                 else:
@@ -424,7 +431,7 @@ def main():
         run_master(stats, args, pipes)
 
     else:
-        run_enumerator(stats, args)
+        run_enumerator(stats, args, seed=args.rnd_init)
 
 
 if __name__ == '__main__':
