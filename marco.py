@@ -59,6 +59,10 @@ def parse_args():
                            help="initialize variable activity in solvers to random values (optionally specify a random seed [default: 1 if --rnd-init specified without a seed]).")
     exp_group.add_argument('--parallel', type=str, default=None,
                            help="run MARCO in parallel, specifying a comma-delimited list of modes selected from: 'MUS', 'MCS', 'MCSonly' -- e.g., \"MUS,MUS,MCS,MCSonly\" will run four separate threads: two MUS biased, one MCS biased, and one with a CAMUS-style MCS enumerator.")
+    exp_group.add_argument('--disable-communs', action='store_true',
+                           help="disable the communications between children (i.e., when the master receives a result from a child, it won't send to other children).")
+    exp_group.add_argument('--same-seeds', action='store_true',
+                           help="use same seeds for all children (still randomized but with all seeds of value 1.")
 
     # Max/min-models arguments
     max_group_outer = parser.add_argument_group('  Maximal/minimal models options', "By default, the Map solver will efficiently produce maximal/minimal models itself by giving each variable a default polarity.  These options override that (--nomax, -m) or extend it (-M, --smus) in various ways.")
@@ -371,10 +375,11 @@ def run_master(stats, args, pipes):
                                 sys.stderr.write("Result limit reached.\n")
                                 sys.exit(0)
 
-                        # send it to all children *other* than the one we got it from
-                        for other in pipes:
-                            if other != receiver:
-                                other.send(result)
+                        if not args.disable_communs:
+                            # send it to all children *other* than the one we got it from
+                            for other in pipes:
+                                if other != receiver:
+                                    other.send(result)
 
 
 def print_result(result, args, stats):
@@ -400,6 +405,8 @@ def main():
     with stats.time('setup'):
         args = parse_args()
         setup_execution(args, stats, os.getpid())
+        if args.same_seeds or args.disable_communs:
+            assert args.parallel is not None, "some flags you have specified have to be tested in the parallel mode."
 
         if args.parallel:
             for i, mode in enumerate(args.parallel.split(',')):
@@ -416,7 +423,11 @@ def main():
                 pipe, child_pipe = multiprocessing.Pipe()
                 pipes.append(pipe)
 
-                seed = i+1
+                if args.same_seeds:
+                    seed = 1
+                else:
+                    seed = i+1
+
                 proc = multiprocessing.Process(target=run_enumerator, args=(stats, newargs, seed, child_pipe))
                 procs.append(proc)
 
