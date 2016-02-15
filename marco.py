@@ -56,13 +56,15 @@ def parse_args():
     solver_group.add_argument('--pmuser', type=int, default=None,
                               help="use MUSer2-para in place of MUSer2 to run in parallel (specify # of threads.)")
     exp_group.add_argument('--rnd-init', type=int, nargs='?', const=1, default=None,   # default = val if --rnd-init not specified; const = val if --rnd-init specified w/o a value
-                           help="initialize variable activity in solvers to random values (optionally specify a random seed [default: 1 if --rnd-init specified without a seed]).")
+                           help="only used if *not* using --parallel: initialize variable activity in solvers to random values (optionally specify a random seed [default: 1 if --rnd-init specified without a seed]).")
     exp_group.add_argument('--parallel', type=str, default=None,
                            help="run MARCO in parallel, specifying a comma-delimited list of modes selected from: 'MUS', 'MCS', 'MCSonly' -- e.g., \"MUS,MUS,MCS,MCSonly\" will run four separate threads: two MUS biased, one MCS biased, and one with a CAMUS-style MCS enumerator.")
     exp_group.add_argument('--disable-communs', action='store_true',
                            help="disable the communications between children (i.e., when the master receives a result from a child, it won't send to other children).")
     exp_group.add_argument('--same-seeds', action='store_true',
                            help="use same seeds for all children (still randomized but with all seeds of value 1.")
+    exp_group.add_argument('--all-randomized', action='store_true',
+                           help="randomly initialize *all* children in parallel mode (default: first thread is *not* randomly initialized, all others are).")
 
     # Max/min-models arguments
     max_group_outer = parser.add_argument_group('  Maximal/minimal models options', "By default, the Map solver will efficiently produce maximal/minimal models itself by giving each variable a default polarity.  These options override that (--nomax, -m) or extend it (-M, --smus) in various ways.")
@@ -290,7 +292,7 @@ def run_master(stats, args, pipes):
     # suddenly becomes blocked by new blocking clauses, it could return that incorrectly
     # as an MUS or MCS)
     # Need to parse the constraint set (again!) just to get n for the map formula...
-    csolver = setup_csolver(args, args.rnd_init)
+    csolver = setup_csolver(args, seed=None)
     msolver = mapsolvers.MinisatMapSolver(csolver.n)
     # Old way: results = set()
 
@@ -424,9 +426,16 @@ def main():
                 pipes.append(pipe)
 
                 if args.same_seeds:
-                    seed = 1
+                    if args.all_randomized:
+                        seed = 1
+                    else:
+                        seed = None
                 else:
-                    seed = i+1
+                    # TODO: Handle randomization with non-homogeneous thread modes
+                    if not args.all_randomized and i == 0:
+                        seed = None
+                    else:
+                        seed = i+1
 
                 proc = multiprocessing.Process(target=run_enumerator, args=(stats, newargs, seed, child_pipe))
                 procs.append(proc)
