@@ -106,7 +106,7 @@ class MCSEnumerator(object):
     def get_MSS(self):
         model = self.instrumented_solver.get_model_trues(offset=1)
         MSS = array.array('i', [x-self.nvars for x in model if x > self.nvars])
-        return MSS  # return a list of clause selector vars, not the actual clause indices
+        return MSS
 
     def enumerate(self):
         k = 1  # counting for AtMost constraints
