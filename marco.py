@@ -268,11 +268,17 @@ def run_enumerator(stats, args, seed=None, pipe=None):
     # enumerate results in a separate thread so signal handling works while in C code
     # ref: https://thisismiller.github.io/blog/CPython-Signal-Handling/
     def enumerate():
+        remaining = args.limit
         for result in enumerator.enumerate():
             if pipe:
                 pipe.send(result)
             else:
                 print_result(result, args, stats)
+                if remaining:
+                    remaining -= 1
+                    if remaining == 0:
+                        sys.stderr.write("Result limit reached.\n")
+                        return
 
     enumthread = threading.Thread(target=enumerate)
     enumthread.daemon = True  # required so signal handler exit will end enumeration thread
@@ -375,6 +381,10 @@ def run_master(stats, args, pipes):
                             remaining -= 1
                             if remaining == 0:
                                 sys.stderr.write("Result limit reached.\n")
+                                # End / cleanup all children
+                                for pipe in pipes:
+                                    pipe.send('terminate')
+                                # Exit main process
                                 sys.exit(0)
 
                         if not args.disable_communs:
