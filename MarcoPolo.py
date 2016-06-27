@@ -35,6 +35,10 @@ class MarcoPolo(object):
                 # update blocking clauses.
                 # Requires map solver to be thread-safe:
                 assert hasattr(self.map, "__synchronized__") and self.map.__synchronized__
+
+                if self.config['ignore_comms']:
+                    continue
+
                 if res[0] == 'S':
                     self.map.block_down(res[1])
                 elif res[0] == 'U':

@@ -10,7 +10,7 @@ from pyminisolvers import minisolvers
 
 
 class MCSEnumerator(object):
-    def __init__(self, csolver, stats, pipe=None):
+    def __init__(self, csolver, stats, config, pipe=None):
         self.solver = csolver.s
         self.clauses = []
         self.blk_downs = []
@@ -22,6 +22,7 @@ class MCSEnumerator(object):
         self.groups = csolver.groups
         self.instrumented_solver = None
         self.stats = stats
+        self.config = config
 
         self.pipe = pipe
         # if a pipe is provided, use it to receive results from other enumerators
@@ -37,6 +38,10 @@ class MCSEnumerator(object):
                 if res == 'terminate':
                     # exit process on terminate message
                     os._exit(0)
+
+                if self.config['ignore_comms']:
+                    continue
+
                 self.incoming_queue.put(res)
 
     def add_received(self, add_to_instrumented=False):

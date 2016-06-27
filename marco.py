@@ -59,8 +59,11 @@ def parse_args():
                            help="only used if *not* using --parallel: initialize variable activity in solvers to random values (optionally specify a random seed [default: 1 if --rnd-init specified without a seed]).")
     exp_group.add_argument('--parallel', type=str, default=None,
                            help="run MARCO in parallel, specifying a comma-delimited list of modes selected from: 'MUS', 'MCS', 'MCSonly' -- e.g., \"MUS,MUS,MCS,MCSonly\" will run four separate threads: two MUS biased, one MCS biased, and one with a CAMUS-style MCS enumerator.")
-    exp_group.add_argument('--disable-communs', action='store_true',
-                           help="disable the communications between children (i.e., when the master receives a result from a child, it won't send to other children).")
+    comms_group = parser.add_mutually_exclusive_group()
+    comms_group.add_argument('--disable-communs', action='store_true',
+                             help="disable the communications between children (i.e., when the master receives a result from a child, it won't send to other children).")
+    comms_group.add_argument('--ignore-comms', action='store_true',
+                             help="send results out to children, but do not *use* the results in children (i.e., do not add blocking clauses based on them).")
     exp_group.add_argument('--same-seeds', action='store_true',
                            help="use same seeds for all children (still randomized but with all seeds of value 1.")
     exp_group.add_argument('--all-randomized', action='store_true',
@@ -241,6 +244,7 @@ def setup_config(args):
     config = {}
     config['bias'] = args.bias
     config['smus'] = args.smus
+    config['ignore_comms'] = args.ignore_comms
     if args.nomax:
         config['maximize'] = 'none'
     elif args.smus:
@@ -261,7 +265,7 @@ def run_enumerator(stats, args, seed=None, pipe=None):
     config = setup_config(args)
 
     if args.mcs_only:
-        enumerator = MCSEnumerator(csolver, stats, pipe)
+        enumerator = MCSEnumerator(csolver, stats, config, pipe)
     else:
         enumerator = MarcoPolo(csolver, msolver, stats, config, pipe)
 

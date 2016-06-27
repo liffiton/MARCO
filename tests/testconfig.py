@@ -20,7 +20,7 @@ common_flags = '-v'
 #test_set_flags += ['-b MCSes --nomax', '-b MCSes -m always', '-b MCSes -m half', '-b MCSes -M'],
 
 test_set_flags = [
-        '', '-b MCSes', '--parallel MUS', '--parallel MUS,MUS', '--parallel MUS,MCS', '--parallel MUS,MCSonly'
+        '', '-b MCSes', '--parallel MUS', '--parallel MUS,MUS', '--parallel MUS,MCS', '--parallel MUS,MCSonly', '--parallel MUS,MUS --disable-communs', '--parallel MUS,MUS --ignore-comms'
         ]
 
 cmd = '../marco.py'
