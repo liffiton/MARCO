@@ -91,7 +91,8 @@ def parse_args():
 
     if args.check_muser:
         try:
-            utils.check_executable("MUSer2", "muser2-para")
+            muser_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'muser2-para')
+            utils.check_executable("MUSer2", muser_path)
         except utils.ExecutableException as e:
             print(str(e))
             sys.exit(1)
