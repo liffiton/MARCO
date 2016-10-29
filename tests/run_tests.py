@@ -35,9 +35,6 @@ except NameError: pass
 def makeTests(testname):
     tests = []
 
-    interpreter = sys.executable  # use whatever interpreter is running this script
-    cmd = testconfig.cmd
-
     for job in testconfig.jobs:
         if testname is None:
             if job['default'] is False:
@@ -53,16 +50,12 @@ def makeTests(testname):
         exclude = job.get('exclude', [])
         out_filter = job.get('out_filter', None)
 
-        if not os.access(cmd, os.X_OK):
-            print("ERROR: %s is not an executable file.  Do you need to run make?" % cmd)
-            sys.exit(1)
-
         outdir = "out/" + name + "/"
         if not os.path.exists(outdir):
             os.makedirs(outdir)
 
         for flag in flags:
-            cmdarray = [interpreter, cmd] + flags_all.split() + flag.split()
+            cmdarray = testconfig.cmd_array + flags_all.split() + flag.split()
 
             for infile in files:
                 if infile in exclude:

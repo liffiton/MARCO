@@ -3,8 +3,11 @@
 
 import glob
 import subprocess
+import sys
 
+interpreter = sys.executable  # use whatever interpreter is running this script
 cmd = '../marco.py'
+cmd_array = [interpreter, cmd]
 
 common_flags = '-v'
 
@@ -13,7 +16,7 @@ test_set_flags = [
 ]
 
 # check for systems on which MUSer cannot run
-ret = subprocess.call([cmd, '--check-muser'])
+ret = subprocess.call(cmd_array + ['--check-muser'])
 if ret > 0:
     print("[33m  Adding '--force-minisat' flag to all runs.[m")
     print("")
