@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # gather "whitelist" of files to include
-marco_files="*.py muser2-static README CHANGES* VERSION"
+marco_files="*.py muser2-static muser2-para README CHANGES* VERSION"
 if [ $# -lt 2 -o "$2" != "notest" ] ; then
     test_files="tests/*.cnf tests/*.gcnf tests/*.smt2 tests/*.gz tests/*.py tests/out/*/*"
 fi

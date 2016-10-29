@@ -30,7 +30,7 @@ def read_smt2(filename):
         return [formula]
 
 
-class Z3SubsetSolver:
+class Z3SubsetSolver(object):
     c_prefix = "!marco"  # to differentiate our vars from instance vars
 
     constraints = []
@@ -53,7 +53,7 @@ class Z3SubsetSolver:
     def make_solver(self):
         self.s = Solver()
         for i in range(self.n):
-            v = self.c_var(i)
+            v = self.c_var(i+1)
             self.s.add(Implies(v, self.constraints[i]))
 
     @staticmethod
@@ -88,7 +88,7 @@ class Z3SubsetSolver:
         return [self.c_var(i) for i in seed]
 
     def complement(self, aset):
-        return set(range(self.n)).difference(aset)
+        return set(range(1, self.n+1)).difference(aset)
 
     def seed_from_core(self):
         core = self.s.unsat_core()
@@ -104,16 +104,12 @@ class Z3SubsetSolver:
             if not self.check_subset(current):
                 # Remove any also-removed constraints
                 current = set(self.seed_from_core())
-                pass
             else:
                 current.add(i)
         return current
 
-    def grow(self, seed, inplace):
-        if inplace:
-            current = seed
-        else:
-            current = seed[:]
+    def grow(self, seed):
+        current = seed
 
         for i in self.complement(current):
             #if i in current:
