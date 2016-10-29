@@ -1,3 +1,9 @@
+2.0   - 2016-10-29
+------------------
+ * Add mode for parallel execution ("MARCOS")
+ * Remove some old, unneeded execution modes
+ * Many small improvements and fixes
+
 1.1   - 2015-03-27
 ------------------
  * Fix signal handling -- timeout and Ctl-C more reliable

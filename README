@@ -1,10 +1,11 @@
 ********************************************************************************
 MARCO: an efficient MUS and MSS/MCS enumeration tool
 
-This is a Python implementation of the MARCO algorithm [1] for enumerating
-MUSes and MSS/MCSes of infeasible constraint systems (currently: CNF, GCNF, and
-SMT).  This implementation makes use of MUSer2 [2] for MUS extraction and
-MiniSAT 2.2 [3] for satisfiability testing and the generation of SAT models.
+This is a Python implementation of the MARCO/MARCOS algorithm [1,2] for
+enumerating MUSes and MSS/MCSes of infeasible constraint systems (currently:
+CNF, GCNF, and SMT).  This implementation makes use of MUSer2 [3,4] for MUS
+extraction and MiniSAT 2.2 [5] for satisfiability testing and the generation of
+SAT models.
 
    Web: http://www.iwu.edu/~mliffito/marco/
 
@@ -15,11 +16,19 @@ questions.
    M. Liffiton and A. Malik (2013) Enumerating Infeasibility: Finding multiple
    MUSes quickly. In: Proc. CPAIOR 2013.
 
-[2] MUSer2
-   A. Belov and J. Marques-Silva (2012) MUSer2: An efficient MUS extractor. In:
-   Journal on Satisfiability, Boolean Modeling and Computation 8, 123–128.
+[2] MARCOS (parallel MARCO)
+   W. Zhao and M. Liffiton (2016) Parallelizing Partial MUS Enumeration.
+   In: Proc. ICTAI 2016.
 
-[3] Minisat 2.2
+[3] MUSer2
+   A. Belov and J. Marques-Silva (2012) MUSer2: An efficient MUS extractor.
+   In: Journal on Satisfiability, Boolean Modeling and Computation 8, 123–128.
+
+[4] MUSer2 (parallel)
+   A. Belov, N. Manthey, and J. Marques-Silva (2013) Parallel MUS extraction.
+   In: Proc. SAT 2013.
+
+[5] Minisat 2.2
    N. Een and N. Sörensson (2003) An Extensible SAT-solver. In: Proc. SAT 2003.
    N. Een and A. Biere (2005) Effective Preprocessing in SAT through Variable 
    and Clause Elimination. In: Proc. SAT 2005. 
@@ -47,15 +56,14 @@ To build and test the Python bindings:
 
 Additionally, the following are recommended, depending on your needs:
 
-  - Z3Py for analyzing SMT instances.
+  - Z3 Python interface for analyzing SMT instances.
 
-      Available as part of the Z3 distribution: https://z3.codeplex.com/
+      Available as part of the Z3 distribution: https://github.com/Z3Prover/z3
 
- - A MUSer2 binary.  Included is a binary (distributed from the MUSer2 site)
-   compiled for 64-bit Linux.  For other platforms, download the appropriate
-   binary or compile from the source.
+ - A MUSer2 binary.  Included is a binary compiled for 64-bit Linux.  For other
+   platforms, download and compile from the source (license: GPL).
 
-      Available from: http://logos.ucd.ie/wiki/doku.php?id=muser
+      Available from: https://bitbucket.org/anton_belov/muser2-para
 
    Without a working MUSer2 binary, you can still run MARCO in a fall-back mode
    that uses a basic, **much less efficient** deletion-based MUS extractor
@@ -83,6 +91,6 @@ original set of input constraints (e.g., if MARCO reports an MSS "1 3 4" for a
 ********************************************************************************
 Authors:
   MARCO: Mark Liffiton and Wenting Zhao
-  MUSer2: Anton Belov and Joao Marques-Silva
+  MUSer2: Anton Belov, Norbert Manthey, and Joao Marques-Silva
   MiniSAT: Niklas Een and Niklas Sörensson
 
