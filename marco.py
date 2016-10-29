@@ -23,7 +23,7 @@ def parse_args():
     # Standard arguments
     parser.add_argument('infile', nargs='?', type=argparse.FileType('rb'),
                         default=sys.stdin,
-                        help="name of file to process (STDIN if omitted)")
+                        help="name of file to process (STDIN if omitted, in which case use --cnf or --smt)")
     parser.add_argument('-v', '--verbose', action='count', default=0,
                         help="print more verbose output (constraint indexes for MUSes/MCSes) -- repeat the flag for detail about the algorithm's progress)")
     parser.add_argument('-a', '--alltimes', action='store_true',
@@ -34,8 +34,6 @@ def parse_args():
                         help="limit the runtime to TIMEOUT seconds")
     parser.add_argument('-l', '--limit', type=int, default=None,
                         help="limit number of subsets output (counting both MCSes and MUSes)")
-    parser.add_argument('--mcs-only', action='store_true', default=False,
-                        help="enumerate MCSes only using a CAMUS-style MCS enumerator.")
     type_group = parser.add_mutually_exclusive_group()
     type_group.add_argument('--cnf', action='store_true',
                             help="assume input is in DIMACS CNF or Group CNF format (autodetected if filename is *.[g]cnf or *.[g]cnf.gz).")
@@ -46,8 +44,26 @@ def parse_args():
     parser.add_argument('--check-muser', action='store_true',
                         help="just run a check of the MUSer2 helper application and exit (used to configure tests).")
 
+    # Parallelization arguments
+    par_group = parser.add_argument_group('Parallelization options', "Enable and configure parallel MARCOS execution.")
+    par_group.add_argument('--parallel', type=str, default=None,
+                           help="run MARCO in parallel, specifying a comma-delimited list of modes selected from: 'MUS', 'MCS', 'MCSonly' -- e.g., \"MUS,MUS,MCS,MCSonly\" will run four separate threads: two MUS biased, one MCS biased, and one with a CAMUS-style MCS enumerator.")
+    par_group.add_argument('--same-seeds', action='store_true',
+                           help="use same seeds for all children (still randomized but with all seeds of value 1.")
+    par_group.add_argument('--all-randomized', action='store_true',
+                           help="randomly initialize *all* children in parallel mode (default: first thread is *not* randomly initialized, all others are).")
+    comms_group = par_group.add_mutually_exclusive_group()
+    comms_group.add_argument('--comms-disable', action='store_true',
+                             help="disable the communications between children (i.e., when the master receives a result from a child, it won't send to other children).")
+    comms_group.add_argument('--comms-ignore', action='store_true',
+                             help="send results out to children, but do not *use* the results in children (i.e., do not add blocking clauses based on them) -- used only for determining cost of communication.")
+
     # Experimental / Research arguments
     exp_group = parser.add_argument_group('Experimental / research options', "These can typically be ignored; the defaults will give the best performance.")
+    exp_group.add_argument('--mcs-only', action='store_true', default=False,
+                           help="enumerate MCSes only using a CAMUS-style MCS enumerator.")
+    exp_group.add_argument('--rnd-init', type=int, nargs='?', const=1, default=None,   # default = val if --rnd-init not specified; const = val if --rnd-init specified w/o a value
+                           help="only used if *not* using --parallel: initialize variable activity in solvers to random values (optionally specify a random seed [default: 1 if --rnd-init specified without a seed]).")
     exp_group.add_argument('--improved-implies', action='store_true',
                            help="use improved technique for Map formula implications (implications under assumptions) [default: False, use only singleton MCSes as hard constraints]")
     exp_group.add_argument('--dump-map', nargs='?', type=argparse.FileType('w'),
@@ -57,31 +73,8 @@ def parse_args():
                               help="use Minisat in place of MUSer2 for CNF (NOTE: much slower and usually not worth doing!)")
     solver_group.add_argument('--pmuser', type=int, default=None,
                               help="use MUSer2-para in place of MUSer2 to run in parallel (specify # of threads.)")
-    exp_group.add_argument('--rnd-init', type=int, nargs='?', const=1, default=None,   # default = val if --rnd-init not specified; const = val if --rnd-init specified w/o a value
-                           help="only used if *not* using --parallel: initialize variable activity in solvers to random values (optionally specify a random seed [default: 1 if --rnd-init specified without a seed]).")
-    exp_group.add_argument('--parallel', type=str, default=None,
-                           help="run MARCO in parallel, specifying a comma-delimited list of modes selected from: 'MUS', 'MCS', 'MCSonly' -- e.g., \"MUS,MUS,MCS,MCSonly\" will run four separate threads: two MUS biased, one MCS biased, and one with a CAMUS-style MCS enumerator.")
-    comms_group = parser.add_mutually_exclusive_group()
-    comms_group.add_argument('--disable-communs', action='store_true',
-                             help="disable the communications between children (i.e., when the master receives a result from a child, it won't send to other children).")
-    comms_group.add_argument('--ignore-comms', action='store_true',
-                             help="send results out to children, but do not *use* the results in children (i.e., do not add blocking clauses based on them).")
-    exp_group.add_argument('--same-seeds', action='store_true',
-                           help="use same seeds for all children (still randomized but with all seeds of value 1.")
-    exp_group.add_argument('--all-randomized', action='store_true',
-                           help="randomly initialize *all* children in parallel mode (default: first thread is *not* randomly initialized, all others are).")
-
-    # Max/min-models arguments
-    max_group_outer = parser.add_argument_group('  Maximal/minimal models options', "By default, the Map solver will efficiently produce maximal/minimal models itself by giving each variable a default polarity.  These options override that (--nomax, -m) or extend it (-M, --smus) in various ways.")
-    max_group = max_group_outer.add_mutually_exclusive_group()
-    max_group.add_argument('--nomax', action='store_true',
+    exp_group.add_argument('--nomax', action='store_true',
                            help="perform no model maximization whatsoever (applies either shrink() or grow() to all seeds)")
-    max_group.add_argument('-m', '--max', type=str, choices=['always', 'half'], default=None,
-                           help="get a random seed from the Map solver initially, then compute a maximal/minimal model (for bias of MUSes/MCSes, resp.) for all seeds ['always'] or only when initial seed doesn't match the --bias ['half'] (i.e., seed is SAT and bias is MUSes)")
-    max_group.add_argument('-M', '--MAX', action='store_true', default=None,
-                           help="computes a maximum/minimum model (of largest/smallest cardinality) (uses MiniCard as Map solver)")
-    max_group.add_argument('--smus', action='store_true',
-                           help="calculate an SMUS (smallest MUS) (uses MiniCard as Map solver)")
 
     args = parser.parse_args()
 
@@ -215,24 +208,17 @@ def setup_csolver(args, seed):
 
 def setup_msolver(n, args, seed=None):
     # create appropriate map solver
-    if args.nomax or args.max:
+    if args.nomax:
         varbias = None  # will get a "random" seed from the Map solver
     else:
         varbias = (args.bias == 'MUSes')  # High bias (True) for MUSes, low (False) for MCSes
 
     try:
-        if args.MAX or args.smus:
-            msolverclass = mapsolvers.MinicardMapSolver
-            if args.parallel:
-                # Synchronize if running in parallel mode
-                msolverclass = utils.synchronize_class(msolverclass)
-            msolver = msolverclass(n, bias=varbias, rand_seed=seed)
-        else:
-            msolverclass = mapsolvers.MinisatMapSolver
-            if args.parallel:
-                # Synchronize if running in parallel mode
-                msolverclass = utils.synchronize_class(msolverclass)
-            msolver = msolverclass(n, bias=varbias, rand_seed=seed, dump=args.dump_map)
+        msolverclass = mapsolvers.MinisatMapSolver
+        if args.parallel:
+            # Synchronize if running in parallel mode
+            msolverclass = utils.synchronize_class(msolverclass)
+        msolver = msolverclass(n, bias=varbias, rand_seed=seed, dump=args.dump_map)
     except OSError as e:
         error_exit("Unable to load pyminisolvers library.", "Run 'make -C pyminisolvers' to compile the library.", e)
 
@@ -254,18 +240,11 @@ def setup_solvers(args, seed=None):
 def setup_config(args):
     config = {}
     config['bias'] = args.bias
-    config['smus'] = args.smus
-    config['ignore_comms'] = args.ignore_comms
+    config['comms_ignore'] = args.comms_ignore
     if args.nomax:
-        config['maximize'] = 'none'
-    elif args.smus:
-        config['maximize'] = 'always'
-    elif args.max:
-        config['maximize'] = args.max
-    elif args.MAX:
-        config['maximize'] = 'solver'
+        config['maximize'] = False
     else:
-        config['maximize'] = 'solver'
+        config['maximize'] = True
     config['verbose'] = args.verbose > 1
 
     return config
@@ -402,7 +381,7 @@ def run_master(stats, args, pipes):
                                 # Exit main process
                                 sys.exit(0)
 
-                        if not args.disable_communs:
+                        if not args.comms_disable:
                             # send it to all children *other* than the one we got it from
                             for other in pipes:
                                 if other != receiver:
@@ -432,7 +411,7 @@ def main():
     with stats.time('setup'):
         args = parse_args()
         setup_execution(args, stats, os.getpid())
-        if args.same_seeds or args.disable_communs:
+        if args.same_seeds or args.comms_disable:
             assert args.parallel is not None, "some flags you have specified have to be tested in the parallel mode."
 
         if args.parallel:

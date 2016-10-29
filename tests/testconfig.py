@@ -12,7 +12,7 @@ cmd_array = [interpreter, cmd]
 common_flags = '-v'
 
 test_set_flags = [
-    '', '-b MCSes', '--parallel MUS', '--parallel MUS,MUS', '--parallel MUS,MCS', '--parallel MUS,MCSonly', '--parallel MUS,MUS --disable-communs', '--parallel MUS,MUS --ignore-comms'
+    '', '-b MCSes', '--nomax', '--parallel MUS,MUS', '--parallel MUS,MCS', '--parallel MUS,MCSonly', '--parallel MUS,MUS --comms-disable', '--parallel MUS,MUS --comms-ignore'
 ]
 
 # check for systems on which MUSer cannot run
@@ -47,16 +47,6 @@ jobs = [
       'files':   rnd3sat_files,
       'flags':   test_set_flags,
       'flags_all': common_flags,
-      'default': False,
-    },
-    # SMUS
-    {
-      'name':    'smus',
-      'files':   reg_files,
-      'flags':   ['--smus'],
-      'flags_all': common_flags,
-      'exclude': ['dlx2_aa.cnf'],
-      'out_filter': 'S',
       'default': False,
     },
     # "Normal" tests

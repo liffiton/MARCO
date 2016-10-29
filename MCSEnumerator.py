@@ -39,7 +39,7 @@ class MCSEnumerator(object):
                     # exit process on terminate message
                     os._exit(0)
 
-                if self.config['ignore_comms']:
+                if self.config['comms_ignore']:
                     continue
 
                 self.incoming_queue.put(res)

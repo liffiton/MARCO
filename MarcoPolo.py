@@ -36,7 +36,7 @@ class MarcoPolo(object):
                 # Requires map solver to be thread-safe:
                 assert hasattr(self.map, "__synchronized__") and self.map.__synchronized__
 
-                if self.config['ignore_comms']:
+                if self.config['comms_ignore']:
                     continue
 
                 if res[0] == 'S':
@@ -62,16 +62,6 @@ class MarcoPolo(object):
             if self.config['verbose']:
                 print("- Initial seed: %s" % " ".join([str(x) for x in seed]))
 
-            if self.config['maximize'] == 'always':
-                assert not known_max
-                with self.stats.time('maximize'):
-                    oldlen = len(seed)
-                    seed = self.map.maximize_seed(seed, direction=self.bias_high)
-                    self.record_delta('max', oldlen, len(seed), self.bias_high)
-
-                if self.config['verbose']:
-                    print("- Maximized to: %s" % " ".join([str(x) for x in seed]))
-
             with self.stats.time('check'):
                 # subset check may improve upon seed w/ unsat_core or sat_subset
                 oldlen = len(seed)
@@ -85,40 +75,6 @@ class MarcoPolo(object):
                     print("- Seed is known to be optimal.")
                 else:
                     print("- Seed improved by check: %s" % " ".join([str(x) for x in seed]))
-
-            # -m half: Only maximize if we're SAT and seeking MUSes or UNSAT and seeking MCSes
-            if self.config['maximize'] == 'half' and (seed_is_sat == self.bias_high):
-                assert not known_max
-                # Maximize within Map and re-check satisfiability if needed
-                with self.stats.time('maximize'):
-                    oldlen = len(seed)
-                    seed = self.map.maximize_seed(seed, direction=self.bias_high)
-                    self.record_delta('max', oldlen, len(seed), self.bias_high)
-                    known_max = True
-
-                if self.config['verbose']:
-                    print("- Half-maximization w/in map, new seed: %s" % " ".join([str(x) for x in seed]))
-
-                if len(seed) != oldlen:
-                    # only need to re-check if maximization produced a different seed
-                    with self.stats.time('check'):
-                        # improve_seed set to True in case maximized seed needs to go in opposite
-                        # direction of the maximization (i.e., UNSAT seed w/ MUS bias, SAT w/ MCS bias)
-                        # (otherwise, no improvement is possible as we maximized it already)
-                        oldlen = len(seed)
-                        seed_is_sat, seed = self.subs.check_subset(seed, improve_seed=True)
-                        self.record_delta('checkB', oldlen, len(seed), seed_is_sat)
-                        known_max = (len(seed) == oldlen and seed_is_sat == self.bias_high)
-
-                    if self.config['verbose']:
-                        print("- Half-max check: Seed is %s" % {True: "SAT", False: "UNSAT"}[seed_is_sat])
-                        if known_max:
-                            print("- Seed is known to be optimal.")
-                        else:
-                            print("- Half-max check: Seed improved by check: %s" % " ".join([str(x) for x in seed]))
-                else:  # no re-check needed
-                    if self.config['verbose']:
-                        print("- Seed is known to be optimal.")
 
             if seed_is_sat:
                 if known_max:
@@ -178,10 +134,6 @@ class MarcoPolo(object):
 
                     self.map.block_up(MUS)
 
-                    if self.config['smus']:
-                        self.map.block_down(MUS)
-                        self.map.block_above_size(len(MUS) - 1)
-
                 if self.config['verbose']:
                     print("- MUS blocked.")
 
@@ -214,7 +166,7 @@ class SeedManager(object):
         self._seed_queue.put((seed, known_max))
 
     def seed_from_solver(self):
-        known_max = (self.config['maximize'] == 'solver')
+        known_max = self.config['maximize']
         return self.map.next_seed(), known_max
 
     # for python 2 compatibility
