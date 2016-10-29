@@ -2,28 +2,40 @@
 # Syntax: Python
 
 import glob
+import subprocess
 
+cmd = '../marco.py'
+
+common_flags = '-v'
+
+test_set_flags = [
+    '', '-b MCSes', '--parallel MUS', '--parallel MUS,MUS', '--parallel MUS,MCS', '--parallel MUS,MCSonly', '--parallel MUS,MUS --disable-communs', '--parallel MUS,MUS --ignore-comms'
+]
+
+# check for systems on which MUSer cannot run
+ret = subprocess.call([cmd, '--check-muser'])
+if ret > 0:
+    print("[33m  Adding '--force-minisat' flag to all runs.[m")
+    print("")
+    common_flags += ' --force-minisat'
+    muser_available = False
+else:
+    muser_available = True
+
+# collect test instances
 reg_files = []
 reg_files.extend(glob.glob('*.cnf'))
 reg_files.extend(glob.glob('*.gcnf'))
-reg_files.extend(glob.glob('*.smt2'))
 reg_files.extend(glob.glob('*.gz'))
+# check for z3, add SMT files if available
+try:
+    import z3  # noqa
+    reg_files.extend(glob.glob('*.smt2'))
+except ImportError:
+    print("Unable to import z3 module.\n[33m  Skipping SMT tests.[m")
+    print("")
 
 rnd3sat_files = glob.glob('3sat_n10/*.cnf')
-
-common_flags = '-v'
-# for systems on which MUSer cannot run
-#common_flags += ' --force-minisat'
-
-# old tests
-#test_set_flags = ['--nomax', '-m always', '-m half', '-M'],
-#test_set_flags += ['-b MCSes --nomax', '-b MCSes -m always', '-b MCSes -m half', '-b MCSes -M'],
-
-test_set_flags = [
-        '', '-b MCSes', '--parallel MUS', '--parallel MUS,MUS', '--parallel MUS,MCS', '--parallel MUS,MCSonly', '--parallel MUS,MUS --disable-communs', '--parallel MUS,MUS --ignore-comms'
-        ]
-
-cmd = '../marco.py'
 
 jobs = [
     # Random 3SAT
@@ -61,22 +73,25 @@ jobs = [
       'exclude': ['c10.cnf', 'dlx2_aa.cnf'],
       'default': True,
     },
-    # --pmuser
-    {
-      'name':    'marco_py',
-      'files':   reg_files,
-      'flags':   ['--pmuser 2'],
-      'flags_all': common_flags,
-      'exclude': ['c10.cnf', 'dlx2_aa.cnf'],
-      'default': True,
-    },
-    # --force-minisat
-    {
-      'name':    'marco_py',
-      'files':   reg_files,
-      'flags':   ['--force-minisat'],
-      'flags_all': common_flags,
-      'exclude': ['c10.cnf', 'dlx2_aa.cnf'],
-      'default': True,
-    },
 ]
+if muser_available:
+    jobs.extend([
+        # --pmuser
+        {
+        'name':    'marco_py',
+        'files':   reg_files,
+        'flags':   ['--pmuser 2'],
+        'flags_all': common_flags,
+        'exclude': ['c10.cnf', 'dlx2_aa.cnf'],
+        'default': True,
+        },
+        # --force-minisat
+        {
+        'name':    'marco_py',
+        'files':   reg_files,
+        'flags':   ['--force-minisat'],
+        'flags_all': common_flags,
+        'exclude': ['c10.cnf', 'dlx2_aa.cnf'],
+        'default': True,
+        },
+    ])

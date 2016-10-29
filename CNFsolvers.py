@@ -6,6 +6,7 @@ import os
 import re
 import subprocess
 import tempfile
+import utils
 from pyminisolvers import minisolvers
 
 
@@ -182,10 +183,6 @@ class MinisatSubsetSolver(object):
         return current
 
 
-class MUSerException(Exception):
-    pass
-
-
 class MUSerSubsetSolver(MinisatSubsetSolver):
     def __init__(self, filename, rand_seed=None, numthreads=1):
         MinisatSubsetSolver.__init__(self, filename, rand_seed, store_dimacs=True)
@@ -195,17 +192,7 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
 
         binary = 'muser2-para'
         self.muser_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), binary)
-        if not os.path.isfile(self.muser_path):
-            raise MUSerException("MUSer2 binary not found at %s" % self.muser_path)
-        try:
-            # a bit of a hack to check whether we can really run it
-            DEVNULL = open(os.devnull, 'wb')
-            p = subprocess.Popen([self.muser_path], stdout=DEVNULL, stderr=DEVNULL)
-            p.kill()
-            p.wait()
-        except OSError:
-            raise MUSerException("MUSer2 binary %s is not executable.\n"
-                                 "It may be compiled for a different platform." % self.muser_path)
+        utils.check_executable("MUSer2", self.muser_path)
 
         self._proc = None  # track the MUSer process
         atexit.register(self.cleanup)

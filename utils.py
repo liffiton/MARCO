@@ -1,5 +1,7 @@
 """Utility class(es) for marco_py"""
 from collections import Counter, defaultdict
+import os
+import subprocess
 import threading
 import types
 
@@ -49,6 +51,27 @@ def synchronize_class(sync_class):
             setattr(sync_class, key, decorator(val))
 
     return sync_class
+
+
+class ExecutableException(Exception):
+    pass
+
+
+def check_executable(name, exepath):
+    ''' Check whether a given program (specified with name and path)
+        exists and is executable on the current platform.
+        Raises an ExecutableException if either condition is not met.
+    '''
+    if not os.path.isfile(exepath):
+        raise ExecutableException("{0} binary not found at {1}".format(name, exepath))
+    try:
+        # a bit of a hack to check whether we can really run it
+        DEVNULL = open(os.devnull, 'wb')
+        p = subprocess.Popen([exepath], stdout=DEVNULL, stderr=DEVNULL)
+        p.kill()
+        p.wait()
+    except OSError:
+        raise ExecutableException("{0} binary {1} is not executable.\nIt may be compiled for a different platform.".format(name, exepath))
 
 
 class Statistics(object):

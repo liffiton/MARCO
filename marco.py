@@ -43,6 +43,8 @@ def parse_args():
                             help="assume input is in SMT2 format (autodetected if filename is *.smt2).")
     parser.add_argument('-b', '--bias', type=str, choices=['MUSes', 'MCSes'], default='MUSes',
                         help="bias the search toward MUSes or MCSes early in the execution [default: MUSes] -- all will be enumerated eventually; this just uses heuristics to find more of one or the other early in the enumeration.")
+    parser.add_argument('--check-muser', action='store_true',
+                        help="just run a check of the MUSer2 helper application and exit (used to configure tests).")
 
     # Experimental / Research arguments
     exp_group = parser.add_argument_group('Experimental / research options', "These can typically be ignored; the defaults will give the best performance.")
@@ -86,6 +88,14 @@ def parse_args():
     if len(sys.argv) == 1:
         parser.print_help()
         sys.exit(1)
+
+    if args.check_muser:
+        try:
+            utils.check_executable("MUSer2", "muser2-para")
+        except utils.ExecutableException as e:
+            print(str(e))
+            sys.exit(1)
+        sys.exit(0)
 
     if args.smt and args.infile == sys.stdin:
         sys.stderr.write("SMT cannot be read from STDIN.  Please specify a filename.\n")
@@ -178,7 +188,7 @@ def setup_csolver(args, seed):
                 csolver = solverclass(infile, seed, numthreads=args.pmuser)
             else:
                 csolver = solverclass(infile, seed)
-        except CNFsolvers.MUSerException as e:
+        except utils.ExecutableException as e:
             error_exit("Unable to use MUSer2 for MUS extraction.", "Use --force-minisat to use Minisat instead (NOTE: it will be much slower.)", e)
         except (IOError, OSError) as e:
             error_exit("Unable to load pyminisolvers library.", "Run 'make -C pyminisolvers' to compile the library.", e)

@@ -404,7 +404,7 @@ def main():
         testname = "default"
     else:
         testname = "'%s'" % testname
-    report = "Running all %d %s tests on %d cores" % (numTests, testname, num_procs)
+    report = "Running %d %s tests on %d cores" % (numTests, testname, num_procs)
     if mode == 'nocheck':
         report += " (skipping results checks)"
     if mode == 'regenerate':
