@@ -263,7 +263,7 @@ class Progress:
         # print correct mark, update stats
         if result == 'start':
             c = ':'
-        elif result == 'pass':
+        elif result == 'pass' or result == 'sortsame' and not verbose:
             c = self.chr_Pass
             self.stats['passed'] += 1
             self.stats['incomplete'] -= 1
