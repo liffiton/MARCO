@@ -25,17 +25,9 @@ class MinisatSubsetSolver(object):
             self.groups = collections.defaultdict(list)
         self.read_dimacs(infile)
         self._msolver = None
-        self._known_MSS = 0
-        self._known_MUS = 0
 
     def set_msolver(self, msolver):
         self._msolver = msolver
-
-    def increment_MSS(self):
-        self._known_MSS += 1
-
-    def increment_MUS(self):
-        self._known_MUS += 1
 
     def parse_dimacs(self, f):
         i = 0
@@ -276,6 +268,17 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
 
 
 class ImprovedImpliesSubsetSolver(MinisatSubsetSolver):
+    def __init__(self, infile, rand_seed=None, store_dimacs=False):
+        MinisatSubsetSolver.__init__(self, infile, rand_seed, store_dimacs)
+        self._known_MSS = 0
+        self._known_MUS = 0
+
+    def increment_MSS(self):
+        self._known_MSS += 1
+
+    def increment_MUS(self):
+        self._known_MUS += 1
+
     def shrink(self, seed):
         current = set(seed)
 
