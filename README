@@ -1,7 +1,7 @@
 ********************************************************************************
 MARCO: an efficient MUS and MSS/MCS enumeration tool
 
-This is a Python implementation of the MARCO/MARCOS algorithm [1,2] for
+This is a Python implementation of the MARCO/MARCOs algorithm [1,2] for
 enumerating MUSes and MSS/MCSes of infeasible constraint systems (currently:
 CNF, GCNF, and SMT).  This implementation makes use of MUSer2 [3,4] for MUS
 extraction and MiniSAT 2.2 [5] for satisfiability testing and the generation of
@@ -13,16 +13,16 @@ Please contact Mark Liffiton (mliffito@iwu.edu) in case of any errors or
 questions.
 
 [1] MARCO
-   M. Liffiton and A. Malik (2013) Enumerating Infeasibility: Finding multiple
-   MUSes quickly. In: Proc. CPAIOR 2013.
+   M. Liffiton, A. Previti, A. Malik, and J. Marques-Silva (2016)
+   Fast, Flexible MUS Enumeration. In: Constraints 21(2):223-250.
 
-[2] MARCOS (parallel MARCO)
+[2] MARCOs (parallel MARCO)
    W. Zhao and M. Liffiton (2016) Parallelizing Partial MUS Enumeration.
    In: Proc. ICTAI 2016.
 
 [3] MUSer2
    A. Belov and J. Marques-Silva (2012) MUSer2: An efficient MUS extractor.
-   In: Journal on Satisfiability, Boolean Modeling and Computation 8, 123–128.
+   In: Journal on Satisfiability, Boolean Modeling and Computation 8, 123-128.
 
 [4] MUSer2 (parallel)
    A. Belov, N. Manthey, and J. Marques-Silva (2013) Parallel MUS extraction.

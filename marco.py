@@ -45,7 +45,7 @@ def parse_args():
                         help="just run a check of the MUSer2 helper application and exit (used to configure tests).")
 
     # Parallelization arguments
-    par_group = parser.add_argument_group('Parallelization options', "Enable and configure parallel MARCOS execution.")
+    par_group = parser.add_argument_group('Parallelization options', "Enable and configure parallel MARCOs execution.")
     par_group.add_argument('--parallel', type=str, default=None,
                            help="run MARCO in parallel, specifying a comma-delimited list of modes selected from: 'MUS', 'MCS', 'MCSonly' -- e.g., \"MUS,MUS,MCS,MCSonly\" will run four separate threads: two MUS biased, one MCS biased, and one with a CAMUS-style MCS enumerator.")
     par_group.add_argument('--same-seeds', action='store_true',

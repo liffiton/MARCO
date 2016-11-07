@@ -1,6 +1,6 @@
 2.0   - 2016-10-29
 ------------------
- * Add mode for parallel execution ("MARCOS")
+ * Add mode for parallel execution ("MARCOs")
  * Remove some old, unneeded execution modes
  * Many small improvements and fixes
 
