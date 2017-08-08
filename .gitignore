@@ -1,0 +1,8 @@
+*.pyc
+*.pyo
+*.so
+*.o
+*.swp
+__pycache__
+_build
+minisat/build
