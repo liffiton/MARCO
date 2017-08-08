@@ -94,6 +94,6 @@ original set of input constraints (e.g., if MARCO reports an MSS "1 3 4" for a
 
 ## Authors
 
-MARCO: Mark Liffiton and Wenting Zhao
-MUSer2: Anton Belov, Norbert Manthey, and Joao Marques-Silva
-MiniSAT: Niklas Een and Niklas Sörensson
+- MARCO: Mark Liffiton and Wenting Zhao
+- MUSer2: Anton Belov, Norbert Manthey, and Joao Marques-Silva
+- MiniSAT: Niklas Een and Niklas Sörensson
