@@ -1,5 +1,5 @@
-********************************************************************************
 MARCO: an efficient MUS and MSS/MCS enumeration tool
+====================================================
 
 This is a Python implementation of the MARCO/MARCOs algorithm [1,2] for
 enumerating MUSes and MSS/MCSes of infeasible constraint systems (currently:
@@ -7,52 +7,54 @@ CNF, GCNF, and SMT).  This implementation makes use of MUSer2 [3,4] for MUS
 extraction and MiniSAT 2.2 [5] for satisfiability testing and the generation of
 SAT models.
 
-   Web: http://www.iwu.edu/~mliffito/marco/
+   Website: http://www.iwu.edu/~mliffito/marco/
 
 Please contact Mark Liffiton (mliffito@iwu.edu) in case of any errors or
 questions.
 
 [1] MARCO
    M. Liffiton, A. Previti, A. Malik, and J. Marques-Silva (2016)
-   Fast, Flexible MUS Enumeration. In: Constraints 21(2):223-250.
+   "Fast, Flexible MUS Enumeration." In: Constraints 21(2):223-250.
 
 [2] MARCOs (parallel MARCO)
-   W. Zhao and M. Liffiton (2016) Parallelizing Partial MUS Enumeration.
+   W. Zhao and M. Liffiton (2016) "Parallelizing Partial MUS Enumeration."
    In: Proc. ICTAI 2016.
 
 [3] MUSer2
-   A. Belov and J. Marques-Silva (2012) MUSer2: An efficient MUS extractor.
+   A. Belov and J. Marques-Silva (2012) "MUSer2: An efficient MUS extractor."
    In: Journal on Satisfiability, Boolean Modeling and Computation 8, 123-128.
 
 [4] MUSer2 (parallel)
-   A. Belov, N. Manthey, and J. Marques-Silva (2013) Parallel MUS extraction.
+   A. Belov, N. Manthey, and J. Marques-Silva (2013) "Parallel MUS extraction."
    In: Proc. SAT 2013.
 
 [5] Minisat 2.2
-   N. Een and N. Sörensson (2003) An Extensible SAT-solver. In: Proc. SAT 2003.
-   N. Een and A. Biere (2005) Effective Preprocessing in SAT through Variable 
-   and Clause Elimination. In: Proc. SAT 2005. 
+   N. Een and N. Sörensson (2003) "An Extensible SAT-solver." In: Proc. SAT 2003.
+   N. Een and A. Biere (2005) "Effective Preprocessing in SAT through Variable
+   and Clause Elimination." In: Proc. SAT 2005. 
 
-********************************************************************************
-Setup:
 
-This implementation makes use of Python bindings for MiniSAT that must be
-built before running MARCO.
+## Setup
+
+This implementation makes use of Python bindings for MiniSAT that must be built
+before running MARCO.
 
 Tested Platforms:
+
  - Linux
  - Cygwin
  - OS X
 
 Requirements:
+
  - Python 2.7 or above (compatible with Python 3)
- - A standard build environment (make, gcc, etc.)
+ - A standard build environment (make, gcc or clang, etc.)
 
 To build and test the Python bindings:
 
-  $ cd pyminisolvers
-  $ make
-  $ python test_minisolvers.py
+    $ cd pyminisolvers
+    $ make
+    $ python test_minisolvers.py
 
 Additionally, the following are recommended, depending on your needs:
 
@@ -60,26 +62,27 @@ Additionally, the following are recommended, depending on your needs:
 
       Available as part of the Z3 distribution: https://github.com/Z3Prover/z3
 
- - A MUSer2 binary.  Included is a binary compiled for 64-bit Linux.  For other
-   platforms, download and compile from the source (license: GPL).
+ - A MUSer2 binary.  The included `muser2-para` binary is compiled for x86-64
+   Linux.  For other platforms, download and compile from the source (license:
+   GPL).
 
       Available from: https://bitbucket.org/anton_belov/muser2-para
 
    Without a working MUSer2 binary, you can still run MARCO in a fall-back mode
-   that uses a basic, **much less efficient** deletion-based MUS extractor
-   using Minisat directly (see the --force-minisat option).
+   that uses a basic, *much less efficient* deletion-based MUS extractor using
+   Minisat directly (see the `--force-minisat` option).
 
-********************************************************************************
-Usage:
 
-Example: ./marco.py tests/test1.cnf
+## Usage
 
-Run ./marco.py --help for a list of available options.
+Example: `./marco.py tests/test1.cnf`
+
+Run `./marco.py --help` for a list of available options.
 
 Input files may be in CNF, GCNF (group oriented CNF), or SMT2 format.  Input
 files may be gzipped.
 
-The supported GCNF format is the one specified in:
+The supported GCNF format is specified in:
   http://www.satcompetition.org/2011/rules.pdf
 
 The output lists MUSes ("U") and MSSes ("S"), one per line.  In 'verbose' mode
@@ -88,9 +91,9 @@ The output lists MUSes ("U") and MSSes ("S"), one per line.  In 'verbose' mode
 original set of input constraints (e.g., if MARCO reports an MSS "1 3 4" for a
 5-constraint input, the corresponding MCS is constraints 2 and 5).
 
-********************************************************************************
-Authors:
-  MARCO: Mark Liffiton and Wenting Zhao
-  MUSer2: Anton Belov, Norbert Manthey, and Joao Marques-Silva
-  MiniSAT: Niklas Een and Niklas Sörensson
 
+## Authors
+
+MARCO: Mark Liffiton and Wenting Zhao
+MUSer2: Anton Belov, Norbert Manthey, and Joao Marques-Silva
+MiniSAT: Niklas Een and Niklas Sörensson
