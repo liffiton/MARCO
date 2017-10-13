@@ -1,3 +1,7 @@
+2.0.1 - 2017-10-12
+------------------
+ * Add --print-mcses option to print MCS constraints instead of MSS constraints
+
 2.0   - 2016-10-29
 ------------------
  * Add mode for parallel execution ("MARCOs")

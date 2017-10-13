@@ -89,7 +89,10 @@ The output lists MUSes ("U") and MSSes ("S"), one per line.  In 'verbose' mode
 (-v), each line also lists the indexes of the constraints included in each set
 (with 1-based counting).  MCSes are the complements of the MSSes w.r.t. the
 original set of input constraints (e.g., if MARCO reports an MSS "1 3 4" for a
-5-constraint input, the corresponding MCS is constraints 2 and 5).
+5-constraint input, the corresponding MCS is constraints 2 and 5).  If you want
+the MCSes printed directly, use the '--print-mcses' command line option; MCSes
+will be printed on lines starting with "C" (in place of the "S" lines for their
+MSSes).
 
 
 ## Authors

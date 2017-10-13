@@ -41,6 +41,8 @@ def parse_args():
                             help="assume input is in SMT2 format (autodetected if filename is *.smt2).")
     parser.add_argument('-b', '--bias', type=str, choices=['MUSes', 'MCSes'], default='MUSes',
                         help="bias the search toward MUSes or MCSes early in the execution [default: MUSes] -- all will be enumerated eventually; this just uses heuristics to find more of one or the other early in the enumeration.")
+    parser.add_argument('--print-mcses', action='store_true',
+                        help="for every satisfiable subset found, print the constraints in its complementary MCS instead of the MSS.")
     parser.add_argument('--check-muser', action='store_true',
                         help="just run a check of the MUSer2 helper application and exit (used to configure tests).")
 
@@ -267,7 +269,7 @@ def run_enumerator(stats, args, seed=None, pipe=None):
             if pipe:
                 pipe.send(result)
             else:
-                print_result(result, args, stats)
+                print_result(result, args, stats, csolver.n)
                 if remaining:
                     remaining -= 1
                     if remaining == 0:
@@ -369,7 +371,7 @@ def run_master(stats, args, pipes):
 
                         #results.add(res_set)
 
-                        print_result(result, args, stats)
+                        print_result(result, args, stats, csolver.n)
 
                         if remaining:
                             remaining -= 1
@@ -388,7 +390,10 @@ def run_master(stats, args, pipes):
                                     other.send(result)
 
 
-def print_result(result, args, stats):
+def print_result(result, args, stats, num_constraints):
+    if result[0] == 'S' and args.print_mcses:
+        # MCS = the complement of the MSS relative to the full set of constraints
+        result = ('C', set(range(1, num_constraints+1)).difference(result[1]))
     output = result[0]
     if args.alltimes:
         output = "%s %0.3f" % (output, stats.total_time())
