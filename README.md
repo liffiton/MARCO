@@ -58,19 +58,19 @@ To build and test the Python bindings:
 
 Additionally, the following are recommended, depending on your needs:
 
-  - Z3 Python interface for analyzing SMT instances.
+ - Z3 Python interface for analyzing SMT instances.
 
-      Available as part of the Z3 distribution: https://github.com/Z3Prover/z3
+     Available as part of the Z3 distribution: https://github.com/Z3Prover/z3
 
- - A MUSer2 binary.  The included `muser2-para` binary is compiled for x86-64
-   Linux.  For other platforms, download and compile from the source (license:
-   GPL).
+ - A MUSer2 binary for analyzing CNF/GCNF.  The included `muser2-para` binary
+   is compiled for x86-64 Linux.  For other platforms, download and compile
+   from the source (license: GPL).
 
-      Available from: https://bitbucket.org/anton_belov/muser2-para
+     Available from: https://bitbucket.org/anton_belov/muser2-para
 
-   Without a working MUSer2 binary, you can still run MARCO in a fall-back mode
-   that uses a basic, *much less efficient* deletion-based MUS extractor using
-   Minisat directly (see the `--force-minisat` option).
+   Without a working MUSer2 binary, you can still run MARCO on CNF/GCNF in a
+   fall-back mode that uses a basic, *much less efficient* deletion-based MUS
+   extractor using Minisat directly (see the `--force-minisat` option).
 
 
 ## Usage
@@ -96,7 +96,9 @@ MSSes).
 
 
 ## Authors
-
 - MARCO: Mark Liffiton and Wenting Zhao
+
+### Included solvers
 - MUSer2: Anton Belov, Norbert Manthey, and Joao Marques-Silva
 - MiniSAT: Niklas Een and Niklas Sörensson
+- MiniCARD: Mark Liffiton and Jordyn Maglalang
