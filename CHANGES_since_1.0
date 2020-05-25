@@ -1,3 +1,7 @@
+2.1.0 - 2020-05-24
+------------------
+ * Fix SMT parsing (the z3 API changed at some point)
+
 2.0.1 - 2017-10-12
 ------------------
  * Add --print-mcses option to print MCS constraints instead of MSS constraints

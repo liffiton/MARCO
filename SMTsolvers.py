@@ -24,10 +24,10 @@ def read_dimacs(filename):
 
 def read_smt2(filename):
     formula = parse_smt2_file(filename)
-    if is_and(formula):
-        return formula.children()
+    if len(formula) == 1 and is_and(formula[0]):
+        return formula[0].children()
     else:
-        return [formula]
+        return formula
 
 
 class Z3SubsetSolver(object):
