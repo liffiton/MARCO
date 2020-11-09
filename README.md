@@ -47,8 +47,9 @@ Tested Platforms:
 
 Requirements:
 
- - Python 2.7 or above (compatible with Python 3)
+ - Python 2.7 or 3.x
  - A standard build environment (make, gcc or clang, etc.)
+ - zlib development libraries (e.g., `zlib1g-dev` or `zlib-devel` packages)
 
 To build and test the Python bindings:
 
