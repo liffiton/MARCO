@@ -11,13 +11,15 @@ from pyminisolvers import minisolvers
 
 
 class MinisatSubsetSolver(object):
-    def __init__(self, infile, rand_seed=None, store_dimacs=False):
+    def __init__(self, infile, rand_seed=None, n_only=False, store_dimacs=False):
         self.s = minisolvers.MinisatSubsetSolver()
 
         # Initialize random seed and randomize variable activity if seed is given
         if rand_seed is not None:
             self.s.set_rnd_seed(rand_seed)
             self.s.set_rnd_init_act(True)
+
+        self.n_only = n_only
 
         self.store_dimacs = store_dimacs
         if self.store_dimacs:
@@ -43,6 +45,10 @@ class MinisatSubsetSolver(object):
                     self.n = int(tokens[4])
                 else:
                     self.n = self.nclauses
+
+                if self.n_only:
+                    # We're only here to parse the number of constraints.  Bail now.
+                    return
 
                 self.s.set_varcounts(self.nvars, self.n)
 
@@ -176,8 +182,8 @@ class MinisatSubsetSolver(object):
 
 
 class MUSerSubsetSolver(MinisatSubsetSolver):
-    def __init__(self, filename, rand_seed=None, numthreads=1):
-        MinisatSubsetSolver.__init__(self, filename, rand_seed, store_dimacs=True)
+    def __init__(self, filename, rand_seed=None, n_only=False, numthreads=1):
+        MinisatSubsetSolver.__init__(self, filename, rand_seed, n_only, store_dimacs=True)
         self.core_pattern = re.compile(r'^v [\d ]+$', re.MULTILINE)
         self.numthreads = numthreads
         self.parallel = (numthreads > 1)
@@ -268,8 +274,8 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
 
 
 class ImprovedImpliesSubsetSolver(MinisatSubsetSolver):
-    def __init__(self, infile, rand_seed=None, store_dimacs=False):
-        MinisatSubsetSolver.__init__(self, infile, rand_seed, store_dimacs)
+    def __init__(self, infile, rand_seed=None, n_only=False, store_dimacs=False):
+        MinisatSubsetSolver.__init__(self, infile, rand_seed, n_only, store_dimacs)
         self._known_MSS = 0
         self._known_MUS = 0
 

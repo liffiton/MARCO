@@ -24,6 +24,10 @@ class MCSEnumerator(object):
         self.stats = stats
         self.config = config
 
+        # workaround for Python 3.6+ changing defaultdict.iteritems -> defaultdict.items
+        if not hasattr(self.groups, 'items'):
+            self.groups.items = self.groups.iteritems
+
         self.pipe = pipe
         # if a pipe is provided, use it to receive results from other enumerators
         if self.pipe:
@@ -81,11 +85,11 @@ class MCSEnumerator(object):
 
         # Create new vars
         while solver.nvars() < self.nvars + self.n:
-                solver.new_var()
+            solver.new_var()
 
         # add clauses ...
         if gcnf_in:
-            for groupid, clauses in self.groups.iteritems():
+            for groupid, clauses in self.groups.items():
                 for j in clauses:
                     if groupid == 0:
                         solver.add_clause(self.clauses[j])

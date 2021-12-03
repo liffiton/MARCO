@@ -17,7 +17,7 @@ from MCSEnumerator import MCSEnumerator
 from MarcoPolo import MarcoPolo
 
 
-def parse_args():
+def make_argparser():
     parser = argparse.ArgumentParser()
 
     # Standard arguments
@@ -50,8 +50,6 @@ def parse_args():
     par_group = parser.add_argument_group('Parallelization options', "Enable and configure parallel MARCOs execution.")
     par_group.add_argument('--parallel', type=str, default=None,
                            help="run MARCO in parallel, specifying a comma-delimited list of modes selected from: 'MUS', 'MCS', 'MCSonly' -- e.g., \"MUS,MUS,MCS,MCSonly\" will run four separate threads: two MUS biased, one MCS biased, and one with a CAMUS-style MCS enumerator.")
-    par_group.add_argument('--same-seeds', action='store_true',
-                           help="use same seeds for all children (still randomized but with all seeds of value 1.")
     par_group.add_argument('--all-randomized', action='store_true',
                            help="randomly initialize *all* children in parallel mode (default: first thread is *not* randomly initialized, all others are).")
     comms_group = par_group.add_mutually_exclusive_group()
@@ -77,13 +75,10 @@ def parse_args():
                               help="use MUSer2-para in place of MUSer2 to run in parallel (specify # of threads.)")
     exp_group.add_argument('--nomax', action='store_true',
                            help="perform no model maximization whatsoever (applies either shrink() or grow() to all seeds)")
+    return parser
 
-    args = parser.parse_args()
 
-    if len(sys.argv) == 1:
-        parser.print_help()
-        sys.exit(1)
-
+def check_args(args):
     if args.check_muser:
         try:
             muser_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'muser2-para')
@@ -97,7 +92,16 @@ def parse_args():
         sys.stderr.write("SMT cannot be read from STDIN.  Please specify a filename.\n")
         sys.exit(1)
 
-    return args
+    if not (args.smt or args.cnf or args.infile.name.endswith(('.cnf', '.cnf.gz', '.gcnf', '.gcnf.gz', '.smt2'))):
+        sys.stderr.write(
+            "Cannot determine filetype (cnf or smt) of input: %s\n"
+            "Please provide --cnf or --smt option.\n" % args.infile.name
+        )
+        sys.exit(1)
+
+    if args.comms_disable and args.parallel is None:
+        sys.stderr.write("--comms-disable must be specified along with --parallel.\n")
+        sys.exit(1)
 
 
 def at_exit(stats):
@@ -132,8 +136,11 @@ def error_exit(error, details, exception):
 
 
 def setup_execution(args, stats, mainpid):
-    # register timeout/interrupt handler
+    # make process group id match process id so all children
+    # will share the same group id (for easier termination)
+    os.setpgrp()
 
+    # register timeout/interrupt handler
     def handler(signum, frame):  # pylint: disable=unused-argument
         # only report out and propagate to process group if we're the main process
         mypid = os.getpid()
@@ -165,7 +172,46 @@ def setup_execution(args, stats, mainpid):
         atexit.register(at_exit, stats)
 
 
-def setup_csolver(args, seed):
+def setup_parallel(args, stats):
+
+    argslist = []
+
+    if args.parallel:
+        for mode in args.parallel.split(','):
+            newargs = copy.copy(args)
+            if mode == 'MUS':
+                newargs.bias = 'MUSes'
+            elif mode == 'MCS':
+                newargs.bias = 'MCSes'
+            elif mode == 'MCSonly':
+                newargs.mcs_only = True
+            else:
+                assert False, "Invalid parallel mode: %s" % mode
+            argslist.append(newargs)
+    else:
+        argslist.append(args)
+
+    pipes = []
+    procs = []
+
+    for i, args in enumerate(argslist):
+        pipe, child_pipe = multiprocessing.Pipe()
+        pipes.append(pipe)
+
+        # TODO: Handle randomization with non-homogeneous thread modes
+        if not args.all_randomized and i == 0:
+            # don't randomize the first thread in this case
+            seed = None
+        else:
+            seed = i+1
+
+        proc = multiprocessing.Process(target=run_enumerator, args=(stats, args, child_pipe, seed))
+        procs.append(proc)
+
+    return pipes, procs
+
+
+def setup_csolver(args, seed, n_only=False):
     infile = args.infile
 
     # create appropriate constraint solver
@@ -178,12 +224,12 @@ def setup_csolver(args, seed):
             solverclass = CNFsolvers.MUSerSubsetSolver
 
         try:
+            extra_args = {}
             if args.mcs_only:
-                csolver = solverclass(infile, seed, store_dimacs=True)
-            elif args.pmuser is not None:
-                csolver = solverclass(infile, seed, numthreads=args.pmuser)
-            else:
-                csolver = solverclass(infile, seed)
+                extra_args['store_dimacs'] = True
+            if args.pmuser:
+                extra_args['numthreads'] = args.pmuser
+            csolver = solverclass(infile, seed, n_only, **extra_args)
         except utils.ExecutableException as e:
             error_exit("Unable to use MUSer2 for MUS extraction.", "Use --force-minisat to use Minisat instead (NOTE: it will be much slower.)", e)
         except (IOError, OSError) as e:
@@ -198,12 +244,9 @@ def setup_csolver(args, seed):
         # z3 has to be given a filename, not a file object, so close infile and just pass its name
         infile.close()
         csolver = Z3SubsetSolver(infile.name)
+
     else:
-        sys.stderr.write(
-            "Cannot determine filetype (cnf or smt) of input: %s\n"
-            "Please provide --cnf or --smt option.\n" % infile.name
-        )
-        sys.exit(1)
+        assert False  # this should be covered in check_args()
 
     return csolver
 
@@ -239,7 +282,7 @@ def setup_solvers(args, seed=None):
     return (csolver, msolver)
 
 
-def setup_config(args):
+def get_config(args):
     config = {}
     config['bias'] = args.bias
     config['comms_ignore'] = args.comms_ignore
@@ -252,9 +295,9 @@ def setup_config(args):
     return config
 
 
-def run_enumerator(stats, args, seed=None, pipe=None):
+def run_enumerator(stats, args, pipe, seed=None):
     csolver, msolver = setup_solvers(args, seed)
-    config = setup_config(args)
+    config = get_config(args)
 
     if args.mcs_only:
         enumerator = MCSEnumerator(csolver, stats, config, pipe)
@@ -264,17 +307,8 @@ def run_enumerator(stats, args, seed=None, pipe=None):
     # enumerate results in a separate thread so signal handling works while in C code
     # ref: https://thisismiller.github.io/blog/CPython-Signal-Handling/
     def enumerate():
-        remaining = args.limit
         for result in enumerator.enumerate():
-            if pipe:
-                pipe.send(result)
-            else:
-                print_result(result, args, stats, csolver.n)
-                if remaining:
-                    remaining -= 1
-                    if remaining == 0:
-                        sys.stderr.write("Result limit reached.\n")
-                        return
+            pipe.send(result)
 
     enumthread = threading.Thread(target=enumerate)
     enumthread.daemon = True  # required so signal handler exit will end enumeration thread
@@ -289,14 +323,16 @@ def run_enumerator(stats, args, seed=None, pipe=None):
 
 
 def run_master(stats, args, pipes):
-    # for filtering duplicate results (found near-simultaneously by 2+ children)
-    # and spurious results (if using improved-implies and a child reaches a point that
-    # suddenly becomes blocked by new blocking clauses, it could return that incorrectly
-    # as an MUS or MCS)
-    # Need to parse the constraint set (again!) just to get n for the map formula...
-    csolver = setup_csolver(args, seed=None)
-    msolver = mapsolvers.MinisatMapSolver(csolver.n)
-    # Old way: results = set()
+    csolver = setup_csolver(args, seed=None, n_only=True)  # just parse enough to get n (#constraints)
+    is_parallel = len(pipes) > 1
+
+    if is_parallel:
+        # for filtering duplicate results (found near-simultaneously by 2+ children)
+        # and spurious results (if using improved-implies and a child reaches a point that
+        # suddenly becomes blocked by new blocking clauses, it could return that incorrectly
+        # as an MUS or MCS)
+        msolver = mapsolvers.MinisatMapSolver(csolver.n)
+        # Old way: results = set()
 
     remaining = args.limit
 
@@ -344,34 +380,36 @@ def run_master(stats, args, pipes):
 
                     else:
                         assert result[0] in ['U', 'S']
-                        # filter out duplicate / spurious results
-                        with stats.time('msolver'):
-                            if not msolver.check_seed(result[1]):
-                                if args.verbose > 1:
-                                    print("Child (%s) sent duplicate (len: %d)" % (receiver, len(result[1])))
+
+                        if is_parallel:
+                            # filter out duplicate / spurious results
+                            with stats.time('msolver'):
+                                if not msolver.check_seed(result[1]):
+                                    if args.verbose > 1:
+                                        print("Child (%s) sent duplicate (len: %d)" % (receiver, len(result[1])))
+                                    if result[0] == 'U':
+                                        stats.increment_counter("duplicate MUS")
+                                    else:
+                                        stats.increment_counter("duplicate MSS")
+
+                                    # already found/reported/explored
+                                    continue
+
+                            with stats.time('msolver_block'):
                                 if result[0] == 'U':
-                                    stats.increment_counter("duplicate MUS")
-                                else:
-                                    stats.increment_counter("duplicate MSS")
+                                    msolver.block_up(result[1])
+                                elif result[0] == 'S':
+                                    msolver.block_down(result[1])
 
-                                # already found/reported/explored
-                                continue
+                            # Old way to check duplicates:
+                            #res_set = frozenset(result[1])
+                            #res_set = ",".join(str(x) for x in result[1])
+                            #if res_set in results:
+                            #    continue
+                            #
+                            #results.add(res_set)
 
-                        with stats.time('msolver_block'):
-                            if result[0] == 'U':
-                                msolver.block_up(result[1])
-                            elif result[0] == 'S':
-                                msolver.block_down(result[1])
-
-                        # Old way to check duplicates:
-                        #res_set = frozenset(result[1])
-                        #res_set = ",".join(str(x) for x in result[1])
-                        #if res_set in results:
-                        #    continue
-
-                        #results.add(res_set)
-
-                        print_result(result, args, stats, csolver.n)
+                        yield result, csolver.n
 
                         if remaining:
                             remaining -= 1
@@ -400,67 +438,47 @@ def print_result(result, args, stats, num_constraints):
     if args.verbose:
         output = "%s %s" % (output, " ".join([str(x) for x in result[1]]))
 
-    print(output)
+    return output
 
 
-def main():
+def enumerate_with_args(args_list=None, print_results=False):
+    '''Enumerate (yield) results, controlled by a set of arguments.
+
+    Keyword arguments:
+    args_list -- by default (when None), this function will take arguments from sys.argv
+                 (the command line).  This can optionally be specified as a list of
+                 arguments like ['--parallel','MUS,MUS,MUS,MUS','file1.cnf']
+    print_results -- If False (the default), yield results as tuples.
+                     If True, yield results as printable strings.
+    '''
+
     stats = utils.Statistics()
 
-    pipes = []
-    procs = []
-
-    # make process group id match process id so all children
-    # will share the same group id (for easier termination)
-    os.setpgrp()
-
     with stats.time('setup'):
-        args = parse_args()
+        parser = make_argparser()
+        args = parser.parse_args(args_list)
+        check_args(args)
         setup_execution(args, stats, os.getpid())
-        if args.same_seeds or args.comms_disable:
-            assert args.parallel is not None, "some flags you have specified have to be tested in the parallel mode."
-
-        if args.parallel:
-            for i, mode in enumerate(args.parallel.split(',')):
-                newargs = copy.copy(args)
-                if mode == 'MUS':
-                    newargs.bias = 'MUSes'
-                elif mode == 'MCS':
-                    newargs.bias = 'MCSes'
-                elif mode == 'MCSonly':
-                    newargs.mcs_only = True
-                else:
-                    assert False, "Invalid parallel mode: %s" % mode
-
-                pipe, child_pipe = multiprocessing.Pipe()
-                pipes.append(pipe)
-
-                if args.same_seeds:
-                    if args.all_randomized:
-                        seed = 1
-                    else:
-                        seed = None
-                else:
-                    # TODO: Handle randomization with non-homogeneous thread modes
-                    if not args.all_randomized and i == 0:
-                        seed = None
-                    else:
-                        seed = i+1
-
-                proc = multiprocessing.Process(target=run_enumerator, args=(stats, newargs, seed, child_pipe))
-                procs.append(proc)
+        pipes, procs = setup_parallel(args, stats)
 
     # useful for timing just the parsing / setup
     if args.limit == 0:
         sys.stderr.write("Result limit reached.\n")
         sys.exit(0)
 
-    if args.parallel:
-        for proc in procs:
-            proc.start()
-        run_master(stats, args, pipes)
+    for proc in procs:
+        proc.start()
 
-    else:
-        run_enumerator(stats, args, seed=args.rnd_init)
+    for result, n in run_master(stats, args, pipes):
+        if print_results:
+            yield print_result(result, args, stats, n)
+        else:
+            yield result
+
+
+def main():
+    for result in enumerate_with_args(print_results=True):
+        print(result)
 
 
 if __name__ == '__main__':
