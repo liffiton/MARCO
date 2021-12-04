@@ -31,10 +31,15 @@ def parse_args(args_list=None):
 
     parser = argparse.ArgumentParser()
 
+    # Required arguments
+    required_args = parser.add_mutually_exclusive_group(required=True)
+    # we don't use the file object, but using that type verifies that it exists as a file
+    required_args.add_argument('inputfile', nargs='?', type=argparse.FileType('rb'),
+                               help="name of file to process")
+    required_args.add_argument('--check-muser', action='store_true',
+                               help="just run a check of the MUSer2 helper application and exit (used to configure tests).")
+
     # Standard arguments
-    parser.add_argument('infile', nargs='?', type=argparse.FileType('rb'),
-                        default=sys.stdin,
-                        help="name of file to process (STDIN if omitted, in which case use --cnf or --smt)")
     parser.add_argument('-v', '--verbose', action='count', default=0,
                         help="print more verbose output (constraint indexes for MUSes/MCSes) -- repeat the flag for detail about the algorithm's progress)")
     parser.add_argument('-a', '--alltimes', action='store_true',
@@ -54,8 +59,6 @@ def parse_args(args_list=None):
                         help="bias the search toward MUSes or MCSes early in the execution [default: MUSes] -- all will be enumerated eventually; this just uses heuristics to find more of one or the other early in the enumeration.")
     parser.add_argument('--print-mcses', action='store_true',
                         help="for every satisfiable subset found, print the constraints in its complementary MCS instead of the MSS.")
-    parser.add_argument('--check-muser', action='store_true',
-                        help="just run a check of the MUSer2 helper application and exit (used to configure tests).")
 
     # Parallelization arguments
     par_group = parser.add_argument_group('Parallelization options', "Enable and configure parallel MARCOs execution.")
@@ -88,6 +91,11 @@ def parse_args(args_list=None):
                            help="perform no model maximization whatsoever (applies either shrink() or grow() to all seeds)")
 
     # parse args_list and return resulting arguments
+    args = parser.parse_args(args_list)
+    # we can't use the file object directly because it can't be shared with child processes,
+    # so close it immediately
+    if args.inputfile:
+        args.inputfile.close()
     return parser.parse_args(args_list)
 
 
@@ -101,12 +109,9 @@ def check_args(args):
             sys.exit(1)
         sys.exit(0)
 
-    if args.smt and args.infile == sys.stdin:
-        error_exit("SMT cannot be read from STDIN.", "Please specify a filename.")
-
-    if not (args.smt or args.cnf or args.infile.name.endswith(('.cnf', '.cnf.gz', '.gcnf', '.gcnf.gz', '.smt2'))):
+    if not (args.smt or args.cnf or args.inputfile.name.endswith(('.cnf', '.cnf.gz', '.gcnf', '.gcnf.gz', '.smt2'))):
         error_exit(
-            "Cannot determine filetype (cnf or smt) of input: %s" % args.infile.name,
+            "Cannot determine filetype (cnf or smt) of input: %s" % args.inputfile.name,
             "Please provide --cnf or --smt option, or --help to see all options."
         )
 
@@ -225,10 +230,10 @@ def setup_parallel(args, stats):
 
 
 def setup_csolver(args, seed, n_only=False):
-    infile = args.infile
+    filename = args.inputfile.name
 
     # create appropriate constraint solver
-    if args.cnf or infile.name.endswith('.cnf') or infile.name.endswith('.cnf.gz') or infile.name.endswith('.gcnf') or infile.name.endswith('.gcnf.gz'):
+    if args.cnf or filename.endswith(('.cnf', '.cnf.gz', '.gcnf', '.gcnf.gz')):
         if args.force_minisat or args.mcs_only:  # mcs_only doesn't care about fancy features, give it a plain MinisatSubsetSolver
             solverclass = CNFsolvers.MinisatSubsetSolver
         elif args.improved_implies:
@@ -242,21 +247,18 @@ def setup_csolver(args, seed, n_only=False):
                 extra_args['store_dimacs'] = True
             if args.pmuser:
                 extra_args['numthreads'] = args.pmuser
-            csolver = solverclass(infile, seed, n_only, **extra_args)
+            csolver = solverclass(filename, seed, n_only, **extra_args)
         except utils.ExecutableException as e:
             error_exit("Unable to use MUSer2 for MUS extraction.", "Use --force-minisat to use Minisat instead (NOTE: it will be much slower.)", e)
         except (IOError, OSError) as e:
             error_exit("Unable to load pyminisolvers library.", "Run 'make -C pyminisolvers' to compile the library.", e)
-        infile.close()
 
-    elif args.smt or infile.name.endswith('.smt2'):
+    elif args.smt or filename.endswith('.smt2'):
         try:
             from .SMTsolvers import Z3SubsetSolver
         except ImportError as e:
             error_exit("Unable to import z3 module.", "Please install Z3 from https://github.com/Z3Prover/z3", e)
-        # z3 has to be given a filename, not a file object, so close infile and just pass its name
-        infile.close()
-        csolver = Z3SubsetSolver(infile.name)
+        csolver = Z3SubsetSolver(filename)
 
     else:
         assert False  # this should be covered in check_args()

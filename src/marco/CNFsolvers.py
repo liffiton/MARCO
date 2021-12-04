@@ -12,7 +12,7 @@ from ..pyminisolvers import minisolvers
 
 
 class MinisatSubsetSolver(object):
-    def __init__(self, infile, rand_seed=None, n_only=False, store_dimacs=False):
+    def __init__(self, filename, rand_seed=None, n_only=False, store_dimacs=False):
         self.s = minisolvers.MinisatSubsetSolver()
 
         # Initialize random seed and randomize variable activity if seed is given
@@ -26,7 +26,7 @@ class MinisatSubsetSolver(object):
         if self.store_dimacs:
             self.dimacs = []
             self.groups = collections.defaultdict(list)
-        self.read_dimacs(infile)
+        self.read_dimacs(filename)
         self._msolver = None
 
     def set_msolver(self, msolver):
@@ -102,17 +102,14 @@ class MinisatSubsetSolver(object):
 
         assert i == self.nclauses
 
-    def read_dimacs(self, infile):
-        if infile.name.endswith('.gz'):
+    def read_dimacs(self, filename):
+        if filename.endswith('.gz'):
             # use gzip to decompress
-            infile.close()
-            with gzip.open(infile.name, 'rb') as gz_f:
+            with gzip.open(filename, 'rb') as gz_f:
                 self.parse_dimacs(gz_f)
         else:
-            # XXX TODO: using open() here to avoid dupe infile object for parallel branch,
-            #           but this breaks reading from stdin.
             # assume plain .cnf and pass through the file object
-            with open(infile.name, 'rb') as f:
+            with open(filename, 'rb') as f:
                 self.parse_dimacs(f)
 
     def check_subset(self, seed, improve_seed=False):
@@ -275,8 +272,8 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
 
 
 class ImprovedImpliesSubsetSolver(MinisatSubsetSolver):
-    def __init__(self, infile, rand_seed=None, n_only=False, store_dimacs=False):
-        MinisatSubsetSolver.__init__(self, infile, rand_seed, n_only, store_dimacs)
+    def __init__(self, filename, rand_seed=None, n_only=False, store_dimacs=False):
+        MinisatSubsetSolver.__init__(self, filename, rand_seed, n_only, store_dimacs)
         self._known_MSS = 0
         self._known_MUS = 0
 
