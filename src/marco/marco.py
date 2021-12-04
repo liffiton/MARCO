@@ -87,19 +87,16 @@ def check_args(args):
         sys.exit(0)
 
     if args.smt and args.infile == sys.stdin:
-        sys.stderr.write("SMT cannot be read from STDIN.  Please specify a filename.\n")
-        sys.exit(1)
+        error_exit("SMT cannot be read from STDIN.", "Please specify a filename.")
 
     if not (args.smt or args.cnf or args.infile.name.endswith(('.cnf', '.cnf.gz', '.gcnf', '.gcnf.gz', '.smt2'))):
-        sys.stderr.write(
-            "Cannot determine filetype (cnf or smt) of input: %s\n"
-            "Please provide --cnf or --smt option.\n" % args.infile.name
+        error_exit(
+            "Cannot determine filetype (cnf or smt) of input: %s" % args.infile.name,
+            "Please provide --cnf or --smt option."
         )
-        sys.exit(1)
 
     if args.comms_disable and args.parallel is None:
-        sys.stderr.write("--comms-disable must be specified along with --parallel.\n")
-        sys.exit(1)
+        error_exit("--comms-disable requires --parallel")
 
 
 def at_exit(stats):
@@ -127,9 +124,12 @@ def at_exit(stats):
             sys.stderr.write("%-*s : %f\n" % (maxlen + 4, name + ' avg', sum(values) / float(len(values))))
 
 
-def error_exit(error, details, exception):
-    sys.stderr.write("[31;1mERROR:[m %s\n[33m%s[m\n\n" % (error, details))
-    sys.stderr.write(str(exception) + "\n")
+def error_exit(error, details=None, exception=None):
+    sys.stderr.write("[31;1mERROR:[m %s\n" % error)
+    if details is not None:
+        sys.stderr.write("[33m%s[m\n" % details)
+    if exception is not None:
+        sys.stderr.write("\n%s\n" % str(exception))
     sys.exit(1)
 
 
@@ -184,7 +184,7 @@ def setup_parallel(args, stats):
             elif mode == 'MCSonly':
                 newargs.mcs_only = True
             else:
-                assert False, "Invalid parallel mode: %s" % mode
+                error_exit("Invalid parallel mode: %s" % mode)
             argslist.append(newargs)
     else:
         argslist.append(args)
@@ -467,8 +467,7 @@ def enumerate_with_args(args_list=None, print_results=False):
 
     # useful for timing just the parsing / setup
     if args.limit == 0:
-        sys.stderr.write("Result limit reached.\n")
-        sys.exit(0)
+        return
 
     for proc in procs:
         proc.start()
