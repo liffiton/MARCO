@@ -7,7 +7,7 @@ CNF, GCNF, and SMT).  This implementation makes use of MUSer2 [3,4] for MUS
 extraction and MiniSAT 2.2 [5] for satisfiability testing and the generation of
 SAT models.
 
-   Website: http://www.iwu.edu/~mliffito/marco/
+   Website: https://www.iwu.edu/~mliffito/marco/
 
 Please contact Mark Liffiton (mliffito@iwu.edu) in case of any errors or
 questions.
@@ -47,13 +47,13 @@ Tested Platforms:
 
 Requirements:
 
- - Python 2.7 or 3.x
+ - Python 3.x
  - A standard build environment (make, gcc or clang, etc.)
  - zlib development libraries (e.g., `zlib1g-dev` or `zlib-devel` packages)
 
 To build and test the Python bindings:
 
-    $ cd pyminisolvers
+    $ cd src/pyminisolvers
     $ make
     $ python test_minisolvers.py
 
@@ -94,6 +94,13 @@ original set of input constraints (e.g., if MARCO reports an MSS "1 3 4" for a
 the MCSes printed directly, use the '--print-mcses' command line option; MCSes
 will be printed on lines starting with "C" (in place of the "S" lines for their
 MSSes).
+
+### Library/API Usage
+
+All functionality is accessible via a simple API that mirrors the command line
+interface.  See `lib_examples.py` for examples.  Most options listed in
+`./marco.py --help` can be used (excluding any that don't make sense for use
+in the context of running as part of another program).
 
 
 ## Authors
