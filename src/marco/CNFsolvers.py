@@ -180,11 +180,9 @@ class MinisatSubsetSolver(object):
 
 
 class MUSerSubsetSolver(MinisatSubsetSolver):
-    def __init__(self, filename, rand_seed=None, n_only=False, numthreads=1):
+    def __init__(self, filename, rand_seed=None, n_only=False):
         MinisatSubsetSolver.__init__(self, filename, rand_seed, n_only, store_dimacs=True)
         self.core_pattern = re.compile(r'^v [\d ]+$', re.MULTILINE)
-        self.numthreads = numthreads
-        self.parallel = (numthreads > 1)
 
         binary = 'muser2-para'
         self.muser_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), binary)
@@ -237,7 +235,7 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
         if not self._msolver.check_seed(seed):
             return None
 
-        # Parallel MUSer doesn't like a formula with only hard constraints,
+        # MUSer doesn't like a formula with only hard constraints,
         # and it's a waste of time to call MUSer at all on it anyway.
         if len(seed) == len(hard):
             return seed
@@ -246,8 +244,6 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
         with tempfile.NamedTemporaryFile('wb') as cnf:
             self.write_CNF(cnf, seed, hard)
             args = [self.muser_path, '-comp', '-grp', '-v', '-1']
-            if self.parallel:
-                args += ['-threads', str(self.numthreads), '-tmp']
             args += [cnf.name]
 
             # Run MUSer

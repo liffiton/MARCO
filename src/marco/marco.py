@@ -15,6 +15,30 @@ from .MCSEnumerator import MCSEnumerator
 from .MarcoPolo import MarcoPolo
 
 
+def default_parallel_config(threads=None, bias=None):
+    ''' Get a default parallel configuration for this system.
+
+    If threads is specified, that is used.  Otherwise, it defaults to 1 thread
+    per 2 cores (basically assuming each physical core has two logical cores,
+    and we only want to run one thread per physical core).
+
+    If bias is specified, it is used for all threads.  Otherwise, threads will
+    be MUS biased, with one MCS biased only if the thread count is 4 or higher.
+    '''
+    if threads is None:
+        num_procs = multiprocessing.cpu_count()
+        threads = max(1, num_procs // 2)
+
+    if bias is not None:
+        bias = bias.replace('es', '')
+        types = [bias] * (threads)
+    elif threads > 3:
+        types = ['MUS'] * (threads - 1) + ['MCS']
+    else:
+        types = ['MUS'] * (threads)
+    return ','.join(types)
+
+
 def parse_args(args_list=None):
     '''Parse a list of arguments and return the resulting configuration.
 
@@ -55,15 +79,19 @@ def parse_args(args_list=None):
                             help="assume input is in DIMACS CNF or Group CNF format (autodetected if filename is *.[g]cnf or *.[g]cnf.gz).")
     type_group.add_argument('--smt', action='store_true',
                             help="assume input is in SMT2 format (autodetected if filename is *.smt2).")
-    parser.add_argument('-b', '--bias', type=str, choices=['MUSes', 'MCSes'], default='MUSes',
-                        help="bias the search toward MUSes or MCSes early in the execution [default: MUSes] -- all will be enumerated eventually; this just uses heuristics to find more of one or the other early in the enumeration.")
     parser.add_argument('--print-mcses', action='store_true',
                         help="for every satisfiable subset found, print the constraints in its complementary MCS instead of the MSS.")
 
     # Parallelization arguments
-    par_group = parser.add_argument_group('Parallelization options', "Enable and configure parallel MARCOs execution.")
-    par_group.add_argument('--parallel', type=str, default=None,
-                           help="run MARCO in parallel, specifying a comma-delimited list of modes selected from: 'MUS', 'MCS', 'MCSonly' -- e.g., \"MUS,MUS,MCS,MCSonly\" will run four separate threads: two MUS biased, one MCS biased, and one with a CAMUS-style MCS enumerator.")
+    par_group = parser.add_argument_group('Parallelization options', "Configure parallel MARCOs execution.  By default, it will run in parallel in a configuration that should work well on most systems, using #CPUs/2 threads and a mix of MUS and MCS bias.  On this system, that default is equivalent to --parallel %s.  You can override that default and control the parallelization using the following options." % default_parallel_config())
+
+    par_types_group = par_group.add_mutually_exclusive_group()
+    par_types_group.add_argument('--parallel', type=str, default=None,
+                                 help="specify the exact number of threads and mode for each as a comma-delimited list of modes selected from: 'MUS', 'MCS', 'MCSonly' -- e.g., \"MUS,MUS,MCS,MCSonly\" will run four separate threads: two MUS biased, one MCS biased, and one with a CAMUS-style MCS enumerator.")
+    par_types_group.add_argument('--threads', type=int, default=None,
+                                 help="override how many threads to use, but use the default thread types.")
+    par_types_group.add_argument('-b', '--bias', type=str, choices=['MUSes', 'MCSes'], default=None,
+                                  help="override the bias for all threads (toward MUSes or MCSes), but use the default number of threads.")
     par_group.add_argument('--all-randomized', action='store_true',
                            help="randomly initialize *all* children in parallel mode (default: first thread is *not* randomly initialized, all others are).")
     comms_group = par_group.add_mutually_exclusive_group()
@@ -85,8 +113,6 @@ def parse_args(args_list=None):
     solver_group = exp_group.add_mutually_exclusive_group()
     solver_group.add_argument('--force-minisat', action='store_true',
                               help="use Minisat in place of MUSer2 for CNF (NOTE: much slower and usually not worth doing!)")
-    solver_group.add_argument('--pmuser', type=int, default=None,
-                              help="use MUSer2-para in place of MUSer2 to run in parallel (specify # of threads.)")
     exp_group.add_argument('--nomax', action='store_true',
                            help="perform no model maximization whatsoever (applies either shrink() or grow() to all seeds)")
 
@@ -96,7 +122,11 @@ def parse_args(args_list=None):
     # so close it immediately
     if args.inputfile:
         args.inputfile.close()
-    return parser.parse_args(args_list)
+
+    if args.parallel is None:
+        args.parallel = default_parallel_config(args.threads, args.bias)
+
+    return args
 
 
 def check_args(args):
@@ -114,9 +144,6 @@ def check_args(args):
             "Cannot determine filetype (cnf or smt) of input: %s" % args.inputfile.name,
             "Please provide --cnf or --smt option, or --help to see all options."
         )
-
-    if args.comms_disable and args.parallel is None:
-        error_exit("--comms-disable requires --parallel")
 
 
 def at_exit(stats):
@@ -245,8 +272,6 @@ def setup_csolver(args, seed, n_only=False):
             extra_args = {}
             if args.mcs_only:
                 extra_args['store_dimacs'] = True
-            if args.pmuser:
-                extra_args['numthreads'] = args.pmuser
             csolver = solverclass(filename, seed, n_only, **extra_args)
         except utils.ExecutableException as e:
             error_exit("Unable to use MUSer2 for MUS extraction.", "Use --force-minisat to use Minisat instead (NOTE: it will be much slower.)", e)

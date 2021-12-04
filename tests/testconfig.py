@@ -69,15 +69,6 @@ jobs = [
 ]
 if muser_available:
     jobs.extend([
-        # --pmuser
-        {
-        'name':    'marco_py',
-        'files':   reg_files,
-        'flags':   ['--pmuser 2'],
-        'flags_all': common_flags,
-        'exclude': ['c10.cnf', 'dlx2_aa.cnf'],
-        'default': True,
-        },
         # --force-minisat
         {
         'name':    'marco_py',
