@@ -15,7 +15,20 @@ from .MCSEnumerator import MCSEnumerator
 from .MarcoPolo import MarcoPolo
 
 
-def make_argparser():
+def parse_args(args_list=None):
+    '''Parse a list of arguments and return the resulting configuration.
+
+    Parameters:
+        args_list (list of strings): by default (when None), this function will
+            take arguments from sys.argv (the command line).  This can
+            optionally be specified as a list of argument strings like:
+                ['--parallel','MUS,MUS,MUS,MUS','file1.cnf']
+
+    Returns:
+        An argparse.NameSpace object containing all configured options,
+        each accessible via dot notation.  (E.g., args.verbose)
+    '''
+
     parser = argparse.ArgumentParser()
 
     # Standard arguments
@@ -73,7 +86,9 @@ def make_argparser():
                               help="use MUSer2-para in place of MUSer2 to run in parallel (specify # of threads.)")
     exp_group.add_argument('--nomax', action='store_true',
                            help="perform no model maximization whatsoever (applies either shrink() or grow() to all seeds)")
-    return parser
+
+    # parse args_list and return resulting arguments
+    return parser.parse_args(args_list)
 
 
 def check_args(args):
@@ -92,7 +107,7 @@ def check_args(args):
     if not (args.smt or args.cnf or args.infile.name.endswith(('.cnf', '.cnf.gz', '.gcnf', '.gcnf.gz', '.smt2'))):
         error_exit(
             "Cannot determine filetype (cnf or smt) of input: %s" % args.infile.name,
-            "Please provide --cnf or --smt option."
+            "Please provide --cnf or --smt option, or --help to see all options."
         )
 
     if args.comms_disable and args.parallel is None:
@@ -445,22 +460,24 @@ def print_result(result, args, stats, num_constraints):
     return output
 
 
-def enumerate_with_args(args_list=None, print_results=False):
+def enumerate_with_args(args, print_results=False):
     '''Enumerate (yield) results, controlled by a set of arguments.
 
-    Keyword arguments:
-    args_list -- by default (when None), this function will take arguments from sys.argv
-                 (the command line).  This can optionally be specified as a list of
-                 arguments like ['--parallel','MUS,MUS,MUS,MUS','file1.cnf']
-    print_results -- If False (the default), yield results as tuples.
-                     If True, yield results as printable strings.
+    Parameters:
+        args (Namespace): Arguments (configuration) as produced by parse_args().
+        print_results (bool): If False (the default), yield results as tuples.
+                              If True, yield results as printable strings.
+
+    This is a generator function that will yield individual results one
+    at a time.  It is suitable for use in a for loop or anywhere else an
+    iterator can be used.  If the generator is saved in a variable (for
+    example: `gen = enumerate_with_args(args)`), then its .close() method
+    can be called (`gen.close()`) to terminate the enumeration at any point.
     '''
 
     stats = utils.Statistics()
 
     with stats.time('setup'):
-        parser = make_argparser()
-        args = parser.parse_args(args_list)
         check_args(args)
         setup_execution(args, stats, os.getpid())
         pipes, procs = setup_parallel(args, stats)
@@ -486,5 +503,6 @@ def enumerate_with_args(args_list=None, print_results=False):
 
 
 def main():
-    for result in enumerate_with_args(print_results=True):
+    args = parse_args()
+    for result in enumerate_with_args(args, print_results=True):
         print(result)

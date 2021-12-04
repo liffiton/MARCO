@@ -3,7 +3,7 @@
 # Example invocations demonstrating lib/API interface
 #
 
-from src.marco.marco import enumerate_with_args
+from src.marco.marco import parse_args, enumerate_with_args
 
 
 def example1():
@@ -12,7 +12,8 @@ def example1():
     print("Example 1")
 
     args_list = ['tests/test1.cnf', '--parallel', 'MUS,MUS,MUS,MCS']
-    for result in enumerate_with_args(args_list, print_results=True):
+    args = parse_args(args_list)
+    for result in enumerate_with_args(args, print_results=True):
         print(result)
 
 
@@ -22,9 +23,10 @@ def example2():
     #  Receive results as tuples.
     print("Example 2")
 
-    # generator can be saved in a variable to call .close() later
-    gen = enumerate_with_args(args_list=['tests/c10.cnf'])
     results = []
+    args = parse_args(['tests/c10.cnf'])
+    # generator can be saved in a variable to call .close() later
+    gen = enumerate_with_args(args)
     for result in gen:
         if result[0] == 'U':
             results.append(result)
