@@ -294,6 +294,12 @@ def get_config(args):
 
 
 def run_enumerator(stats, args, pipe, seed=None):
+    # Register interrupt handler to cleanly exit if receiving SIGTERM
+    # (probably from parent process)
+    def handler(signum, frame):  # pylint: disable=unused-argument
+        os._exit(0)
+    signal.signal(signal.SIGTERM, handler)  # external termination
+
     csolver, msolver = setup_solvers(args, seed)
     config = get_config(args)
 
@@ -373,8 +379,8 @@ def run_master(stats, args, pipes):
                         # End / cleanup all children
                         for pipe in pipes:
                             pipe.send('terminate')
-                        # Exit main process
-                        sys.exit(0)
+
+                        return
 
                     else:
                         assert result[0] in ['U', 'S']
@@ -416,8 +422,8 @@ def run_master(stats, args, pipes):
                                 # End / cleanup all children
                                 for pipe in pipes:
                                     pipe.send('terminate')
-                                # Exit main process
-                                sys.exit(0)
+
+                                return
 
                         if not args.comms_disable:
                             # send it to all children *other* than the one we got it from
@@ -468,10 +474,16 @@ def enumerate_with_args(args_list=None, print_results=False):
         proc.start()
 
     for result, n in run_master(stats, args, pipes):
-        if print_results:
-            yield print_result(result, args, stats, n)
-        else:
-            yield result
+        try:
+            if print_results:
+                yield print_result(result, args, stats, n)
+            else:
+                yield result
+        except GeneratorExit:
+            # Handle a .close() call on the generator
+            for proc in procs:
+                proc.terminate()
+            return
 
 
 def main():
