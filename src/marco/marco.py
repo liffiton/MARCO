@@ -83,22 +83,15 @@ def parse_args(args_list=None):
                         help="for every satisfiable subset found, print the constraints in its complementary MCS instead of the MSS.")
 
     # Parallelization arguments
-    par_group = parser.add_argument_group('Parallelization options', "Configure parallel MARCOs execution.  By default, it will run in parallel in a configuration that should work well on most systems, using #CPUs/2 threads and a mix of MUS and MCS bias.  On this system, that default is equivalent to --parallel %s.  You can override that default and control the parallelization using the following options." % default_parallel_config())
+    par_group = parser.add_argument_group('Parallelization options', "Configure parallel MARCOs execution.  By default, it will run in parallel in a configuration that should work well on most systems, using #CPUs/2 threads and a mix of MUS and MCS bias.  On *this* system, that default is equivalent to --parallel %s.  You can override that default and control the parallelization using the following options." % default_parallel_config())
 
     par_types_group = par_group.add_mutually_exclusive_group()
-    par_types_group.add_argument('--parallel', type=str, default=None,
-                                 help="specify the exact number of threads and mode for each as a comma-delimited list of modes selected from: 'MUS', 'MCS', 'MCSonly' -- e.g., \"MUS,MUS,MCS,MCSonly\" will run four separate threads: two MUS biased, one MCS biased, and one with a CAMUS-style MCS enumerator.")
     par_types_group.add_argument('--threads', type=int, default=None,
                                  help="override how many threads to use, but use the default thread types.")
     par_types_group.add_argument('-b', '--bias', type=str, choices=['MUSes', 'MCSes'], default=None,
                                   help="override the bias for all threads (toward MUSes or MCSes), but use the default number of threads.")
-    par_group.add_argument('--all-randomized', action='store_true',
-                           help="randomly initialize *all* children in parallel mode (default: first thread is *not* randomly initialized, all others are).")
-    comms_group = par_group.add_mutually_exclusive_group()
-    comms_group.add_argument('--comms-disable', action='store_true',
-                             help="disable the communications between children (i.e., when the master receives a result from a child, it won't send to other children).")
-    comms_group.add_argument('--comms-ignore', action='store_true',
-                             help="send results out to children, but do not *use* the results in children (i.e., do not add blocking clauses based on them) -- used only for determining cost of communication.")
+    par_types_group.add_argument('--parallel', type=str, default=None,
+                                 help="specify the exact number of threads and mode for each as a comma-delimited list of modes selected from: 'MUS', 'MCS', 'MCSonly' -- e.g., \"MUS,MUS,MCS,MCSonly\" will run four separate threads: two MUS biased, one MCS biased, and one with a CAMUS-style MCS enumerator.")
 
     # Experimental / Research arguments
     exp_group = parser.add_argument_group('Experimental / research options', "These can typically be ignored; the defaults will give the best performance.")
@@ -115,6 +108,13 @@ def parse_args(args_list=None):
                               help="use Minisat in place of MUSer2 for CNF (NOTE: much slower and usually not worth doing!)")
     exp_group.add_argument('--nomax', action='store_true',
                            help="perform no model maximization whatsoever (applies either shrink() or grow() to all seeds)")
+    exp_group.add_argument('--all-randomized', action='store_true',
+                           help="randomly initialize *all* children in parallel mode (default: first thread is *not* randomly initialized, all others are).")
+    comms_group = exp_group.add_mutually_exclusive_group()
+    comms_group.add_argument('--comms-disable', action='store_true',
+                             help="disable the communications between children (i.e., when the master receives a result from a child, it won't send to other children).")
+    comms_group.add_argument('--comms-ignore', action='store_true',
+                             help="send results out to children, but do not *use* the results in children (i.e., do not add blocking clauses based on them) -- used only for determining cost of communication.")
 
     # parse args_list and return resulting arguments
     args = parser.parse_args(args_list)

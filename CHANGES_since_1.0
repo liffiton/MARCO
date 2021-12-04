@@ -1,3 +1,10 @@
+3.0   - 2021-??-??
+------------------
+ * Now runs in parallel by default on multicore systems, simplified parallel options
+ * Restructure code to enable integration in other programs
+ * Remove support for Python 2.7
+ * Lots of cleanup and refactoring
+
 2.1.0 - 2020-05-24
 ------------------
  * Fix SMT parsing (the z3 API changed at some point)

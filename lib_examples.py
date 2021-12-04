@@ -11,7 +11,7 @@ def example1():
     #  Basic usage, specifying arguments and receiving results as printable strings
     print("Example 1")
 
-    args_list = ['tests/test1.cnf', '--parallel', 'MUS,MUS,MUS,MCS']
+    args_list = ['tests/test1.cnf', '--threads', '4']
     args = parse_args(args_list)
     for result in enumerate_with_args(args, print_results=True):
         print(result)
