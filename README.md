@@ -55,13 +55,15 @@ To build and test the Python bindings:
 
     $ cd src/pyminisolvers
     $ make
-    $ python test_minisolvers.py
+    $ make test
 
 Additionally, the following are recommended, depending on your needs:
 
  - Z3 Python interface for analyzing SMT instances.
 
      Available as part of the Z3 distribution: https://github.com/Z3Prover/z3
+
+     Installable via `pip`:  `pip install z3-solver`
 
  - A MUSer2 binary for analyzing CNF/GCNF.  The included `muser2-para` binary
    is compiled for x86-64 Linux.  For other platforms, download and compile

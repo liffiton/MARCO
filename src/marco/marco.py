@@ -276,7 +276,7 @@ def setup_csolver(args, seed, n_only=False):
         except utils.ExecutableException as e:
             error_exit("Unable to use MUSer2 for MUS extraction.", "Use --force-minisat to use Minisat instead (NOTE: it will be much slower.)", e)
         except (IOError, OSError) as e:
-            error_exit("Unable to load pyminisolvers library.", "Run 'make -C pyminisolvers' to compile the library.", e)
+            error_exit("Unable to load pyminisolvers library.", "Run 'make -C src/pyminisolvers' to compile the library.", e)
 
     elif args.smt or filename.endswith('.smt2'):
         try:
@@ -305,7 +305,7 @@ def setup_msolver(n, args, seed=None):
             msolverclass = utils.synchronize_class(msolverclass)
         msolver = msolverclass(n, bias=varbias, rand_seed=seed, dump=args.dump_map)
     except OSError as e:
-        error_exit("Unable to load pyminisolvers library.", "Run 'make -C pyminisolvers' to compile the library.", e)
+        error_exit("Unable to load pyminisolvers library.", "Run 'make -C src/pyminisolvers' to compile the library.", e)
 
     return msolver
 
