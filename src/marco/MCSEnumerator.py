@@ -6,7 +6,7 @@ try:
 except ImportError:
     import Queue as queue
 
-from pyminisolvers import minisolvers
+from ..pyminisolvers import minisolvers
 
 
 class MCSEnumerator(object):

@@ -6,8 +6,9 @@ import os
 import re
 import subprocess
 import tempfile
-import utils
-from pyminisolvers import minisolvers
+
+from . import utils
+from ..pyminisolvers import minisolvers
 
 
 class MinisatSubsetSolver(object):

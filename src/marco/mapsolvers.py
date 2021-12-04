@@ -1,6 +1,7 @@
 import abc
 import array
-from pyminisolvers import minisolvers
+
+from ..pyminisolvers import minisolvers
 
 
 class MapSolver(object):
