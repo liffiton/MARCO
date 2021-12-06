@@ -44,10 +44,10 @@ def synchronize_class(sync_class):
 
     for key in dir(sync_class):
         val = getattr(sync_class, key)
-        # synchronize all methods except __init__ (no other thread
+        # synchronize all methods except __init__ and __new__ (no other thread
         # can have a reference to an object before __init__ complete,
         # as far as I know)
-        if isinstance(val, (types.MethodType, types.FunctionType)) and key != '__init__':
+        if isinstance(val, (types.MethodType, types.FunctionType)) and key != '__init__' and key != '__new__':
             setattr(sync_class, key, decorator(val))
 
     return sync_class
