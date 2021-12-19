@@ -3,6 +3,8 @@
 # Example invocations demonstrating lib/API interface
 #
 
+import sys
+
 from src.marco.marco import parse_args, enumerate_with_args
 
 
@@ -12,6 +14,7 @@ def example1():
     print("Example 1")
 
     args_list = ['tests/test1.cnf', '--threads', '4']
+    args_list.extend(sys.argv[1:])
     args = parse_args(args_list)
     for result in enumerate_with_args(args, print_results=True):
         print(result)
@@ -24,7 +27,9 @@ def example2():
     print("Example 2")
 
     results = []
-    args = parse_args(['tests/c10.cnf'])
+    args_list = ['tests/c10.cnf']
+    args_list.extend(sys.argv[1:])
+    args = parse_args(args_list)
     # generator can be saved in a variable to call .close() later
     gen = enumerate_with_args(args)
     for result in gen:
