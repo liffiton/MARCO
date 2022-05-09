@@ -1,11 +1,11 @@
 #!/bin/bash
 
 # gather "whitelist" of files to include
-marco_files="*.py muser2-static muser2-para README CHANGES* VERSION"
+marco_files="*.py src/marco/*.py src/marco/muser2-para README* CHANGES* VERSION"
 if [ $# -lt 2 -o "$2" != "notest" ] ; then
     test_files="tests/*.cnf tests/*.gcnf tests/*.smt2 tests/*.gz tests/*.py tests/out/*/*"
 fi
-minisolvers_files=`find pyminisolvers/ \( -name "*.cc" -or -name "*.cpp" -or -name "*.h" -or -name "Makefile" -or -name "makefile" -or -name "*.py" -or -name "*.pyx" \) -print`
+minisolvers_files=`find src/pyminisolvers/ \( -name "*.cc" -or -name "*.cpp" -or -name "*.h" -or -name "Makefile" -or -name "makefile" -or -name "*.py" -or -name "*.pyx" \) -print`
 
 if [ "$1" = "list" ] ; then
     echo "Selected files:"

@@ -42,8 +42,8 @@ before running MARCO.
 Tested Platforms:
 
  - Linux
- - Cygwin
  - OS X
+ - Cygwin
 
 Requirements:
 
