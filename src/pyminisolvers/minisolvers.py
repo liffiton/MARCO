@@ -24,7 +24,7 @@ import array
 import os
 import ctypes  # type: ignore
 from abc import ABCMeta, abstractmethod
-from ctypes import c_void_p, c_ubyte, c_bool, c_int, c_double  # type: ignore
+from ctypes import c_void_p, c_ubyte, c_bool, c_int, c_int64, c_double, pointer  # type: ignore
 
 try:
     import typing  # noqa: for mypy-lang type-checking
@@ -109,12 +109,25 @@ class Solver(object):
         l.getImplies_assumptions.argtypes = [c_void_p, c_void_p, c_void_p, c_int]
         l.getImplies_assumptions.restype = c_int
 
+        l.get_solves.argtypes = [c_void_p]
+        l.get_solves.restype = c_int64
+        l.get_starts.argtypes = [c_void_p]
+        l.get_starts.restype = c_int64
+        l.get_decisions.argtypes = [c_void_p]
+        l.get_decisions.restype = c_int64
+        l.get_rnd_decisions.argtypes = [c_void_p]
+        l.get_rnd_decisions.restype = c_int64
+        l.get_propagations.argtypes = [c_void_p]
+        l.get_propagations.restype = c_int64
+        l.get_conflicts.argtypes = [c_void_p]
+        l.get_conflicts.restype = c_int64
+
     def __del__(self):  # type: () -> None
         """Delete the Solver object"""
         self.lib.Solver_delete(self.s)
 
     @staticmethod
-    def _to_intptr(a):  # type: (array.array) -> Tuple[int, int]
+    def _to_intptr(a):  # type: (array.array) -> Tuple[pointer[c_int], int]
         """Helper function to get a ctypes POINTER(c_int) for an array"""
         addr, size = a.buffer_info()
         return ctypes.cast(addr, ctypes.POINTER(c_int)), size
@@ -297,7 +310,7 @@ class Solver(object):
     def block_model(self):
         """Block the current model from the solver."""
         model = self.get_model()
-        self.add_clause([-(x+1) if model[x] > 0 else x+1 for x in range(1, len(model))])
+        self.add_clause([-(x+1) if model[x] > 0 else x+1 for x in range(len(model))])
 
     def model_value(self, i):  # type: (int) -> bool
         '''Get the value of a given variable in the current model.'''
@@ -328,6 +341,17 @@ class Solver(object):
 
         # reduce the array down to just the valid indexes
         return res[:count]
+
+    def get_stats(self):
+        """Returns a dictionary of solver statistics."""
+        return {
+            "solves": self.lib.get_solves(self.s),
+            "starts": self.lib.get_starts(self.s),
+            "decisions": self.lib.get_decisions(self.s),
+            "rnd_decisions": self.lib.get_rnd_decisions(self.s),
+            "propagations": self.lib.get_propagations(self.s),
+            "conflicts": self.lib.get_conflicts(self.s),
+        }
 
 
 class SubsetMixin(Solver):
