@@ -15,8 +15,7 @@ import subprocess
 import tempfile
 import time
 from collections import defaultdict
-try: from Queue import Empty  # Python 2
-except ImportError: from queue import Empty  # Python 3
+from queue import Empty
 from multiprocessing import Process, Queue, cpu_count
 
 # pull in configuration from testconfig.py
@@ -25,10 +24,6 @@ import testconfig
 # globals (w/ default values)
 mode = 'runp'
 verbose = False
-
-# hack to work in both python 2 and 3
-try: input = raw_input
-except NameError: pass
 
 
 # Build all tests to be run
@@ -446,6 +441,7 @@ def main():
 
     # save any time data to disk
     td.save_data()
+
 
 if __name__ == '__main__':
     main()

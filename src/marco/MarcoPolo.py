@@ -168,6 +168,3 @@ class SeedManager(object):
     def seed_from_solver(self):
         known_max = self.config['maximize']
         return self.map.next_seed(), known_max
-
-    # for python 2 compatibility
-    next = __next__

@@ -359,13 +359,7 @@ def run_enumerator(stats, args, pipe, seed=None):
     enumthread = threading.Thread(target=enumerate)
     enumthread.daemon = True  # required so signal handler exit will end enumeration thread
     enumthread.start()
-    if sys.version_info[0] >= 3:
-        enumthread.join()
-    else:
-        # In Python 2, a timeout is required for join() to not just
-        # call a blocking C function (thus blocking the signal handler).
-        # However, infinity works.
-        enumthread.join(float('inf'))
+    enumthread.join()
 
 
 def run_master(stats, args, pipes):
