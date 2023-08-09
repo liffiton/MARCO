@@ -282,7 +282,7 @@ def setup_csolver(args, seed, n_only=False):
         try:
             from .SMTsolvers import Z3SubsetSolver
         except ImportError as e:
-            error_exit("Unable to import z3 module.", "Please install Z3 from https://github.com/Z3Prover/z3", e)
+            error_exit("Unable to import z3 module.", "Please install Z3 for Python:  pip install z3-solver", e)
         csolver = Z3SubsetSolver(filename)
 
     else:
