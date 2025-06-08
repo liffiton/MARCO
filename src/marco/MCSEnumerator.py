@@ -1,10 +1,7 @@
 import array
 import os
+import queue
 import threading
-try:
-    import queue
-except ImportError:
-    import Queue as queue
 
 from ..pyminisolvers import minisolvers
 
@@ -84,8 +81,7 @@ class MCSEnumerator(object):
         gcnf_in = (self.n != self.nclauses)  # In gcnf, # of groups is less than # of clauses
 
         # Create new vars
-        while solver.nvars() < self.nvars + self.n:
-            solver.new_var()
+        solver.new_vars(self.nvars + self.n)
 
         # add clauses ...
         if gcnf_in:

@@ -1,10 +1,6 @@
 import os
+import queue
 import threading
-
-try:
-    import queue
-except ImportError:
-    import Queue as queue
 
 
 class MarcoPolo(object):

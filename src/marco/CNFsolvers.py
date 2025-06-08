@@ -53,14 +53,13 @@ class MinisatSubsetSolver(object):
 
                 self.s.set_varcounts(self.nvars, self.n)
 
-                while self.s.nvars() < self.nvars:
-                    # let instance variables do whatever...
-                    self.s.new_var()
-                while self.s.nvars() < self.nvars + self.n:
-                    # but default relaxation variables to try to *enable*
-                    # clauses (to find larger sat subsets and/or hit unsat
-                    # sooner)
-                    self.s.new_var(True)
+                # let instance variables do whatever...
+                self.s.new_vars(self.nvars)
+                # but default relaxation variables to try to *enable*
+                # clauses (to find larger sat subsets and/or hit unsat
+                # sooner)
+                self.s.new_vars(self.n, True)
+
                 continue
 
             if line.startswith(b'c'):

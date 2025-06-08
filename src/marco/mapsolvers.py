@@ -144,12 +144,10 @@ class MinicardMapSolver(MapSolver):
             self._solver.set_rnd_seed(rand_seed)
             self._solver.set_rnd_init_act(True)
 
-        while self._solver.nvars() < self.n:
-            self._solver.new_var(self.bias)
+        self._solver.new_vars(self.n, self.bias)
 
         # add "bound-setting" variables
-        while self._solver.nvars() < self.n*2:
-            self._solver.new_var()
+        self._solver.new_vars(self.n)
 
         # add cardinality constraint (comment is for high bias, maximal model;
         #                             becomes AtMostK for low bias, minimal model)
@@ -234,8 +232,7 @@ class MinisatMapSolver(MapSolver):
             self._solver.set_rnd_seed(rand_seed)
             self._solver.set_rnd_init_act(True)
 
-        while self._solver.nvars() < self.n:
-            self._solver.new_var(self.bias)
+        self._solver.new_vars(self.n, self.bias)
 
         if self.bias is None:
             self._solver.set_rnd_pol(True)
