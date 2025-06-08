@@ -1,3 +1,9 @@
+3.1   - 2025-06-08
+------------------
+ * Performance: Update pyminisolvers; use new_vars() method in MARCO when
+   instantiating new solvers.  Improved performance on large instances.
+ * Remove support for Python 3.8 and below.
+
 3.0   - 2022-05-09
 ------------------
  * Now runs in parallel by default on multicore systems, simplified parallel options

@@ -47,7 +47,7 @@ Tested Platforms:
 
 Requirements:
 
- - Python 3.x
+ - Python 3.9+
  - A standard build environment (make, gcc or clang, etc.)
  - zlib development libraries (e.g., `zlib1g-dev` or `zlib-devel` packages)
 
