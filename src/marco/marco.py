@@ -119,9 +119,11 @@ def parse_args(args_list=None):
     # parse args_list and return resulting arguments
     args = parser.parse_args(args_list)
     # we can't use the file object directly because it can't be shared with child processes,
-    # so close it immediately
+    # so close it immediately and replace with a simple object holding the filename
     if args.inputfile:
+        filename = args.inputfile.name
         args.inputfile.close()
+        args.inputfile = argparse.Namespace(name=filename)
 
     if args.parallel is None:
         args.parallel = default_parallel_config(args.threads, args.bias)
