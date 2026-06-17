@@ -19,11 +19,12 @@ Classes:
   SubsetMixin
     A mixin class adding 'subset' functionality to Solver subclasses.
 """
+from __future__ import annotations
 
-import array
 import os
 import ctypes
 from abc import ABCMeta, abstractmethod
+from array import array
 from collections.abc import Iterable, Sequence
 from ctypes import c_void_p, c_ubyte, c_bool, c_int, c_int64, c_double
 from typing import TYPE_CHECKING, Optional
@@ -34,7 +35,7 @@ else:
     IntPointer = ctypes.POINTER(ctypes.c_int)
 
 
-class Solver(object):
+class Solver(metaclass=ABCMeta):
     """The Solver class is an abstract base class for MiniSat and
     MiniCard solver classes.  It provides the basic methods that both
     contain, closely following the methods in MiniSat and MiniCard's
@@ -45,13 +46,23 @@ class Solver(object):
     MinicardSubsetSolver (see below).
     """
 
-    __metaclass__ = ABCMeta
-
     @abstractmethod
     def __init__(self, libfilename: str) -> None:
         self._setup_lib(libfilename)
         self.s = self.lib.Solver_new()
-        self._model_array: array.array[int] | None = None  # will be reused array to avoid reallocation
+        # a reused array to limit/avoid allocations
+        # (will be reused as long as nvars doesn't change, which invalidates it, triggering a realloc)
+        self._buf_storage: array[int] | None = None
+
+    @property
+    def _buf(self) -> array[int]:
+        if self._buf_storage is None:
+            self._buf_storage = array('i', [-1] * self.nvars())
+        return self._buf_storage
+
+    @property
+    def _buf_ptr(self) -> tuple[IntPointer, int]:
+        return self._to_intptr(self._buf)
 
     def _setup_lib(self, libfilename: str) -> None:
         """Load the minisat library with ctypes and create a Solver
@@ -64,7 +75,7 @@ class Solver(object):
         if not os.path.exists(libfile):
             raise IOError("Specified library file not found.  Did you run 'make' to build the solver libraries?\nFile not found: %s" % libfile)
 
-        self.lib = ctypes.cdll.LoadLibrary(dirname+'/'+libfilename)
+        self.lib = ctypes.cdll.LoadLibrary(libfile)
 
         l = self.lib
 
@@ -129,18 +140,18 @@ class Solver(object):
         self.lib.Solver_delete(self.s)
 
     @staticmethod
-    def _to_intptr(a: array.array) -> tuple[IntPointer, int]:
+    def _to_intptr(a: array[int]) -> tuple[IntPointer, int]:
         """Helper function to get a ctypes POINTER(c_int) for an array"""
         addr, size = a.buffer_info()
         return ctypes.cast(addr, IntPointer), size
 
     @staticmethod
-    def _get_array(seq: Iterable[int]) -> array.array:
+    def _get_array(seq: Iterable[int]) -> array[int]:
         """Helper function to turn any iterable into an array (unless it already is one)"""
-        if isinstance(seq, array.array):
+        if isinstance(seq, array):
             return seq
         else:
-            return array.array('i', seq)
+            return array('i', seq)
 
     polarity_map = {
         None: 2,  # lbool l_Undef
@@ -165,7 +176,7 @@ class Solver(object):
         Returns:
             The new variable's index (0-based counting).
         """
-        self._model_array = None   # invalidate; to be recreated when needed next
+        self._buf_storage = None   # invalidate; to be recreated when needed next
         pol_int = self.polarity_map[polarity]
         return self.lib.newVar(self.s, pol_int, dvar)
     
@@ -188,7 +199,7 @@ class Solver(object):
         Returns:
             The final new variable's index (0-based counting).
         """
-        self._model_array = None   # invalidate; to be recreated when needed next
+        self._buf_storage = None   # invalidate; to be recreated when needed next
         pol_int = self.polarity_map[polarity]
         return self.lib.newVars(self.s, n, pol_int, dvar)
 
@@ -293,7 +304,7 @@ class Solver(object):
         '''Call Solver.simplify().'''
         return self.lib.simplify(self.s)
 
-    def get_model(self, start: int = 0, end: int = -1) -> array.array:
+    def get_model(self, start: int = 0, end: int = -1) -> array[int]:
         """Get the current model from the solver, optionally retrieving only a slice.
 
         Args:
@@ -307,12 +318,11 @@ class Solver(object):
         """
         if end == -1:
             end = self.nvars()
-        a = array.array('i', [-1] * (end-start))
-        a_ptr, size = self._to_intptr(a)
+        a_ptr, _ = self._buf_ptr
         self.lib.fillModel(self.s, a_ptr, start, end)
-        return a
+        return self._buf[:end-start]
 
-    def get_model_trues(self, start: int = 0, end: int = -1, offset: int = 0) -> array.array:
+    def get_model_trues(self, start: int = 0, end: int = -1, offset: int = 0) -> array[int]:
         """Get variables assigned true in the current model from the solver.
 
         Args:
@@ -326,18 +336,13 @@ class Solver(object):
             An array of true variables in the solver's current model.  If a
             start index was given, the variables are indexed from that value.
             """
-        if self._model_array is None:
-            # pre-allocate a buffer for all variables that will be reused as long as nvars doesn't change
-            self._model_array = array.array('i', [-1] * self.nvars())
-
-        a_ptr, size = self._to_intptr(self._model_array)
+        a_ptr, _ = self._buf_ptr
 
         if end == -1:
             end = self.nvars()
 
         count = self.lib.getModelTrues(self.s, a_ptr, start, end, offset)
-        # reduce the array down to just the valid indexes
-        return self._model_array[:count]
+        return self._buf[:count]
 
     def block_model(self) -> None:
         """Block the current model from the solver."""
@@ -348,7 +353,7 @@ class Solver(object):
         '''Get the value of a given variable in the current model.'''
         return self.lib.modelValue(self.s, i)
 
-    def implies(self, assumptions: Optional[Sequence[int]] = None) -> array.array:
+    def implies(self, assumptions: Optional[Sequence[int]] = None) -> array[int]:
         """Get literals known to be implied by the current formula.  (I.e., all
         assignments made at level 0.)
 
@@ -361,8 +366,7 @@ class Solver(object):
             An array of literals implied by the current formula (and optionally
             the given assumptions).
         """
-        res = array.array('i', [-1] * self.nvars())
-        res_ptr, _ = self._to_intptr(res)
+        res_ptr, _ = self._buf_ptr
 
         if assumptions is None:
             count = self.lib.getImplies(self.s, res_ptr)
@@ -371,8 +375,7 @@ class Solver(object):
             assumps_ptr, assumps_size = self._to_intptr(assumps)
             count = self.lib.getImplies_assumptions(self.s, res_ptr, assumps_ptr, assumps_size)
 
-        # reduce the array down to just the valid indexes
-        return res[:count]
+        return self._buf[:count]
 
     def get_stats(self) -> dict[str, int]:
         """Returns a dictionary of solver statistics."""
@@ -435,13 +438,13 @@ class SubsetMixin(Solver):
             raise Exception("SubsetSolver.set_varcounts() must be called before .solve_subset()")
 
         offset = self._origvars + 1
-        assumptions = array.array('i', [i+offset for i in subset])
+        assumptions = array('i', [i+offset for i in subset])
         if extra_assumps:
             assumptions.extend(extra_assumps)
         a_ptr, size = self._to_intptr(assumptions)
         return self.lib.solve_assumptions(self.s, size, a_ptr)
 
-    def unsat_core(self, offset: int = 0) -> array.array:
+    def unsat_core(self, offset: int = 0) -> array[int]:
         """Get an UNSAT core from the last check performed by
         `solve_subset()`.  Assumes the last such check was UNSAT.
 
@@ -456,12 +459,12 @@ class SubsetMixin(Solver):
         if self._origvars is None:
             raise Exception("SubsetSolver.set_varcounts() must be called (and at least one instrumented constraint added) before .unsat_core()")
         conflict_size = self.lib.conflictSize(self.s)
-        a = array.array('i', [-1] * conflict_size)
+        a = array('i', [-1] * conflict_size)
         a_ptr, size = self._to_intptr(a)
         self.lib.unsatCore(self.s, self._origvars, a_ptr, offset)
         return a
 
-    def sat_subset(self, offset: int = 0) -> array.array:
+    def sat_subset(self, offset: int = 0) -> array[int]:
         """Get the set of clauses satisfied in the last check performed by
         `solve_subset()`.  Assumes the last such check was SAT.  This may
         contain additional soft constraints not in the subset that was given to
