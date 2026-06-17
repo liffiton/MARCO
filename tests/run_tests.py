@@ -10,6 +10,7 @@ import json
 import math
 import os
 import re
+import shutil
 import sys
 import subprocess
 import tempfile
@@ -27,10 +28,10 @@ verbose = False
 
 
 # Build all tests to be run
-def makeTests(testname):
+def makeTests(config, testname):
     tests = []
 
-    for job in testconfig.jobs:
+    for job in config['jobs']:
         if testname is None:
             if job['default'] is False:
                 continue
@@ -50,7 +51,7 @@ def makeTests(testname):
             os.makedirs(outdir)
 
         for flag in flags:
-            cmdarray = testconfig.cmd_array + flags_all.split() + flag.split()
+            cmdarray = config['cmd_array'] + flags_all.split() + flag.split()
 
             for infile in files:
                 if infile in exclude:
@@ -108,7 +109,7 @@ def runTest(cmd, outfile, errfile, pid, out_filter=None):
     with open(tmpout, 'w') as f_out, open(tmperr, 'w') as f_err:
         try:
             start_time = time.time()  # time() for wall-clock time
-            ret = subprocess.call(cmd, stdout=f_out, stderr=f_err)
+            ret = subprocess.run(cmd, stdout=f_out, stderr=f_err).returncode
             runtime = time.time() - start_time
         except KeyboardInterrupt:
             os.remove(tmpout)
@@ -193,14 +194,14 @@ def checkFiles(file1, file2, out_filter=None):
 def viewdiff(f1, f2):
     choice = input("  View diff? (T for terminal, V for vimdiff, S for sorted vimdiff, other for no) ")
     if choice.lower() == 'v':
-        subprocess.call(["vimdiff", f1, f2])
+        subprocess.run(["vimdiff", f1, f2])
     elif choice.lower() == 't':
-        subprocess.call(["diff", f1, f2])
+        subprocess.run(["diff", f1, f2])
     elif choice.lower() == 's':
         with tempfile.NamedTemporaryFile('wb') as tmp1, tempfile.NamedTemporaryFile('wb') as tmp2:
-            subprocess.call(["sort", f1], stdout=tmp1)
-            subprocess.call(["sort", f2], stdout=tmp2)
-            subprocess.call(["vimdiff", tmp1.name, tmp2.name])
+            subprocess.run(["sort", f1], stdout=tmp1)
+            subprocess.run(["sort", f2], stdout=tmp2)
+            subprocess.run(["vimdiff", tmp1.name, tmp2.name])
 
 
 def updateout(outfile, newoutput):
@@ -231,9 +232,10 @@ class Progress:
         self.do_print = do_print
 
         if self.do_print:
-            # get size of terminal (thanks: stackoverflow.com/questions/566746/)
-            self.rows, self.cols = os.popen('stty size', 'r').read().split()
-            self.cols = int(self.cols)
+            # get size of terminal
+            size = shutil.get_terminal_size()
+            self.cols = size.columns
+            self.rows = size.lines
 
             # figure size of printed area
             self.printrows = int(math.ceil(float(numTests) / (self.cols-2)))
@@ -378,8 +380,11 @@ def main():
         #  can have issues with output file clashes.)
         num_procs = 1
 
+    # build config (runs once in main process)
+    config = testconfig.build_config()
+
     # build the tests
-    jobs = makeTests(testname)
+    jobs = makeTests(config, testname)
     numTests = len(jobs)
     # sort by times, if we have them
     jobs = td.sort_by_time(jobs)
