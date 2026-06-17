@@ -4,7 +4,8 @@ import threading
 
 
 class MarcoPolo(object):
-    def __init__(self, csolver, msolver, stats, config, pipe=None):
+    def __init__(self, proc_id, csolver, msolver, stats, config, queue_in=None):
+        self.proc_id = proc_id
         self.subs = csolver
         self.map = msolver
         self.seeds = SeedManager(msolver, stats, config)
@@ -14,16 +15,16 @@ class MarcoPolo(object):
         self.n = self.map.n   # number of constraints
         self.got_top = False  # track whether we've explored the complete set (top of the lattice)
 
-        self.pipe = pipe
-        # if a pipe is provided, use it to receive results from other enumerators
-        if self.pipe:
+        self.queue_in = queue_in
+        # if a queue is provided, use it to receive results from other enumerators
+        if self.queue_in:
             self.recv_thread = threading.Thread(target=self.receive_thread)
             self.recv_thread.start()
 
     def receive_thread(self):
-        while self.pipe.poll(None):
+        while True:
+            res = self.queue_in.get()
             with self.stats.time('receive'):
-                res = self.pipe.recv()
                 if res == 'terminate':
                     # exit process on terminate message
                     os._exit(0)
@@ -36,9 +37,9 @@ class MarcoPolo(object):
                     continue
 
                 if res[0] == 'S':
-                    self.map.block_down(res[1])
+                    self.map.block_down(res[2])
                 elif res[0] == 'U':
-                    self.map.block_up(res[1])
+                    self.map.block_up(res[2])
                 else:
                     assert False
 
@@ -85,7 +86,7 @@ class MarcoPolo(object):
                         print("- Grow() -> MSS")
 
                 with self.stats.time('block'):
-                    res = ("S", MSS)
+                    res = ("S", self.proc_id, MSS)
                     yield res
 
                     try:
@@ -120,7 +121,7 @@ class MarcoPolo(object):
                         print("- Shrink() -> MUS")
 
                 with self.stats.time('block'):
-                    res = ("U", MUS)
+                    res = ("U", self.proc_id, MUS)
                     yield res
 
                     try:
@@ -133,9 +134,8 @@ class MarcoPolo(object):
                 if self.config['verbose']:
                     print("- MUS blocked.")
 
-        if self.pipe:
-            self.pipe.send(('complete', self.stats))
-            self.recv_thread.join()
+        if self.queue_in:
+            yield ('complete', self.proc_id, self.stats)
 
 
 class SeedManager(object):

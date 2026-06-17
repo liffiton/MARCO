@@ -249,7 +249,7 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
             # Run MUSer
             self._proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             out, err = self._proc.communicate()
-            del self._proc  # clear it when we're done (so cleanup won't try to kill it)
+            self._proc = None  # clear it when we're done (so cleanup won't try to kill it)
 
             out = out.decode()
 

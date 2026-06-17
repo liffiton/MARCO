@@ -7,7 +7,8 @@ from ..pyminisolvers import minisolvers
 
 
 class MCSEnumerator(object):
-    def __init__(self, csolver, stats, config, pipe=None):
+    def __init__(self, proc_id, csolver, stats, config, queue_in=None):
+        self.proc_id = proc_id
         self.solver = csolver.s
         self.clauses = []
         self.blk_downs = []
@@ -25,17 +26,17 @@ class MCSEnumerator(object):
         if not hasattr(self.groups, 'items'):
             self.groups.items = self.groups.iteritems
 
-        self.pipe = pipe
-        # if a pipe is provided, use it to receive results from other enumerators
-        if self.pipe:
+        self.queue_in = queue_in  # data coming in from the parent process
+        # if a queue is provided, use it to receive results from other enumerators
+        if self.queue_in:
             self.incoming_queue = queue.Queue()
             self.recv_thread = threading.Thread(target=self.receive_thread)
             self.recv_thread.start()
 
     def receive_thread(self):
-        while self.pipe.poll(None):
+        while True:
+            res = self.queue_in.get()
             with self.stats.time('receive'):
-                res = self.pipe.recv()
                 if res == 'terminate':
                     # exit process on terminate message
                     os._exit(0)
@@ -47,20 +48,20 @@ class MCSEnumerator(object):
 
     def add_received(self, add_to_instrumented=False):
         while not self.incoming_queue.empty():
-            rec = self.incoming_queue.get()
-            if rec[0] == 'S':
-                self.blk_downs.append(rec[1])
-                self.block_down(self.solver, rec[1])
+            msg, _, data = self.incoming_queue.get()
+            if msg == 'S':
+                self.blk_downs.append(data)
+                self.block_down(self.solver, data)
                 if add_to_instrumented:
-                    self.block_down(self.instrumented_solver, rec[1])
-            if rec[0] == 'U':
-                self.blk_ups.append(rec[1])
-                self.block_up(self.solver, rec[1])
+                    self.block_down(self.instrumented_solver, data)
+            if msg == 'U':
+                self.blk_ups.append(data)
+                self.block_up(self.solver, data)
                 if add_to_instrumented:
-                    self.block_up(self.instrumented_solver, rec[1])
+                    self.block_up(self.instrumented_solver, data)
 
     def check_sat(self, solver, assumps=None):
-        if self.pipe:
+        if self.queue_in:
             # Update blocking clauses as close as possible to calling solve()
             self.add_received(add_to_instrumented=(solver == self.instrumented_solver))
 
@@ -125,7 +126,7 @@ class MCSEnumerator(object):
             instrumented = [(i+self.nvars) for i in self.complement(included)]
             while self.check_sat(self.instrumented_solver, instrumented):
                 MSS = self.get_MSS()
-                res = ("S", MSS)
+                res = ("S", self.proc_id, MSS)
                 yield res
 
                 MCS = self.complement(MSS)
@@ -135,7 +136,5 @@ class MCSEnumerator(object):
             included.update(self.instrumented_solver.unsat_core(offset=1))
             k += 1
 
-        if self.pipe:
-            self.pipe.send(('done', self.stats))
-            # wait for receive thread to finish processing any incoming data until our "done" is acknowledged by the parent
-            self.recv_thread.join()
+        if self.queue_in:
+            yield ('done', self.proc_id, self.stats)

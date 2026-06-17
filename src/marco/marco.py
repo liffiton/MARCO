@@ -1,12 +1,11 @@
 import argparse
 import atexit
 import copy
-import multiprocessing
 import os
-import select
 import signal
 import sys
 import threading
+from multiprocessing import Process, Queue, active_children, cpu_count
 
 from . import utils
 from . import mapsolvers
@@ -26,7 +25,7 @@ def default_parallel_config(threads=None, bias=None):
     be MUS biased, with one MCS biased only if the thread count is 4 or higher.
     '''
     if threads is None:
-        num_procs = multiprocessing.cpu_count()
+        num_procs = cpu_count()
         threads = max(1, num_procs // 2)
 
     if bias is not None:
@@ -219,7 +218,7 @@ def setup_execution(args, stats, mainpid):
         atexit.register(at_exit, stats)
 
 
-def setup_parallel(args, stats):
+def setup_parallel(args, stats) -> tuple[Queue, list[Queue], list[Process]]:
 
     argslist = []
 
@@ -238,13 +237,12 @@ def setup_parallel(args, stats):
     else:
         argslist.append(args)
 
-    pipes = []
+    queue_in = Queue()
+    queue_in.cancel_join_thread()  # allow process exit even when buffered items remain
+    queues_out = []
     procs = []
 
     for i, args in enumerate(argslist):
-        pipe, child_pipe = multiprocessing.Pipe()
-        pipes.append(pipe)
-
         # TODO: Handle randomization with non-homogeneous thread modes
         if not args.all_randomized and i == 0:
             # don't randomize the first thread in this case
@@ -252,10 +250,17 @@ def setup_parallel(args, stats):
         else:
             seed = i+1
 
-        proc = multiprocessing.Process(target=run_enumerator, args=(stats, args, child_pipe, seed))
+        child_queue = Queue()
+        child_queue.cancel_join_thread()  # allow process exit even when buffered items remain
+        queues_out.append(child_queue)
+        proc = Process(
+            target=run_enumerator,
+            args=(i, stats, args, child_queue, queue_in, seed),
+            #daemon=True,
+        )
         procs.append(proc)
 
-    return pipes, procs
+    return queue_in, queues_out, procs
 
 
 def setup_csolver(args, seed, n_only=False):
@@ -337,7 +342,7 @@ def get_config(args):
     return config
 
 
-def run_enumerator(stats, args, pipe, seed=None):
+def run_enumerator(child_id, stats, args, child_queue, queue_in, seed=None):
     # Register interrupt handler to cleanly exit if receiving SIGTERM
     # (probably from parent process)
     def handler(signum, frame):  # pylint: disable=unused-argument
@@ -348,15 +353,15 @@ def run_enumerator(stats, args, pipe, seed=None):
     config = get_config(args)
 
     if args.mcs_only:
-        enumerator = MCSEnumerator(csolver, stats, config, pipe)
+        enumerator = MCSEnumerator(child_id, csolver, stats, config, child_queue)
     else:
-        enumerator = MarcoPolo(csolver, msolver, stats, config, pipe)
+        enumerator = MarcoPolo(child_id, csolver, msolver, stats, config, child_queue)
 
     # enumerate results in a separate thread so signal handling works while in C code
     # ref: https://thisismiller.github.io/blog/CPython-Signal-Handling/
     def enumerate():
         for result in enumerator.enumerate():
-            pipe.send(result)
+            queue_in.put(result)
 
     enumthread = threading.Thread(target=enumerate)
     enumthread.daemon = True  # required so signal handler exit will end enumeration thread
@@ -364,9 +369,8 @@ def run_enumerator(stats, args, pipe, seed=None):
     enumthread.join()
 
 
-def run_master(stats, args, pipes):
+def run_master(stats, args, queue_in, queues_out, *, is_parallel: bool):
     csolver = setup_csolver(args, seed=None, n_only=True)  # just parse enough to get n (#constraints)
-    is_parallel = len(pipes) > 1
 
     if is_parallel:
         # for filtering duplicate results (found near-simultaneously by 2+ children)
@@ -378,107 +382,94 @@ def run_master(stats, args, pipes):
 
     remaining = args.limit
 
-    while multiprocessing.active_children() and pipes:
-        ready, _, _ = select.select(pipes, [], [])
+    while active_children():
+        # get a result
+        result = queue_in.get()
+        msg, child_id, data = result
         with stats.time('hubcomms'):
-            for receiver in ready:
-                while receiver.poll():
-                    try:
-                        # get a result
-                        result = receiver.recv()
-                    except EOFError:
-                        # Sometimes a closed pipe will still trigger ready and .poll(),
-                        # but it then throws an EOFError on .recv().  Handle that here.
-                        pipes.remove(receiver)
-                        break
+            if msg == 'done':
+                # "done" indicates the child process has finished its work,
+                # but enumeration may not be complete (if the child was only
+                # enumerating MCSes, e.g.)
+                if args.verbose > 1:
+                    print(f"Child ({child_id}) sent 'done'.")
 
-                    if result[0] == 'done':
-                        # "done" indicates the child process has finished its work,
-                        # but enumeration may not be complete (if the child was only
-                        # enumerating MCSes, e.g.)
-                        if args.verbose > 1:
-                            print("Child (%s) sent 'done'." % receiver)
-                        # Terminate the child process.
-                        receiver.send('terminate')
-                        # Remove it from the list of active pipes
-                        pipes.remove(receiver)
+            elif msg == 'complete':
+                # "complete" indicates the child process has completed enumeration,
+                # with everything blocked.  Everything can be stopped at this point.
+                if args.verbose > 1:
+                    print(f"Child ({child_id}) sent 'complete'.")
 
-                    elif result[0] == 'complete':
-                        # "complete" indicates the child process has completed enumeration,
-                        # with everything blocked.  Everything can be stopped at this point.
-                        if args.verbose > 1:
-                            print("Child (%s) sent 'complete'." % receiver)
+                # TODO: print children's results, but differentiate somehow...
+                #if args.stats:
+                #    # Print received stats
+                #    at_exit(result[2])
 
-                        # TODO: print children's results, but differentiate somehow...
-                        #if args.stats:
-                        #    # Print received stats
-                        #    at_exit(result[1])
+                # End / cleanup all children
+                for queue in queues_out:
+                    queue.put('terminate')
 
+                return
+
+            else:
+                assert msg in ['U', 'S']
+
+                if is_parallel:
+                    # filter out duplicate / spurious results
+                    with stats.time('msolver'):
+                        if not msolver.check_seed(data):
+                            if args.verbose > 1:
+                                print(f"Child ({child_id}) sent duplicate (len: {len(data)})")
+                            if msg == 'U':
+                                stats.increment_counter("duplicate MUS")
+                            else:
+                                stats.increment_counter("duplicate MSS")
+
+                            # already found/reported/explored
+                            continue
+
+                    with stats.time('msolver_block'):
+                        if msg == 'U':
+                            msolver.block_up(data)
+                        else:
+                            msolver.block_down(data)
+
+                    # Old way to check duplicates:
+                    #res_set = frozenset(data)
+                    #res_set = ",".join(str(x) for x in data)
+                    #if res_set in results:
+                    #    continue
+                    #
+                    #results.add(res_set)
+
+                yield result, csolver.n
+
+                if remaining:
+                    remaining -= 1
+                    if remaining == 0:
+                        sys.stderr.write("Result limit reached.\n")
                         # End / cleanup all children
-                        for pipe in pipes:
-                            pipe.send('terminate')
+                        for queue in queues_out:
+                            queue.put('terminate')
 
                         return
 
-                    else:
-                        assert result[0] in ['U', 'S']
-
-                        if is_parallel:
-                            # filter out duplicate / spurious results
-                            with stats.time('msolver'):
-                                if not msolver.check_seed(result[1]):
-                                    if args.verbose > 1:
-                                        print("Child (%s) sent duplicate (len: %d)" % (receiver, len(result[1])))
-                                    if result[0] == 'U':
-                                        stats.increment_counter("duplicate MUS")
-                                    else:
-                                        stats.increment_counter("duplicate MSS")
-
-                                    # already found/reported/explored
-                                    continue
-
-                            with stats.time('msolver_block'):
-                                if result[0] == 'U':
-                                    msolver.block_up(result[1])
-                                elif result[0] == 'S':
-                                    msolver.block_down(result[1])
-
-                            # Old way to check duplicates:
-                            #res_set = frozenset(result[1])
-                            #res_set = ",".join(str(x) for x in result[1])
-                            #if res_set in results:
-                            #    continue
-                            #
-                            #results.add(res_set)
-
-                        yield result, csolver.n
-
-                        if remaining:
-                            remaining -= 1
-                            if remaining == 0:
-                                sys.stderr.write("Result limit reached.\n")
-                                # End / cleanup all children
-                                for pipe in pipes:
-                                    pipe.send('terminate')
-
-                                return
-
-                        if not args.comms_disable:
-                            # send it to all children *other* than the one we got it from
-                            for other in pipes:
-                                if other != receiver:
-                                    other.send(result)
+                if not args.comms_disable:
+                    # send it to all children *other* than the one we got it from
+                    for i, queue in enumerate(queues_out):
+                        if i != child_id:
+                            queue.put(result)
 
 
 def print_result(result, args, stats, num_constraints):
     if result[0] == 'S' and args.print_mcses:
         # MCS = the complement of the MSS relative to the full set of constraints
-        result = ('C', set(range(1, num_constraints+1)).difference(result[1]))
+        result = ('C', set(range(1, num_constraints+1)).difference(result[2]))
     output = result[0]
     if args.alltimes:
         output = "%s %0.3f" % (output, stats.total_time())
     if args.verbose:
-        output = "%s %s" % (output, " ".join([str(x) for x in result[1]]))
+        output = "%s %s" % (output, " ".join([str(x) for x in result[2]]))
 
     return output
 
@@ -503,7 +494,7 @@ def enumerate_with_args(args, print_results=False):
     with stats.time('setup'):
         check_args(args)
         setup_execution(args, stats, os.getpid())
-        pipes, procs = setup_parallel(args, stats)
+        queue_in, queues_out, procs = setup_parallel(args, stats)
 
     # useful for timing just the parsing / setup
     if args.limit == 0:
@@ -512,7 +503,7 @@ def enumerate_with_args(args, print_results=False):
     for proc in procs:
         proc.start()
 
-    for result, n in run_master(stats, args, pipes):
+    for result, n in run_master(stats, args, queue_in, queues_out, is_parallel=len(procs) > 1):
         try:
             if print_results:
                 yield print_result(result, args, stats, n)
@@ -521,7 +512,7 @@ def enumerate_with_args(args, print_results=False):
         except GeneratorExit:
             # Handle a .close() call on the generator
             for proc in procs:
-                proc.terminate()
+                proc.kill()
             return
 
 
