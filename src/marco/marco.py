@@ -7,11 +7,9 @@ import sys
 import threading
 from multiprocessing import Process, Queue, active_children, cpu_count
 
-from . import utils
-from . import mapsolvers
-from . import CNFsolvers
-from .MCSEnumerator import MCSEnumerator
+from . import CNFsolvers, mapsolvers, utils
 from .MarcoPolo import MarcoPolo
+from .MCSEnumerator import MCSEnumerator
 
 
 def default_parallel_config(threads=None, bias=None):
@@ -82,7 +80,7 @@ def parse_args(args_list=None):
                         help="for every satisfiable subset found, print the constraints in its complementary MCS instead of the MSS.")
 
     # Parallelization arguments
-    par_group = parser.add_argument_group('Parallelization options', "Configure parallel MARCOs execution.  By default, it will run in parallel in a configuration that should work well on most systems, using #CPUs/2 threads and a mix of MUS and MCS bias.  On *this* system, that default is equivalent to --parallel %s.  You can override that default and control the parallelization using the following options." % default_parallel_config())
+    par_group = parser.add_argument_group('Parallelization options', f"Configure parallel MARCOs execution.  By default, it will run in parallel in a configuration that should work well on most systems, using #CPUs/2 threads and a mix of MUS and MCS bias.  On *this* system, that default is equivalent to --parallel {default_parallel_config()}.  You can override that default and control the parallelization using the following options.")
 
     par_types_group = par_group.add_mutually_exclusive_group()
     par_types_group.add_argument('--threads', type=int, default=None,
@@ -142,7 +140,7 @@ def check_args(args):
 
     if not (args.smt or args.cnf or args.inputfile.name.endswith(('.cnf', '.cnf.gz', '.gcnf', '.gcnf.gz', '.smt2'))):
         error_exit(
-            "Cannot determine filetype (cnf or smt) of input: %s" % args.inputfile.name,
+            f"Cannot determine filetype (cnf or smt) of input: {args.inputfile.name}",
             "Please provide --cnf or --smt option, or --help to see all options."
         )
 
@@ -173,11 +171,11 @@ def at_exit(stats):
 
 
 def error_exit(error, details=None, exception=None):
-    sys.stderr.write("[31;1mERROR:[m %s\n" % error)
+    sys.stderr.write(f"\x1b[31;1mERROR:\x1b[m {error}\n")
     if details is not None:
-        sys.stderr.write("[33m%s[m\n" % details)
+        sys.stderr.write(f"\x1b[33m{details}\x1b[m\n")
     if exception is not None:
-        sys.stderr.write("\n%s\n" % str(exception))
+        sys.stderr.write(f"\n{exception!s}\n")
     sys.exit(1)
 
 
@@ -232,7 +230,7 @@ def setup_parallel(args, stats) -> tuple[Queue, list[Queue], list[Process]]:
             elif mode == 'MCSonly':
                 newargs.mcs_only = True
             else:
-                error_exit("Invalid parallel mode: %s" % mode)
+                error_exit(f"Invalid parallel mode: {mode}")
             argslist.append(newargs)
     else:
         argslist.append(args)
@@ -282,7 +280,7 @@ def setup_csolver(args, seed, n_only=False):
             csolver = solverclass(filename, seed, n_only, **extra_args)
         except utils.ExecutableException as e:
             error_exit("Unable to use MUSer2 for MUS extraction.", "Use --force-minisat to use Minisat instead (NOTE: it will be much slower.)", e)
-        except (IOError, OSError) as e:
+        except OSError as e:
             error_exit("Unable to load pyminisolvers library.", "Run 'make -C src/pyminisolvers' to compile the library.", e)
 
     elif args.smt or filename.endswith('.smt2'):
@@ -467,9 +465,9 @@ def print_result(result, args, stats, num_constraints):
         result = ('C', set(range(1, num_constraints+1)).difference(result[2]))
     output = result[0]
     if args.alltimes:
-        output = "%s %0.3f" % (output, stats.total_time())
+        output = f"{output} {stats.total_time():0.3f}"
     if args.verbose:
-        output = "%s %s" % (output, " ".join([str(x) for x in result[2]]))
+        output = "{} {}".format(output, " ".join([str(x) for x in result[2]]))
 
     return output
 

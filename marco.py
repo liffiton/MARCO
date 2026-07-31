@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from src.marco.marco import parse_args, enumerate_with_args
+from src.marco.marco import enumerate_with_args, parse_args
 
 
 def main():

@@ -3,7 +3,7 @@ import queue
 import threading
 
 
-class MarcoPolo(object):
+class MarcoPolo:
     def __init__(self, proc_id, csolver, msolver, stats, config, queue_in=None):
         self.proc_id = proc_id
         self.subs = csolver
@@ -46,10 +46,10 @@ class MarcoPolo(object):
     def record_delta(self, name, oldlen, newlen, up):
         if up:
             assert newlen >= oldlen
-            self.stats.add_stat("delta.%s.up" % name, float(newlen - oldlen) / self.n)
+            self.stats.add_stat(f"delta.{name}.up", float(newlen - oldlen) / self.n)
         else:
             assert newlen <= oldlen
-            self.stats.add_stat("delta.%s.down" % name, float(oldlen - newlen) / self.n)
+            self.stats.add_stat(f"delta.{name}.down", float(oldlen - newlen) / self.n)
 
     def enumerate(self):
         '''MUS/MCS enumeration with all the bells and whistles...'''
@@ -57,7 +57,7 @@ class MarcoPolo(object):
         for seed, known_max in self.seeds:
 
             if self.config['verbose']:
-                print("- Initial seed: %s" % " ".join([str(x) for x in seed]))
+                print("- Initial seed: {}".format(" ".join([str(x) for x in seed])))
 
             with self.stats.time('check'):
                 # subset check may improve upon seed w/ unsat_core or sat_subset
@@ -67,11 +67,11 @@ class MarcoPolo(object):
                 known_max = (known_max and (seed_is_sat == self.bias_high))
 
             if self.config['verbose']:
-                print("- Seed is %s." % {True: "SAT", False: "UNSAT"}[seed_is_sat])
+                print("- Seed is {}.".format({True: "SAT", False: "UNSAT"}[seed_is_sat]))
                 if known_max:
                     print("- Seed is known to be optimal.")
                 else:
-                    print("- Seed improved by check: %s" % " ".join([str(x) for x in seed]))
+                    print("- Seed improved by check: {}".format(" ".join([str(x) for x in seed])))
 
             if seed_is_sat:
                 if known_max:
@@ -138,7 +138,7 @@ class MarcoPolo(object):
             yield ('complete', self.proc_id, self.stats)
 
 
-class SeedManager(object):
+class SeedManager:
     def __init__(self, msolver, stats, config):
         self.map = msolver
         self.stats = stats

@@ -1,14 +1,14 @@
 """Utility class(es) for marco_py"""
-from collections import Counter, defaultdict
 import os
 import subprocess
 import threading
-import types
 
 # Three options for measuring time: choose one.
 # TODO: Consider using time.process_time() (only in 3.3, though)
-
 import time
+import types
+from collections import Counter, defaultdict
+
 _get_time = time.time   # wall-time
 
 # time.clock() is not portable - behaves differently per OS
@@ -63,7 +63,7 @@ def check_executable(name, exepath):
         Raises an ExecutableException if either condition is not met.
     '''
     if not os.path.isfile(exepath):
-        raise ExecutableException("{0} binary not found at {1}".format(name, exepath))
+        raise ExecutableException(f"{name} binary not found at {exepath}")
     try:
         # a bit of a hack to check whether we can really run it
         DEVNULL = open(os.devnull, 'wb')
@@ -71,10 +71,10 @@ def check_executable(name, exepath):
         p.kill()
         p.wait()
     except OSError:
-        raise ExecutableException("{0} binary {1} is not executable.\nIt may be compiled for a different platform.".format(name, exepath))
+        raise ExecutableException(f"{name} binary {exepath} is not executable.\nIt may be compiled for a different platform.")
 
 
-class Statistics(object):
+class Statistics:
     """
     >>> import time   # for time.sleep() in below examples
     >>> s = Statistics()
@@ -125,7 +125,7 @@ class Statistics(object):
         return self.TimerContext(self, category)
 
     # Context manager class for time() method
-    class TimerContext(object):
+    class TimerContext:
         def __init__(self, stats, category):
             self._stats = stats
             self._category = category

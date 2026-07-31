@@ -15,7 +15,7 @@ def read_dimacs(filename):
     formula = []
     with open(filename) as f:
         for line in f:
-            if line.startswith('c') or line.startswith('p'):
+            if line.startswith(('c', 'p')):
                 continue
             clause = [int(x) for x in line.split()[:-1]]
             formula.append( Or(dimacs_var(i) for i in clause) )
@@ -30,7 +30,7 @@ def read_smt2(filename):
         return formula
 
 
-class Z3SubsetSolver(object):
+class Z3SubsetSolver:
     c_prefix = "!marco"  # to differentiate our vars from instance vars
 
     constraints = []
@@ -94,7 +94,9 @@ class Z3SubsetSolver(object):
         core = self.s.unsat_core()
         return [self.idcache[self.get_id(x)] for x in core]
 
-    def shrink(self, seed, hard=[]):
+    def shrink(self, seed, hard=None):
+        if hard is None:
+            hard = []
         current = set(seed)
         for i in seed:
             if i not in current or i in hard:

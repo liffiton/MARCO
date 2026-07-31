@@ -4,7 +4,7 @@ import array
 from ..pyminisolvers import minisolvers
 
 
-class MapSolver(object):
+class MapSolver:
     """The abstract base class for any MapSolver, implementing common utility functions."""
     __metaclass__ = abc.ABCMeta
 
@@ -130,7 +130,7 @@ class MapSolver(object):
 
 class MinicardMapSolver(MapSolver):
     def __init__(self, n, bias=True, rand_seed=None):   # bias=True is a high/inclusion/MUS bias; False is a low/exclusion/MSS bias.
-        super(MinicardMapSolver, self).__init__(n, bias)
+        super().__init__(n, bias)
 
         if bias:
             self.k = n  # initial lower bound on # of True variables
@@ -223,7 +223,7 @@ class MinicardMapSolver(MapSolver):
 
 class MinisatMapSolver(MapSolver):
     def __init__(self, n, bias=True, rand_seed=None, dump=None):   # bias=True is a high/inclusion/MUS bias; False is a low/exclusion/MSS bias; None is no bias.
-        super(MinisatMapSolver, self).__init__(n, bias, dump)
+        super().__init__(n, bias, dump)
 
         self._solver = minisolvers.MinisatSolver()
 

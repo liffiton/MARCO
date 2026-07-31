@@ -23,7 +23,7 @@ def build_config():
     ret = subprocess.call(cmd_array + ['--check-muser'])
     if ret > 0:
         print("\x1b[33m  Adding '--force-minisat' flag to all runs.\x1b[m")
-        print("")
+        print()
         common_flags += ' --force-minisat'
         muser_available = False
     else:
@@ -40,7 +40,7 @@ def build_config():
         reg_files.extend(glob.glob('*.smt2'))
     except ImportError:
         print("Unable to import z3 module.\n\x1b[33m  Skipping SMT tests.\x1b[m")
-        print("")
+        print()
 
     rnd3sat_files = glob.glob('3sat_n10/*.cnf')
 

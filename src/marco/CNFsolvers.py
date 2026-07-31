@@ -7,11 +7,11 @@ import re
 import subprocess
 import tempfile
 
-from . import utils
 from ..pyminisolvers import minisolvers
+from . import utils
 
 
-class MinisatSubsetSolver(object):
+class MinisatSubsetSolver:
     def __init__(self, filename, rand_seed=None, n_only=False, store_dimacs=False):
         self.s = minisolvers.MinisatSubsetSolver()
 
@@ -233,7 +233,7 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
         if not self._msolver.check_seed(seed):
             return None
 
-        hard = set(x for x in self._msolver.implies() if x > 0)
+        hard = {x for x in self._msolver.implies() if x > 0}
 
         # MUSer doesn't like a formula with only hard constraints,
         # and it's a waste of time to call MUSer at all on it anyway.
@@ -248,7 +248,7 @@ class MUSerSubsetSolver(MinisatSubsetSolver):
 
             # Run MUSer
             self._proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            out, err = self._proc.communicate()
+            out, _err = self._proc.communicate()
             self._proc = None  # clear it when we're done (so cleanup won't try to kill it)
 
             out = out.decode()
@@ -284,7 +284,7 @@ class ImprovedImpliesSubsetSolver(MinisatSubsetSolver):
 
         if self._known_MSS > 0:
             implications = self._msolver.implies(-x for x in self.complement(current))
-            hard = set(x for x in implications if x > 0)
+            hard = {x for x in implications if x > 0}
         else:
             hard = set()
 
@@ -299,7 +299,7 @@ class ImprovedImpliesSubsetSolver(MinisatSubsetSolver):
                 current = set(self.s.unsat_core(offset=1))
                 if self._known_MSS > 0:
                     implications = self._msolver.implies(-x for x in self.complement(current))
-                    hard = set(x for x in implications if x > 0)
+                    hard = {x for x in implications if x > 0}
 
         return current
 
@@ -308,7 +308,7 @@ class ImprovedImpliesSubsetSolver(MinisatSubsetSolver):
 
         if self._known_MUS > 0:
             implications = self._msolver.implies(current)
-            dont_add = set(x for x in implications if x < 0)
+            dont_add = {x for x in implications if x < 0}
         else:
             dont_add = set()
 
@@ -323,6 +323,6 @@ class ImprovedImpliesSubsetSolver(MinisatSubsetSolver):
                 current = set(self.s.sat_subset(offset=1))
                 if self._known_MUS > 0:
                     implications = self._msolver.implies(current)
-                    dont_add = set(x for x in implications if x < 0)
+                    dont_add = {x for x in implications if x < 0}
 
         return current

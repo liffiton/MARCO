@@ -6,7 +6,7 @@ import threading
 from ..pyminisolvers import minisolvers
 
 
-class MCSEnumerator(object):
+class MCSEnumerator:
     def __init__(self, proc_id, csolver, stats, config, queue_in=None):
         self.proc_id = proc_id
         self.solver = csolver.s

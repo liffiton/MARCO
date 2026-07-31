@@ -11,13 +11,13 @@ import math
 import os
 import re
 import shutil
-import sys
 import subprocess
+import sys
 import tempfile
 import time
 from collections import defaultdict
-from queue import Empty
 from multiprocessing import Process, Queue, cpu_count
+from queue import Empty
 
 # pull in configuration from testconfig.py
 import testconfig
@@ -100,11 +100,11 @@ def runTest(cmd, outfile, errfile, pid, out_filter=None):
         tmperr = errfile + str(pid)
         if not os.path.exists(outfile):
             if verbose:
-                print("\n[33mKnown-good output does not exist:[0m %s\nPlease run in '[34;1mregenerate[0m' mode first." % outfile)
+                print(f"\n\x1b[33mKnown-good output does not exist:\x1b[0m {outfile}\nPlease run in '\x1b[34;1mregenerate\x1b[0m' mode first.")
             return 'missing output', None
 
     if verbose:
-        print("\n[34;1mRunning test:[0m %s > %s 2> %s" % (" ".join(cmd), tmpout, tmperr))
+        print("\n\x1b[34;1mRunning test:\x1b[0m {} > {} 2> {}".format(" ".join(cmd), tmpout, tmperr))
 
     with open(tmpout, 'w') as f_out, open(tmperr, 'w') as f_err:
         try:
@@ -131,17 +131,17 @@ def runTest(cmd, outfile, errfile, pid, out_filter=None):
         if result == 'pass':
             errsize = os.path.getsize(tmperr)
             if errsize:
-                print("  [32mTest passed (with output to stderr).[0m")
+                print("  \x1b[32mTest passed (with output to stderr).\x1b[0m")
                 result = 'stderr'
             else:
-                print("  [32mTest passed.[0m")
+                print("  \x1b[32mTest passed.\x1b[0m")
         elif result == 'sortsame':
-            print("  [33mOutputs not equivalent, but sort to same contents.[0m")
+            print("  \x1b[33mOutputs not equivalent, but sort to same contents.\x1b[0m")
         else:
-            print("\n  [37;41mTest failed:[0m %s" % " ".join(cmd))
+            print("\n  \x1b[37;41mTest failed:\x1b[0m {}".format(" ".join(cmd)))
             errsize = os.path.getsize(tmperr)
             if errsize:
-                print("  [31mStderr output:[0m")
+                print("  \x1b[31mStderr output:\x1b[0m")
                 with open(tmperr, 'r') as f:
                     for line in f:
                         print("    " + line.rstrip())
@@ -162,15 +162,15 @@ def checkFiles(file1, file2, out_filter=None):
     with open(file1) as f1:
         data1 = f1.read()
         if out_filter is not None:
-            data1 = re.sub("^.*%s.*\n" % out_filter, '', data1, flags=re.MULTILINE)
+            data1 = re.sub(f"^.*{out_filter}.*\n", '', data1, flags=re.MULTILINE)
     with open(file2) as f2:
         data2 = f2.read()
         if out_filter is not None:
-            data2 = re.sub("^.*%s.*\n" % out_filter, '', data2, flags=re.MULTILINE)
+            data2 = re.sub(f"^.*{out_filter}.*\n", '', data2, flags=re.MULTILINE)
 
     if len(data1) != len(data2):
         if verbose:
-            print("\n  [31mOutputs differ (size).[0m")
+            print("\n  \x1b[31mOutputs differ (size).\x1b[0m")
         return 'diffsize'
 
     if data1 != data2:
@@ -179,7 +179,7 @@ def checkFiles(file1, file2, out_filter=None):
         sort2 = data2.split('\n').sort()
         if sort1 != sort2:
             if verbose:
-                print("\n  [31mOutputs differ (contents).[0m")
+                print("\n  \x1b[31mOutputs differ (contents).\x1b[0m")
             return 'diffcontent'
         else:
             # outputs not equivalent, but sort to same contents
@@ -207,16 +207,16 @@ def viewdiff(f1, f2):
 def updateout(outfile, newoutput):
     choice = input("  Store new output as correct? (y/N) ")
     if choice.lower() == 'y':
-        print("  [33mmv %s %s[0m" % (newoutput, outfile))
+        print(f"  \x1b[33mmv {newoutput} {outfile}\x1b[0m")
         os.rename(newoutput, outfile)
 
 
 class Progress:
     # indicator characters
-    chr_Pass = "[32m*[0m"
-    chr_Sort = "[33m^[0m"
-    chr_StdErr = "[34mo[0m"
-    chr_Fail = "[37;41mx[0m"
+    chr_Pass = "\x1b[32m*\x1b[0m"
+    chr_Sort = "\x1b[33m^\x1b[0m"
+    chr_StdErr = "\x1b[34mo\x1b[0m"
+    chr_Fail = "\x1b[37;41mx\x1b[0m"
 
     def __init__(self, numTests, do_print):
         # maintain test stats
@@ -238,11 +238,11 @@ class Progress:
             self.rows = size.lines
 
             # figure size of printed area
-            self.printrows = int(math.ceil(float(numTests) / (self.cols-2)))
+            self.printrows = math.ceil(float(numTests) / (self.cols-2))
 
             # move forward for blank lines to hold progress bars
             for i in range(self.printrows + 1):
-                print('')
+                print()
             # print '.' for every test to be run
             for i in range(numTests):
                 x = i % (self.cols-2) + 2
@@ -277,13 +277,13 @@ class Progress:
             self.print_at(x, self.printrows-y, c)
 
     def printstats(self):
-        print('')
+        print()
         if self.stats['incomplete'] > 0:
             # red text
-            sys.stdout.write("[31m")
+            sys.stdout.write("\x1b[31m")
             print("     %3d / %d  Incomplete" %
                   (self.stats['incomplete'], self.stats['total']))
-            sys.stdout.write("[0m")
+            sys.stdout.write("\x1b[0m")
         print(" %s : %3d / %d  Passed" %
               (self.chr_Pass, self.stats['passed'], self.stats['total']))
         if self.stats['sortsame'] > 0:
@@ -302,16 +302,16 @@ class Progress:
     # y is 0-based, with 0 = lowest row, 1 above that, etc.
     def print_at(self, x, y, string):
         # move to correct position
-        sys.stdout.write("[%dF" % y)  # y (moves to start of row)
-        sys.stdout.write("[%dG" % x)         # x
+        sys.stdout.write("\x1b[%dF" % y)  # y (moves to start of row)
+        sys.stdout.write("\x1b[%dG" % x)         # x
 
         sys.stdout.write(string)
 
         # move back down
-        sys.stdout.write("[%dE" % y)
+        sys.stdout.write("\x1b[%dE" % y)
 
         # move cursor to side and flush anything pending
-        sys.stdout.write("[0G")
+        sys.stdout.write("\x1b[0G")
         sys.stdout.flush()
 
 
@@ -358,8 +358,8 @@ def main():
     validmodes = ('run', 'runp', 'runverbose', 'nocheck', 'regenerate')
 
     if mode not in validmodes:
-        print("Invalid mode: %s" % mode)
-        print("Options: %s" % ", ".join(validmodes))
+        print(f"Invalid mode: {mode}")
+        print("Options: {}".format(", ".join(validmodes)))
         return 1
 
     if mode == 'runverbose':
@@ -396,7 +396,7 @@ def main():
     if testname is None:
         testname = "default"
     else:
-        testname = "'%s'" % testname
+        testname = f"'{testname}'"
     report = "Running %d %s tests on %d cores" % (numTests, testname, num_procs)
     if mode == 'nocheck':
         report += " (skipping results checks)"
@@ -438,8 +438,8 @@ def main():
                 prog.update(testid, result)
 
     except KeyboardInterrupt:
-        print('')
-        print("[31;1mInterrupted![0m")
+        print()
+        print("\x1b[31;1mInterrupted!\x1b[0m")
 
     if mode == "run" or mode == "runp":
         prog.printstats()
